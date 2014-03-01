@@ -1,0 +1,210 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\addresschunk.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\addresslist.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\array.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dnscache.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dnsgenerator.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dnsparser.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dnsrelated.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\domainstatistic.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\downloader.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\excludedlist.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extendablebuffer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hosts.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\querydnsbase.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\querydnsinterface.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\querydnslistentcp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\querydnslistenudp.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\readconfig.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\readline.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\request_response.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rwlock.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stringchunk.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stringlist.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\utils.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\debug.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\bst.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ipchunk.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\gfwlist.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\simpleht.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\statichosts.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\cacheht.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\internalsocket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\addresschunk.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\addresslist.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\array.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dnscache.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dnsgenerator.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dnsparser.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dnsrelated.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\domainstatistic.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\downloader.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\excludedlist.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extendablebuffer.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hosts.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\main.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\querydnsbase.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\querydnsinterface.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\querydnslistentcp.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\querydnslistenudp.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\readconfig.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\readline.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\request_response.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stringchunk.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stringlist.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\utils.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\debug.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\bst.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ipchunk.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\gfwlist.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\simpleht.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\statichosts.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\cacheht.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\internalsocket.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
