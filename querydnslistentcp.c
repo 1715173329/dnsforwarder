@@ -1,0 +1,363 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include "querydnslistentcp.h"
+#include "querydnsbase.h"
+#include "dnsrelated.h"
+#include "dnsparser.h"
+#include "dnsgenerator.h"
+#include "common.h"
+#include "utils.h"
+#include "stringlist.h"
+#include "excludedlist.h"
+#include "addresslist.h"
+#include "internalsocket.h"
+
+/* Variables */
+static BOOL			Inited = FALSE;
+
+static SOCKET		TCPIncomeSocket;
+
+static SOCKET		TCPOutcomeSocket;
+static Address_Type	TCPOutcomeAddress;
+
+static int			RefusingResponseCode = 0;
+
+static QueryContext	Context;
+
+/* Functions */
+int QueryDNSListenTCPInit(void)
+{
+	const char	*LocalAddr = ConfigGetRawString(&ConfigInfo, "LocalInterface");
+	int			LocalPort = ConfigGetInt32(&ConfigInfo, "LocalPort");
+
+	RefusingResponseCode = ConfigGetInt32(&ConfigInfo, "RefusingResponseCode");
+
+	TCPIncomeSocket = InternalInterface_OpenTCP(LocalAddr, INTERNAL_INTERFACE_TCP_INCOME, LocalPort);
+	if( TCPIncomeSocket == INVALID_SOCKET )
+	{
+		ShowFatalMessage("Opening TCP socket failed.", GET_LAST_ERROR());
+		return -1;
+	}
+
+	MainFamily = InternalInterface_GetAddress(INTERNAL_INTERFACE_TCP_INCOME, NULL);
+
+	TCPOutcomeSocket = InternalInterface_TryBindLocal(10000, &TCPOutcomeAddress);
+
+	InternalInterface_InitQueryContext(&Context);
+
+	Inited = TRUE;
+
+	return 0;
+}
+
+static int Query(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket)
+{
+	int State;
+	uint16_t TCPLength = htons(ContentLength - sizeof(ControlHeader));
+
+	ControlHeader	*Header = (ControlHeader *)Content;
+
+	char *RequestEntity = Content + sizeof(ControlHeader);
+
+	Header -> RequestingDomain[0] = '\0';
+	DNSGetHostName(RequestEntity,
+				   DNSJumpHeader(RequestEntity),
+				   Header -> RequestingDomain
+				   );
+
+	StrToLower(Header -> RequestingDomain);
+
+	Header -> RequestingType =
+		(DNSRecordType)DNSGetRecordType(DNSJumpHeader(RequestEntity));
+
+	Header -> RequestingDomainHashValue = ELFHash(Header -> RequestingDomain, 0);
+
+	State = QueryBase(Content, ContentLength, BufferLength, TCPOutcomeSocket);
+
+	switch( State )
+	{
+		case QUERY_RESULT_SUCESS:
+			InternalInterface_QueryContextAddTCP(&Context, Header, ThisSocket);
+			return 0;
+			break;
+
+		case QUERY_RESULT_DISABLE:
+			((DNSHeader *)(RequestEntity)) -> Flags.Direction = 1;
+			((DNSHeader *)(RequestEntity)) -> Flags.RecursionAvailable = 1;
+			((DNSHeader *)(RequestEntity)) -> Flags.ResponseCode = RefusingResponseCode;
+			send(ThisSocket, (const char *)&TCPLength, 2, 0);
+			send(ThisSocket, RequestEntity, ContentLength - sizeof(ControlHeader), 0);
+			return -1;
+			break;
+
+		case QUERY_RESULT_ERROR:
+			return -1;
+			break;
+
+		default: /* Cache */
+			{
+				uint16_t NewTCPLength = htons(State);
+
+				send(ThisSocket, (const char *)&NewTCPLength, 2, 0);
+				send(ThisSocket, RequestEntity, State, 0);
+				return 0;
+			}
+			break;
+	}
+}
+
+typedef struct _SocketInfo {
+	SOCKET	Socket;
+	char	Address[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
+	time_t	TimeAdd;
+} SocketInfo;
+
+static Bst	si;
+
+static int SocketInfoCompare(SocketInfo *_1, SocketInfo *_2)
+{
+	return (int)(_1 -> Socket) - (int)(_2 -> Socket);
+}
+
+static int InitSocketInfo(void)
+{
+	return Bst_Init(&si, NULL, sizeof(SocketInfo), SocketInfoCompare);
+}
+
+static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, const char *ClientAddress, int32_t *Number)
+{
+	int32_t Start = -1;
+	SocketInfo *Info;
+
+	time_t	Now = time(NULL);
+
+	Info = Bst_Enum(&si, &Start);
+	while( Info != NULL )
+	{
+		if( FD_ISSET(Info -> Socket, ReadySet) )
+		{
+			Info -> TimeAdd = Now;
+			strcpy(Info -> Address, ClientAddress);
+			if( Number != NULL )
+			{
+				*Number = Start;
+			}
+			return Info -> Socket;
+		}
+
+		if( Now - Info -> TimeAdd > 2 )
+		{
+			CLOSE_SOCKET(Info -> Socket);
+			FD_CLR(Info -> Socket, ReadSet);
+			Bst_Delete_ByNumber(&si, Start);
+		}
+
+		Info = Bst_Enum(&si, &Start);
+	}
+
+	return INVALID_SOCKET;
+}
+
+static int SocketInfoAdd(SOCKET Socket, const char *Address)
+{
+	SocketInfo New;
+
+	New.Socket = Socket;
+	strcpy(New.Address, Address);
+	New.TimeAdd = time(NULL);
+
+	return Bst_Add(&si, &New);
+}
+
+static BOOL SocketInfoSwep(fd_set *ReadSet)
+{
+	int32_t Start = -1;
+	SocketInfo *Info;
+
+	time_t	Now = time(NULL);
+
+	Info = Bst_Enum(&si, &Start);
+	while( Info != NULL )
+	{
+		if( Now - Info -> TimeAdd > 2 )
+		{
+			CLOSE_SOCKET(Info -> Socket);
+			FD_CLR(Info -> Socket, ReadSet);
+			Bst_Delete_ByNumber(&si, Start);
+		}
+
+		Info = Bst_Enum(&si, &Start);
+	}
+
+	return Bst_IsEmpty(&si);
+}
+
+static void SendBack(char *Result, int Length)
+{
+	ControlHeader	*Header = (ControlHeader *)Result;
+	char			*RequestEntity = Result + sizeof(ControlHeader);
+	uint16_t		Identifier = *(uint16_t *)RequestEntity;
+	int32_t			Number;
+	QueryContextEntry	*Entry;
+	uint16_t	 	EntityLength = Length - sizeof(ControlHeader);
+	uint16_t	 	EntityLength_n = htons(EntityLength);
+
+	Number = InternalInterface_QueryContextFind(&Context, Identifier, Header -> RequestingDomainHashValue);
+	if( Number < 0 )
+	{
+		return;
+	}
+
+	Entry = Bst_GetDataByNumber(&Context, Number);
+
+	send(Entry -> Context.Socket, (const char *)&EntityLength_n, 2, 0);
+	send(Entry -> Context.Socket, RequestEntity, EntityLength, 0);
+
+	InternalInterface_QueryContextRemoveByNumber(&Context, Number);
+
+}
+
+static int QueryDNSListenTCP(void)
+{
+	int		MaxFd = TCPIncomeSocket > TCPOutcomeSocket ? TCPIncomeSocket : TCPOutcomeSocket;
+
+	static fd_set	ReadSet, ReadySet;
+
+	static const struct timeval	LongTime = {3600, 0};
+	static const struct timeval	ShortTime = {2, 0};
+
+	struct timeval	TimeLimit = LongTime;
+
+	static char		RequestEntity[2048];
+	ControlHeader	*Header = (ControlHeader *)RequestEntity;
+
+	InternalInterface_InitControlHeader(Header);
+
+	memcpy(&(Header -> BackAddress), &TCPOutcomeAddress, sizeof(Address_Type));
+	Header -> NeededHeader = TRUE;
+
+	InitSocketInfo();
+
+	FD_ZERO(&ReadSet);
+	FD_ZERO(&ReadySet);
+
+	FD_SET(TCPIncomeSocket, &ReadSet);
+	FD_SET(TCPOutcomeSocket, &ReadSet);
+
+	while( TRUE )
+	{
+		ReadySet = ReadSet;
+
+		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
+		{
+			case SOCKET_ERROR:
+				break;
+
+			case 0:
+				if( InternalInterface_QueryContextSwep(&Context, 2) == TRUE || SocketInfoSwep(&ReadSet) == TRUE )
+				{
+					TimeLimit = LongTime;
+				} else {
+					TimeLimit = ShortTime;
+				}
+				break;
+
+			default:
+				TimeLimit = ShortTime;
+
+				if( FD_ISSET(TCPIncomeSocket, &ReadySet) )
+				{
+					SOCKET			NewSocket;
+					Address_Type	Address;
+					socklen_t		AddrLen;
+
+					char	AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
+
+					if( MainFamily == AF_INET )
+					{
+						AddrLen = sizeof(struct sockaddr);
+						NewSocket = accept(TCPIncomeSocket,
+										  (struct sockaddr *)&(Address.Addr.Addr4),
+										  (socklen_t *)&AddrLen
+										  );
+						strcpy(AddressString, inet_ntoa(Address.Addr.Addr4.sin_addr));
+					} else {
+						AddrLen = sizeof(struct sockaddr_in6);
+						NewSocket = accept(TCPIncomeSocket,
+										  (struct sockaddr *)&(Address.Addr.Addr6),
+										  (socklen_t *)&AddrLen
+										  );
+						IPv6AddressToAsc(&Address, AddressString);
+					}
+
+					if( NewSocket != INVALID_SOCKET )
+					{
+						FD_SET(NewSocket, &ReadSet);
+
+						if( NewSocket > MaxFd )
+						{
+							MaxFd = NewSocket;
+						}
+
+						SocketInfoAdd(NewSocket, AddressString);
+					}
+				} else if( FD_ISSET(TCPOutcomeSocket, &ReadySet) )
+				{
+					static char Result[2048];
+					int	State;
+
+					State = recvfrom(TCPOutcomeSocket, Result, sizeof(Result), 0, NULL, NULL);
+					if( State > 0 )
+					{
+						SendBack(Result, State);
+					}
+				} else {
+					SOCKET	Socket;
+					int		State;
+
+					int32_t	Number;
+
+					Socket = SocketInfoMatch(&ReadySet, &ReadSet, Header -> Agent, &Number);
+
+					if( Socket != INVALID_SOCKET )
+					{
+						uint16_t TCPLength;
+
+						if( recv(Socket, (char *)&TCPLength, 2, MSG_NOSIGNAL) < 2 )
+						{
+							Bst_Delete_ByNumber(&si, Number);
+							FD_CLR(Socket, &ReadSet);
+							CLOSE_SOCKET(Socket);
+							break;
+						}
+
+						TCPLength = ntohs(TCPLength);
+
+						State = recv(Socket, RequestEntity + sizeof(ControlHeader), sizeof(RequestEntity) - sizeof(ControlHeader), MSG_NOSIGNAL);
+						if( State < 1 )
+						{
+							Bst_Delete_ByNumber(&si, Number);
+							FD_CLR(Socket, &ReadSet);
+							CLOSE_SOCKET(Socket);
+							break;
+						}
+
+						Query(RequestEntity, State + sizeof(ControlHeader), sizeof(RequestEntity), Socket);
+					}
+				}
+			break;
+		}
+	}
+
+	return 0;
+}
+
+void QueryDNSListenTCPStart(void)
+{
+	ThreadHandle t;
+
+	CREATE_THREAD(QueryDNSListenTCP, NULL, t);
+	DETACH_THREAD(t);
+}

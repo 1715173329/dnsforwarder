@@ -1,0 +1,4 @@
+bin_PROGRAMS = dnsforwarder
+dnsforwarder_SOURCES = addresschunk.h dnscache.h gfwlist.h readline.h addresslist.h dnsgenerator.h hosts.h request_response.h array.h dnsparser.h ipchunk.h rwlock.h bst.h dnsrelated.h querydnsbase.h simpleht.h cacheht.h domainstatistic.h querydnsinterface.h statichosts.h common.h downloader.h querydnslistentcp.h stringchunk.h config.h excludedlist.h querydnslistenudp.h stringlist.h debug.h extendablebuffer.h readconfig.h utils.h internalsocket.h addresschunk.c addresslist.c array.c bst.c cacheht.c debug.c dnscache.c dnsgenerator.c dnsparser.c dnsrelated.c domainstatistic.c downloader.c excludedlist.c extendablebuffer.c gfwlist.c hosts.c ipchunk.c main.c querydnsbase.c querydnsinterface.c querydnslistentcp.c querydnslistenudp.c readconfig.c readline.c request_response.c simpleht.c statichosts.c stringchunk.c stringlist.c utils.c internalsocket.c
+
+
