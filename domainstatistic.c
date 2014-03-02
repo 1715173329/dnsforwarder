@@ -262,7 +262,7 @@ int DomainStatistic_Hold(void)
 
 		fprintf(MainFile, "Total number of : Queried domains      : %d\n"
 						  "                  Requests             : %d\n"
-						  "                  Refused&Failed       : %d\n"
+						  "                  Refused              : %d\n"
 						  "                  Responses from hosts : %d\n"
 						  "                  Responses from cache : %d\n"
 						  "                  Responses via UDP    : %d\n"

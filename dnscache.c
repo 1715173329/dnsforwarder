@@ -487,7 +487,7 @@ static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody,
 
 			Node -> TimeAdded = CurrentTime;
 
-			DEBUG_FILE("Added cache : %s, TTL : %d\n", Buffer + 1, Node -> TTL);
+			DEBUG_FILE("Added cache : %s, TTL : %d\n", Buffer + 1, RecordTTL);
 
 			/* Index this entry on the hash table */
 			CacheHT_InsertToSlot(CacheInfo, Buffer + 1, Subscript, Node, NULL);
@@ -571,9 +571,11 @@ static int DNSCache_GetRawRecordsFromCache(	__in	char				*Name,
 	char		*CacheItr;
 	Cht_Node	*Node = NULL;
 
-	int		DatasLen;
+	int			DatasLen;
 
-	int RecordCount = 0;
+	uint32_t	NewTTL;
+
+	int 		RecordCount = 0;
 
 	const ElementDescriptor *Descriptor;
 	int CountOfDescriptor;
@@ -608,7 +610,14 @@ static int DNSCache_GetRawRecordsFromCache(	__in	char				*Name,
 					break;
 				}
 
-				DNSGenResourceRecord(Buffer, SingleLength, "a", Type, Class, Node -> TTL - (CurrentTime - Node -> TimeAdded), NULL, 0, FALSE);
+				if( IgnoreTTL == TRUE )
+				{
+					NewTTL = Node -> TTL;
+				} else {
+					NewTTL = Node -> TTL - (CurrentTime - Node -> TimeAdded);
+				}
+
+				DNSGenResourceRecord(Buffer, SingleLength, "a", Type, Class, NewTTL, NULL, 0, FALSE);
 
 				for(; *CacheItr != '\0'; ++CacheItr);
 				/* Then *CacheItr == '\0' */
@@ -662,6 +671,8 @@ static int DNSCache_GetByQuestion(__in const char *Question, __inout char *Buffe
 
 	Cht_Node *Node;
 
+	uint32_t	NewTTL;
+
 	int		RecordsCount	=	0;
 
 	DNSRecordType	Type;
@@ -695,7 +706,14 @@ static int DNSCache_GetByQuestion(__in const char *Question, __inout char *Buffe
 
 			++RecordsCount;
 
-			DNSGenResourceRecord(Buffer, SingleLength, "a", DNS_TYPE_CNAME, 1, Node -> TTL - (CurrentTime - Node -> TimeAdded), CName, strlen(CName) + 1, TRUE);
+			if( IgnoreTTL == TRUE )
+			{
+				NewTTL = Node -> TTL;
+			} else {
+				NewTTL = Node -> TTL - (CurrentTime - Node -> TimeAdded);
+			}
+
+			DNSGenResourceRecord(Buffer, SingleLength, "a", DNS_TYPE_CNAME, 1, NewTTL, CName, strlen(CName) + 1, TRUE);
 
 			BufferLength -= SingleLength;
 			Buffer += SingleLength;
