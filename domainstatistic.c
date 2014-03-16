@@ -15,11 +15,12 @@ typedef struct _DomainInfo{
 	int		Cache;
 	int		Udp;
 	int		Tcp;
+	int		Poisoned;
 } DomainInfo;
 
 typedef struct _RankList{
 	const char	*Domain;
-	int			Count;
+	DomainInfo	*Info;
 } RankList;
 
 static EFFECTIVE_LOCK	StatisticLock;
@@ -32,6 +33,8 @@ static FILE				*MainFile = NULL;
 
 static char				InitTime_Str[32];
 static time_t			InitTime_Num;
+
+volatile static BOOL	SkipStatistic = FALSE;
 
 
 int DomainStatistic_Init(int OutputInterval)
@@ -76,66 +79,89 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 
 	EFFECTIVE_LOCK_GET(StatisticLock);
 
-	if( StringChunk_Match(&MainChunk, Domain, HashValue, (char **)&ExistInfo) == FALSE )
+	if( SkipStatistic == FALSE )
 	{
-		DomainInfo NewInfo;
 
-		memset(&NewInfo, 0, sizeof(DomainInfo));
-
-		NewInfo.Count = 1;
-
-		switch( Type )
+		if( StringChunk_Match(&MainChunk, Domain, HashValue, (char **)&ExistInfo) == FALSE )
 		{
-			case STATISTIC_TYPE_REFUSED:
-				NewInfo.Refused = 1;
-				break;
+			DomainInfo NewInfo;
 
-			case STATISTIC_TYPE_HOSTS:
-				NewInfo.Hosts = 1;
-				break;
-
-			case STATISTIC_TYPE_CACHE:
-				NewInfo.Cache = 1;
-				break;
-
-			case STATISTIC_TYPE_UDP:
-				NewInfo.Udp = 1;
-				break;
-
-			case STATISTIC_TYPE_TCP:
-				NewInfo.Tcp = 1;
-				break;
-		}
-
-		StringChunk_Add(&MainChunk, Domain, (const char *)&NewInfo, sizeof(DomainInfo));
-	} else {
-		if( ExistInfo != NULL )
-		{
-			++(ExistInfo -> Count);
+			memset(&NewInfo, 0, sizeof(DomainInfo));
 
 			switch( Type )
 			{
 				case STATISTIC_TYPE_REFUSED:
-					++(ExistInfo -> Refused);
+					NewInfo.Count = 1;
+					NewInfo.Refused = 1;
 					break;
 
 				case STATISTIC_TYPE_HOSTS:
-					++(ExistInfo -> Hosts);
+					NewInfo.Count = 1;
+					NewInfo.Hosts = 1;
 					break;
 
 				case STATISTIC_TYPE_CACHE:
-					++(ExistInfo -> Cache);
+					NewInfo.Count = 1;
+					NewInfo.Cache = 1;
 					break;
 
 				case STATISTIC_TYPE_UDP:
-					++(ExistInfo -> Udp);
+					NewInfo.Count = 1;
+					NewInfo.Udp = 1;
 					break;
 
 				case STATISTIC_TYPE_TCP:
-					++(ExistInfo -> Tcp);
+					NewInfo.Count = 1;
+					NewInfo.Tcp = 1;
 					break;
+
+				case STATISTIC_TYPE_POISONED:
+					NewInfo.Count = 0;
+					NewInfo.Poisoned = TRUE;
+					break;
+
+			}
+
+			StringChunk_Add(&MainChunk, Domain, (const char *)&NewInfo, sizeof(DomainInfo));
+		} else {
+			if( ExistInfo != NULL )
+			{
+				++(ExistInfo -> Count);
+
+				switch( Type )
+				{
+					case STATISTIC_TYPE_REFUSED:
+						++(ExistInfo -> Count);
+						++(ExistInfo -> Refused);
+						break;
+
+					case STATISTIC_TYPE_HOSTS:
+						++(ExistInfo -> Count);
+						++(ExistInfo -> Hosts);
+						break;
+
+					case STATISTIC_TYPE_CACHE:
+						++(ExistInfo -> Count);
+						++(ExistInfo -> Cache);
+						break;
+
+					case STATISTIC_TYPE_UDP:
+						++(ExistInfo -> Count);
+						++(ExistInfo -> Udp);
+						break;
+
+					case STATISTIC_TYPE_TCP:
+						++(ExistInfo -> Count);
+						++(ExistInfo -> Tcp);
+						break;
+
+					case STATISTIC_TYPE_POISONED:
+						ExistInfo -> Poisoned = TRUE;
+						break;
+				}
 			}
 		}
+
 	}
 
 	EFFECTIVE_LOCK_RELEASE(StatisticLock);
@@ -143,33 +169,9 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 	return 0;
 }
 
-static void AddToRankList(RankList *List, int NumberOfInList, const char *CurrentDomain, DomainInfo *DomainInfo)
+static int CountCompare(RankList *_1, RankList *_2)
 {
-	int Loop;
-
-	int NewPosition = NumberOfInList - 1;
-
-	while( List[NewPosition].Count < DomainInfo -> Count && NewPosition != -1 )
-	{
-		--NewPosition;
-	}
-
-	if( NewPosition == NumberOfInList - 1 )
-	{
-		return;
-	}
-
-	++NewPosition;
-
-	for( Loop = NumberOfInList - 1; Loop != NewPosition; --Loop )
-	{
-		List[Loop].Domain = List[Loop - 1].Domain;
-		List[Loop].Count = List[Loop - 1].Count;
-	}
-
-	List[NewPosition].Domain = CurrentDomain;
-	List[NewPosition].Count = DomainInfo -> Count;
-
+	return (-1) * (_1 -> Info -> Count - _2 -> Info -> Count);
 }
 
 int DomainStatistic_Hold(void)
@@ -180,16 +182,18 @@ int DomainStatistic_Hold(void)
 	DomainInfo *Info;
 
 	DomainInfo Sum;
+	RankList New;
 	int	DomainCount;
 
-	#define MAXIMUN_NUMBER_OF_RANKED_DOMAIN 100
-	int NumberOfRankedDomain;
+	RankList *ARank;
 
-	RankList Ranks[MAXIMUN_NUMBER_OF_RANKED_DOMAIN];
+	Array Ranks;
 	int Loop;
 
 	char GenerateTime_Str[32];
 	time_t GenerateTime_Num;
+
+	Array_Init(&Ranks, sizeof(RankList), 0, FALSE, NULL);
 
 	while(TRUE)
 	{
@@ -199,11 +203,7 @@ int DomainStatistic_Hold(void)
 
 		memset(&Sum, 0, sizeof(DomainInfo));
 
-		for( Loop = 0; Loop != MAXIMUN_NUMBER_OF_RANKED_DOMAIN; ++Loop)
-		{
-			Ranks[Loop].Domain = NULL;
-			Ranks[Loop].Count = 0;
-		}
+		Array_Clear(&Ranks);
 
 		GetCurDateAndTime(GenerateTime_Str, sizeof(GenerateTime_Str));
 		GenerateTime_Num = time(NULL);
@@ -215,8 +215,8 @@ int DomainStatistic_Hold(void)
 			    "Elapsed time : %ds\n"
 			    "\n"
 			    "Domain Statistic:\n"
-			    "                                                              Refused\n"
-			    "                                                 Domain   Total     | Hosts Cache   UDP   TCP\n",
+			    "                                                       Refused&Failed                     Poisoned?\n"
+			    "                                                 Domain   Total     | Hosts Cache   UDP   TCP     |\n",
 			InitTime_Str,
 			GenerateTime_Str,
 			(int)(GenerateTime_Num - InitTime_Num)
@@ -228,22 +228,20 @@ int DomainStatistic_Hold(void)
 
 		EFFECTIVE_LOCK_GET(StatisticLock);
 
+		SkipStatistic = TRUE;
+
+		EFFECTIVE_LOCK_RELEASE(StatisticLock);
+
 		Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
 
 		while( Str != NULL )
 		{
 			++DomainCount;
 
-			fprintf(MainFile,
-					"%55s : %5d %5d %5d %5d %5d %5d\n",
-					Str,
-					Info -> Count,
-					Info -> Refused,
-					Info -> Hosts,
-					Info -> Cache,
-					Info -> Udp,
-					Info -> Tcp
-					 );
+			New.Domain = Str;
+			New.Info = Info;
+
+			Array_PushBack(&Ranks, &New, NULL);
 
 			Sum.Count += Info -> Count;
 			Sum.Refused += Info -> Refused;
@@ -251,24 +249,52 @@ int DomainStatistic_Hold(void)
 			Sum.Cache += Info -> Cache;
 			Sum.Udp += Info -> Udp;
 			Sum.Tcp += Info -> Tcp;
-
-			AddToRankList(Ranks, MAXIMUN_NUMBER_OF_RANKED_DOMAIN, Str, Info );
+			Sum.Poisoned += Info -> Poisoned;
 
 			Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
 
 		}
 
+		Array_Sort(&Ranks, CountCompare);
+
+		Loop = 0;
+		ARank = Array_GetBySubscript(&Ranks, 0);
+
+		while( ARank != NULL )
+		{
+			fprintf(MainFile,
+					"%55s : %5d %5d %5d %5d %5d %5d %s\n",
+					ARank -> Domain,
+					ARank -> Info -> Count,
+					ARank -> Info -> Refused,
+					ARank -> Info -> Hosts,
+					ARank -> Info -> Cache,
+					ARank -> Info -> Udp,
+					ARank -> Info -> Tcp,
+					ARank -> Info -> Poisoned != FALSE ? "  Yes" : ""
+					 );
+
+			++Loop;
+			ARank = Array_GetBySubscript(&Ranks, Loop);
+		}
+
+		EFFECTIVE_LOCK_GET(StatisticLock);
+
+		SkipStatistic = FALSE;
+
 		EFFECTIVE_LOCK_RELEASE(StatisticLock);
 
 		fprintf(MainFile, "Total number of : Queried domains      : %d\n"
 						  "                  Requests             : %d\n"
-						  "                  Refused              : %d\n"
+						  "                  Poisoned domains     : %d\n"
+						  "                  Refused&Failed       : %d\n"
 						  "                  Responses from hosts : %d\n"
 						  "                  Responses from cache : %d\n"
 						  "                  Responses via UDP    : %d\n"
 						  "                  Responses via TCP    : %d\n",
 				DomainCount,
 				Sum.Count,
+				Sum.Poisoned,
 				Sum.Refused,
 				Sum.Hosts,
 				Sum.Cache,
@@ -280,19 +306,7 @@ int DomainStatistic_Hold(void)
 
 		if( Sum.Udp + Sum.Tcp + Sum.Cache != 0 )
 		{
-			fprintf(MainFile, "Cache utilization : %.1f\n", (double)Sum.Cache / (double)(Sum.Udp + Sum.Tcp + Sum.Cache));
-		}
-
-		NumberOfRankedDomain = (DomainCount / 5 + 1) > MAXIMUN_NUMBER_OF_RANKED_DOMAIN ? MAXIMUN_NUMBER_OF_RANKED_DOMAIN : (DomainCount / 5 + 1);
-
-		fprintf(MainFile, "\n%d most frequntely queried domains:\n", NumberOfRankedDomain);
-
-		for( Loop = 0; Loop != NumberOfRankedDomain; ++Loop )
-		{
-			if( Ranks[Loop].Domain != NULL )
-			{
-				fprintf(MainFile, "     %s : %d\n", Ranks[Loop].Domain, Ranks[Loop].Count);
-			}
+			fprintf(MainFile, "Cache utilization : %.1f%%\n", ((double)Sum.Cache / (double)(Sum.Udp + Sum.Tcp + Sum.Cache)) * 100);
 		}
 
 		fprintf(MainFile, "\n-----------------------------------------\n");

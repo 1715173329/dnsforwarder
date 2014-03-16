@@ -18,23 +18,50 @@
 #include "domainstatistic.h"
 #include "request_response.h"
 
-void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain)
+void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Massage)
 {
 	char DateAndTime[32];
 
-	if( ShowMassages == TRUE )
+	if( ShowMassages == TRUE || DEBUGMODE )
 	{
 		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
 
-		printf("%s[R][%s][%s][%s] Refused.\n",
+		printf("%s[R][%s][%s][%s] %s.\n",
 			  DateAndTime,
+			  Agent,
+			  DNSGetTypeName(Type),
+			  Domain,
+			  Massage
+			  );
+	}
+
+	DEBUG_FILE("[R][%s][%s][%s] %s.\n",
+		   Agent,
+		   DNSGetTypeName(Type),
+		   Domain,
+		   Massage
+		   );
+}
+
+void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol)
+{
+	char DateAndTime[32];
+
+	if( ShowMassages == TRUE || DEBUGMODE )
+	{
+		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
+
+		printf("%s[%c][%s][%s][%s] Time out.\n",
+			  DateAndTime,
+			  Protocol,
 			  Agent,
 			  DNSGetTypeName(Type),
 			  Domain
 			  );
 	}
 
-	DEBUG_FILE("[R][%s][%s][%s].\n",
+	DEBUG_FILE("[%c][%s][%s][%s] Time out.\n",
+		   Protocol,
 		   Agent,
 		   DNSGetTypeName(Type),
 		   Domain
@@ -200,12 +227,18 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 
 	int StateOfReceiving = -1;
 
-
 	/* Check if this domain or type is disabled */
-	if( IsDisabledType(Header -> RequestingType) || IsDisabledDomain(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue)) )
+	if( IsDisabledType(Header -> RequestingType) )
 	{
 		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_REFUSED);
-		ShowRefusingMassage(Header -> Agent, Header -> RequestingType, Header -> RequestingDomain);
+		ShowRefusingMassage(Header -> Agent, Header -> RequestingType, Header -> RequestingDomain, "Disabled type");
+		return QUERY_RESULT_DISABLE;
+	}
+
+	if( IsDisabledDomain(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue)) )
+	{
+		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_REFUSED);
+		ShowRefusingMassage(Header -> Agent, Header -> RequestingType, Header -> RequestingDomain, "Disabled domain");
 		return QUERY_RESULT_DISABLE;
 	}
 

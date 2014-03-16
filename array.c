@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 #include "array.h"
 #include "utils.h"
@@ -113,6 +114,16 @@ void *Array_SetToSubscript(Array *a, int Subscript, void *Data)
 		memcpy((a -> Data) + (-1) * (a -> DataLength) * Subscript, Data, a -> DataLength);
 
 		return (a -> Data) + (-1) * (a -> DataLength) * Subscript;
+	}
+}
+
+void Array_Sort(Array *a, int (*Compare)(const void *, const void *))
+{
+	if( a -> Allocated < 0 )
+	{
+		qsort(a -> Data - (a -> Used * a -> DataLength), a -> Used, a -> DataLength, Compare);
+	} else {
+		qsort(a -> Data, a -> Used, a -> DataLength, Compare);
 	}
 }
 

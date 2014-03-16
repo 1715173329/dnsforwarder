@@ -1,3 +1,4 @@
+#include <string.h>
 #include "internalsocket.h"
 #include "addresslist.h"
 #include "querydnsbase.h"
@@ -41,6 +42,7 @@ SOCKET InternalInterface_OpenASocket(sa_family_t Family, struct sockaddr *Addres
 
 	if( Address != NULL && bind(ret, Address, GetAddressLength(Family)) != 0 )
 	{
+		CLOSE_SOCKET(ret);
 		return INVALID_SOCKET;
 	}
 
@@ -76,7 +78,7 @@ SOCKET InternalInterface_TryBindLocal(int Port, Address_Type *Address)
 	{
 		LocalAddress = "127.0.0.1";
 	} else {
-		LocalAddress = "::1";
+		LocalAddress = "[::1]";
 	}
 
 	do {
@@ -189,6 +191,8 @@ int InternalInterface_QueryContextAddUDP(QueryContext *Context, ControlHeader *H
 	New.TimeAdd = time(NULL);
 	New.NeededHeader = Header -> NeededHeader;
 	strcpy(New.Agent, Header -> Agent);
+	New.Type = Header -> RequestingType;
+	strcpy(New.Domain, Header -> RequestingDomain);
 	memcpy(&(New.Context.BackAddress), &(Header -> BackAddress), sizeof(Address_Type));
 
 	return Bst_Add(Context, &New);
@@ -203,6 +207,8 @@ int InternalInterface_QueryContextAddTCP(QueryContext *Context, ControlHeader *H
 	New.TimeAdd = time(NULL);
 	New.NeededHeader = Header -> NeededHeader;
 	strcpy(New.Agent, Header -> Agent);
+	New.Type = Header -> RequestingType;
+	strcpy(New.Domain, Header -> RequestingDomain);
 	New.Context.Socket = Socket;
 
 	return Bst_Add(Context, &New);
@@ -221,8 +227,9 @@ int InternalInterface_QueryContextAddHosts(QueryContext *Context, ControlHeader 
 	memcpy(&(New.Context.Hosts.BackAddress), &(Header -> BackAddress), sizeof(Address_Type));
 	New.Context.Hosts.Identifier = *(uint16_t *)(Header + 1);
 	New.Context.Hosts.HashValue = Header -> RequestingDomainHashValue;
-	New.Context.Hosts.Type = Header -> RequestingType;
-	strcpy(New.Context.Hosts.Domain, Header -> RequestingDomain);
+
+	New.Type = Header -> RequestingType;
+	strcpy(New.Domain, Header -> RequestingDomain);
 
 	return Bst_Add(Context, &New);
 }
@@ -248,7 +255,7 @@ void InternalInterface_QueryContextRemove(QueryContext *Context, uint32_t Identi
 	}
 }
 
-BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut)
+BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *Entry))
 {
 	int32_t Start = -1;
 
@@ -261,6 +268,10 @@ BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut)
 	{
 		if( Now - Entry -> TimeAdd > TimeOut )
 		{
+			if( OutputFunction != NULL )
+			{
+				OutputFunction(Entry);
+			}
 			Bst_Delete_ByNumber(Context, Start);
 		}
 
