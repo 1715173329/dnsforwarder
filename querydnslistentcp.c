@@ -225,6 +225,8 @@ static int QueryDNSListenTCP(void)
 
 	static fd_set	ReadSet, ReadySet;
 
+	int		NumberOfQueryBeforeSwep = 0;
+
 	static const struct timeval	LongTime = {3600, 0};
 	static const struct timeval	ShortTime = {2, 0};
 
@@ -256,16 +258,28 @@ static int QueryDNSListenTCP(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2) == TRUE || SocketInfoSwep(&ReadSet) == TRUE )
+				if( SocketInfoSwep(&ReadSet) == TRUE )
 				{
+					Bst_Reset(&Context);
 					TimeLimit = LongTime;
 				} else {
+					InternalInterface_QueryContextSwep(&Context, 2, NULL);
 					TimeLimit = ShortTime;
 				}
+
+				NumberOfQueryBeforeSwep = 0;
 				break;
 
 			default:
 				TimeLimit = ShortTime;
+
+				++NumberOfQueryBeforeSwep;
+				if( NumberOfQueryBeforeSwep > 1024 )
+				{
+					InternalInterface_QueryContextSwep(&Context, 2, NULL);
+					SocketInfoSwep(&ReadSet);
+					NumberOfQueryBeforeSwep = 0;
+				}
 
 				if( FD_ISSET(TCPIncomeSocket, &ReadySet) )
 				{

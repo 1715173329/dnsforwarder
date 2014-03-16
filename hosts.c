@@ -435,7 +435,7 @@ int DynamicHosts_SocketLoop(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2) == TRUE )
+				if( InternalInterface_QueryContextSwep(&Context, 2, NULL) == TRUE )
 				{
 					TimeLimit = LongTime;
 				} else {
@@ -609,14 +609,14 @@ int DynamicHosts_SocketLoop(void)
 
 					NewGeneratedLength += DNSGenQuestionRecord(NewlyGeneratedRocord + NewGeneratedLength,
 																sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
-																Entry -> Context.Hosts.Domain,
-																Entry -> Context.Hosts.Type,
+																Entry -> Domain,
+																Entry -> Type,
 																DNS_CLASS_IN
 																);
 
 					NewGeneratedLength += DNSGenResourceRecord(NewlyGeneratedRocord + NewGeneratedLength,
 																sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
-																Entry -> Context.Hosts.Domain,
+																Entry -> Domain,
 																DNS_TYPE_CNAME,
 																DNS_CLASS_IN,
                                                                 60,
@@ -657,7 +657,7 @@ int DynamicHosts_SocketLoop(void)
 					InternalInterface_QueryContextRemoveByNumber(&Context, EntryNumber);
 
 					ShowNormalMassage(Entry -> Agent,
-										Entry -> Context.Hosts.Domain,
+										Entry -> Domain,
 										NewlyGeneratedRocord + sizeof(ControlHeader),
 										CompressedLength,
 										'H'

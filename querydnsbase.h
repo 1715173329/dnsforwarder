@@ -25,7 +25,9 @@ extern ConfigFileInfo	ConfigInfo;
 extern BOOL				ShowMassages;
 extern BOOL				ErrorMessages;
 
-void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain);
+void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Massage);
+
+void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol);
 
 void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter);
 

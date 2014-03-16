@@ -113,6 +113,8 @@ void *Array_SetToSubscript(__in Array *a, __in int Subscript, __in void *Data);
  *  The address of the operated element. Or NULL on failure.
  */
 
+void Array_Sort(Array *a, int (*Compare)(const void *, const void *));
+
 #define Array_Clear(a_ptr)	((a_ptr) -> Used = 0)
 /* Description:
  *  Remove all elements, but their rooms are still there.

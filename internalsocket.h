@@ -67,6 +67,8 @@ typedef struct _QueryContextEntry {
 	time_t		TimeAdd;
 	BOOL		NeededHeader;
 	char		Agent[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
+	int			Type;
+	char		Domain[129];
 	union	{
 		Address_Type	BackAddress;
 		SOCKET	Socket;
@@ -74,8 +76,6 @@ typedef struct _QueryContextEntry {
 			Address_Type	BackAddress;
 			uint32_t		Identifier;
 			int32_t			HashValue;
-			int				Type;
-            char			Domain[129];
 		} Hosts;
 	} Context;
 } QueryContextEntry;
@@ -96,7 +96,7 @@ int32_t InternalInterface_QueryContextFind(QueryContext *Context, uint32_t Ident
 
 void InternalInterface_QueryContextRemove(QueryContext *Context, uint32_t Identifier, int32_t HashValue);
 
-BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut);
+BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *Entry));
 
 
 #endif // INTERNALSOCKET_H_INCLUDED

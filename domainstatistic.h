@@ -6,7 +6,9 @@ typedef enum _StatisticType{
 	STATISTIC_TYPE_HOSTS,
 	STATISTIC_TYPE_CACHE,
 	STATISTIC_TYPE_UDP,
-	STATISTIC_TYPE_TCP
+	STATISTIC_TYPE_TCP,
+
+	STATISTIC_TYPE_POISONED
 } StatisticType;
 
 int DomainStatistic_Init(int OutputInterval);

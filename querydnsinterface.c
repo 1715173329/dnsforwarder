@@ -66,7 +66,7 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_REPLACE, TYPE_STRING, TmpTypeDescriptor, "Hosts File");
+    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, "Hosts File");
 
     TmpTypeDescriptor.INT32 = 600;
     ConfigAddOption(&ConfigInfo, "HostsUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);

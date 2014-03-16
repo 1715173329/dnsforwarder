@@ -201,6 +201,7 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 
 		if( UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity) <= 0 )
 		{
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 			return TRUE;
 		}
 
@@ -210,18 +211,14 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 
 		if( DNSGetRecordType(Answer) == DNS_TYPE_A && *Answer != 0xC0 )
 		{
-			if( BlockedIP != NULL )
+			if( BlockedIP != NULL && IpChunk_Find(BlockedIP, *Data) == TRUE )
 			{
-				if( IpChunk_Find(BlockedIP, *Data) == TRUE )
-				{
-					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
-				} else {
-					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
-				}
+				ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
 			} else {
 				ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 			}
 
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 			return TRUE;
 		}
 
@@ -236,6 +233,7 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 				if( DNSGetRecordType(Answer1) == DNS_TYPE_A && IpChunk_Find(BlockedIP, *Data1) == TRUE )
 				{
 					ShowBlockedMessage(Domain, RequestEntity, "Containing blocked ip, discarded");
+					DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 					return TRUE;
 				}
 
@@ -310,6 +308,12 @@ static void SendBack(SOCKET Socket, ControlHeader *Header, QueryContext *Context
 	}
 }
 
+static void TCPSwepOutput(QueryContextEntry *Entry)
+{
+	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'T');
+	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
+}
+
 int QueryDNSViaTCP(void)
 {
 	static QueryContext	Context;
@@ -317,6 +321,8 @@ int QueryDNSViaTCP(void)
 	SOCKET	TCPQueryIncomeSocket;
 	SOCKET	TCPQueryOutcomeSocket;
 	SOCKET	SendBackSocket;
+
+	int		NumberOfQueryBeforeSwep = 0;
 
 	static fd_set	ReadSet, ReadySet;
 
@@ -361,16 +367,25 @@ int QueryDNSViaTCP(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2) == TRUE )
+				if( InternalInterface_QueryContextSwep(&Context, 2, TCPSwepOutput) == TRUE )
 				{
 					TimeLimit = LongTime;
 				} else {
 					TimeLimit = ShortTime;
 				}
+
+				NumberOfQueryBeforeSwep = 0;
 				break;
 
 			default:
 				TimeLimit = ShortTime;
+
+				++NumberOfQueryBeforeSwep;
+				if( NumberOfQueryBeforeSwep > 1024 )
+				{
+					InternalInterface_QueryContextSwep(&Context, 2, TCPSwepOutput);
+					NumberOfQueryBeforeSwep = 0;
+				}
 
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
@@ -535,6 +550,12 @@ static void SendQueryViaUDP(SOCKET		Socket,
 	}
 }
 
+static void UDPSwepOutput(QueryContextEntry *Entry)
+{
+	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'U');
+	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
+}
+
 int QueryDNSViaUDP(void)
 {
 	static QueryContext	Context;
@@ -542,6 +563,8 @@ int QueryDNSViaUDP(void)
 	SOCKET	UDPQueryIncomeSocket;
 	SOCKET	UDPQueryOutcomeSocket;
 	SOCKET	SendBackSocket;
+
+	int		NumberOfQueryBeforeSwep = 0;
 
 	static fd_set	ReadSet, ReadySet;
 
@@ -557,7 +580,7 @@ int QueryDNSViaUDP(void)
 	static char		RequestEntity[2048];
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
-	UDPQueryIncomeSocket =	InternalInterface_TryOpenLocal(10100, INTERNAL_INTERFACE_UDP_QUERY);
+	UDPQueryIncomeSocket =	InternalInterface_TryOpenLocal(10125, INTERNAL_INTERFACE_UDP_QUERY);
 	UDPQueryOutcomeSocket = InternalInterface_OpenASocket(ParallelMainFamily, NULL);
 
 	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
@@ -585,16 +608,25 @@ int QueryDNSViaUDP(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2) == TRUE )
+				if( InternalInterface_QueryContextSwep(&Context, 2, UDPSwepOutput) == TRUE )
 				{
 					TimeLimit = LongTime;
 				} else {
 					TimeLimit = ShortTime;
 				}
+
+				NumberOfQueryBeforeSwep = 0;
 				break;
 
 			default:
 				TimeLimit = ShortTime;
+
+				++NumberOfQueryBeforeSwep;
+				if( NumberOfQueryBeforeSwep > 1024 )
+				{
+					InternalInterface_QueryContextSwep(&Context, 2, UDPSwepOutput);
+					NumberOfQueryBeforeSwep = 0;
+				}
 
 				if( FD_ISSET(UDPQueryIncomeSocket, &ReadySet) )
 				{
