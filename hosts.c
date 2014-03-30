@@ -199,8 +199,6 @@ static void GetHostsFromInternet_Thread(void *Unused)
 	const char *Script = ConfigGetRawString(&ConfigInfo, "HostsScript");
 	int			HostsRetryInterval = ConfigGetInt32(&ConfigInfo, "HostsRetryInterval");
 
-	INFO("Hosts File : \"%s\" -> \"%s\"\n", URL, File);
-
 	while(1)
 	{
 
@@ -226,7 +224,7 @@ static void GetHostsFromInternet_Thread(void *Unused)
 			SLEEP(UpdateInterval * 1000);
 
 		} else {
-			ERRORMSG("Getting Hosts from Internet failed. Waiting %d second(s) for retry.\n", HostsRetryInterval);
+			ERRORMSG("Getting Hosts from Internet failed. Waiting %d second(s) to try again.\n", HostsRetryInterval);
 			SLEEP(HostsRetryInterval * 1000);
 		}
 	}
@@ -451,7 +449,7 @@ int DynamicHosts_SocketLoop(void)
 					int State;
 					int TotalLength = 0;
 					int	MatchState;
-					char *MatchResult = NULL;
+					const char *MatchResult = NULL;
 					BOOL GetLock = FALSE;
 					BOOL NeededSendBack = TRUE;
 
@@ -471,6 +469,12 @@ int DynamicHosts_SocketLoop(void)
 					if( Internet == FALSE )
 					{
 						TryLoadHosts();
+					}
+
+					if( DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) > 0 )
+					{
+						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 0);
+						State = DNSJumpOverQuestionRecords(RequestEntity + sizeof(ControlHeader)) - RequestEntity;
 					}
 
 					MatchState = Hosts_Match(&MainStaticContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
@@ -671,7 +675,7 @@ int DynamicHosts_SocketLoop(void)
 BOOL Hosts_Try(const char *Domain, int Type)
 {
 	int MatchState;
-	char *Result;
+	const char *Result;
 
 	MatchState = Hosts_Match(&MainStaticContainer, Domain, Type, &Result);
 	if( MatchState == MATCH_STATE_NONE )
@@ -720,6 +724,8 @@ int DynamicHosts_Init(void)
 		/* Local file */
 		File = Path;
 
+		INFO("Hosts File : \"%s\"\n", Path);
+
 		if( DynamicHosts_Load() != 0 )
 		{
 			ERRORMSG("Loading Hosts failed.\n");
@@ -739,6 +745,8 @@ int DynamicHosts_Init(void)
 		}
 
 		Internet = TRUE;
+
+		INFO("Hosts File : \"%s\" -> \"%s\"\n", Path, File);
 
 		if( FileIsReadable(File) )
 		{

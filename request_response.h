@@ -27,12 +27,22 @@ void SetUDPAppendEDNSOpt(BOOL State);
 
 int InitBlockedIP(StringList *l);
 
+int InitIPSubstituting(StringList *l);
+
 int QueryDNSViaUDP(void);
 
 int ProbeFakeAddresses(const char	*ServerAddress,
 					   const char	*RequestingDomain,
 					   StringList	*out
 					   );
+
+struct TestServerArguments
+{
+	const char *ServerAddress;
+	uint32_t *Counter;
+};
+
+int TestServer(struct TestServerArguments *Args);
 
 int SetSocketWait(SOCKET sock, BOOL Wait);
 

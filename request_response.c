@@ -11,6 +11,7 @@
 #include "common.h"
 
 static AddressChunk	Addresses;
+static BOOL			ParallelQuery;
 
 static sa_family_t	ParallelMainFamily;
 static Array		Addresses_Array;
@@ -44,10 +45,6 @@ static int LoadDedicatedServer(void)
 
 int InitAddress(void)
 {
-	int NumberOfAddr;
-
-	Address_Type	Address;
-
 	StringList	*tcpaddrs	=	ConfigGetStringList(&ConfigInfo, "TCPServer");
 	StringList	*udpaddrs	=	ConfigGetStringList(&ConfigInfo, "UDPServer");
 
@@ -71,25 +68,65 @@ int InitAddress(void)
 		Itr = StringList_GetNext(tcpaddrs, Itr);
 	}
 
-	NumberOfAddr = StringList_Count(udpaddrs);
-	if( NumberOfAddr <= 0 )
-	{
-		return -1;
-	}
-
 	Itr = StringList_GetNext(udpaddrs, NULL);
-	ParallelMainFamily = GetAddressFamily(Itr);
-
-	Array_Init(&Addresses_Array, GetAddressLength(ParallelMainFamily), NumberOfAddr, FALSE, NULL);
-
 	while( Itr != NULL )
 	{
-		if( AddressList_ConvertToAddressFromString(&Address, Itr, 53) == ParallelMainFamily )
+		if( AddressChunk_AddAUDPAddress_FromString(&Addresses, Itr) != 0 )
 		{
-			Array_PushBack(&Addresses_Array, &(Address.Addr), NULL);
+			INFO("Bad address : %s\n", Itr);
+		} else {
+			DEBUG_FILE("Add UDP address : %s\n", Itr);
 		}
 
 		Itr = StringList_GetNext(udpaddrs, Itr);
+	}
+
+	ParallelQuery = ConfigGetBoolean(&ConfigInfo, "ParallelQuery");
+	if( ParallelQuery == TRUE )
+	{
+		int NumberOfAddr;
+
+		int AddrLen;
+
+		sa_family_t SubFamily;
+
+		struct sockaddr *OneAddr;
+
+		NumberOfAddr = StringList_Count(udpaddrs);
+		if( NumberOfAddr <= 0 )
+		{
+			ERRORMSG("No UDP server specified, cannot use parallel query.\n")
+			ParallelQuery = FALSE;
+		} else {
+			DEBUG_FILE("Enable parallel query.\n");
+
+			AddressChunk_GetOneUDPBySubscript(&Addresses, &ParallelMainFamily, 0);
+
+			if( ParallelMainFamily == AF_INET )
+			{
+				AddrLen = sizeof(struct sockaddr);
+
+				DEBUG_FILE("Parallel query servers family IPv4.\n");
+
+			} else {
+				AddrLen = sizeof(struct sockaddr_in6);
+
+				DEBUG_FILE("Parallel query servers family IPv6.\n");
+			}
+
+			Array_Init(&Addresses_Array, AddrLen, NumberOfAddr, FALSE, NULL);
+
+			while( NumberOfAddr != 0 )
+			{
+				OneAddr = AddressChunk_GetOneUDPBySubscript(&Addresses, &SubFamily, NumberOfAddr - 1);
+				if( OneAddr != NULL && SubFamily == ParallelMainFamily )
+				{
+					Array_PushBack(&Addresses_Array, OneAddr, NULL);
+				}
+
+				--NumberOfAddr;
+			}
+		}
 	}
 
 	StringList_Free(tcpaddrs);
@@ -99,18 +136,40 @@ int InitAddress(void)
 
 }
 
-sa_family_t GetTCPAddress(struct sockaddr **Addresses_List, ControlHeader *Header)
+static sa_family_t GetAddress(ControlHeader		*Header,
+							  DNSQuaryProtocol	ProtocolUsed,
+							  struct sockaddr	**Addresses_List,
+							  int				*NumberOfAddresses,
+							  sa_family_t		*Family
+							  )
 {
-	sa_family_t	ret = MainFamily;
-
-	*Addresses_List = AddressChunk_GetDedicated(&Addresses, &ret, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
+	*Addresses_List = AddressChunk_GetDedicated(&Addresses, Family, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
 
 	if( *Addresses_List == NULL )
 	{
-		*Addresses_List = AddressChunk_GetOne(&Addresses, &ret, DNS_QUARY_PROTOCOL_TCP);
+		if( ProtocolUsed == DNS_QUARY_PROTOCOL_UDP && ParallelQuery == TRUE )
+		{
+			*Addresses_List = (struct sockaddr *)Addresses_Array.Data;
+			if( NumberOfAddresses != NULL )
+			{
+				*NumberOfAddresses = Addresses_Array.Used;
+			}
+			*Family = ParallelMainFamily;
+		} else {
+			*Addresses_List = AddressChunk_GetOne(&Addresses, Family, ProtocolUsed);
+			if( NumberOfAddresses != NULL )
+			{
+				*NumberOfAddresses = 1;
+			}
+		}
+	} else {
+		if( NumberOfAddresses != NULL )
+		{
+			*NumberOfAddresses = 1;
+		}
 	}
 
-	return ret;
+	return *Family;
 }
 
 BOOL SocketIsStillReadable(SOCKET Sock, int timeout)
@@ -181,9 +240,11 @@ void SetUDPAppendEDNSOpt(BOOL State)
 	UDPAppendEDNSOpt = State;
 }
 
-static IpChunk	*BlockedIP = NULL;
+#define	IP_MISCELLANEOUS_TYPE_BLOCK			1
+#define	IP_MISCELLANEOUS_TYPE_SUBSTITUTE	2
+static IpChunk	*IPMiscellaneous = NULL;
 
-static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
+static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOOL Block, BOOL Substitute)
 {
 	int		AnswerCount;
 
@@ -194,14 +255,18 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 
 	AnswerCount = DNSGetAnswerCount(RequestEntity);
 
-	if( UDPAntiPollution == TRUE && AnswerCount > 0 )
+	if( AnswerCount > 0 )
 	{
 		const unsigned char *Answer;
 		uint32_t *Data;
 
-		if( UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity) <= 0 )
+		int	ActionType;
+		const char *ActionData;
+
+		if( Block == TRUE && UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity) <= 0 )
 		{
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
+			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 			return TRUE;
 		}
 
@@ -209,20 +274,28 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 
 		Data = (uint32_t *)DNSGetResourceDataPos(Answer);
 
-		if( DNSGetRecordType(Answer) == DNS_TYPE_A && *Answer != 0xC0 )
+		if( Block == TRUE && DNSGetRecordType(Answer) == DNS_TYPE_A && *Answer != 0xC0 )
 		{
-			if( BlockedIP != NULL && IpChunk_Find(BlockedIP, *Data) == TRUE )
+			if( IPMiscellaneous != NULL )
 			{
-				ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
-			} else {
-				ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
+				if( IpChunk_Find(IPMiscellaneous, *Data, &ActionType, NULL) == TRUE )
+				{
+					if( ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
+					{
+						ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
+					} else {
+						ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
+					}
+				} else {
+					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
+				}
 			}
 
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 			return TRUE;
 		}
 
-		if( BlockedIP != NULL )
+		if( IPMiscellaneous != NULL )
 		{
 			int					Loop		=	1;
 			const unsigned char	*Answer1	=	Answer;
@@ -230,11 +303,27 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 
 			do
 			{
-				if( DNSGetRecordType(Answer1) == DNS_TYPE_A && IpChunk_Find(BlockedIP, *Data1) == TRUE )
+				if( DNSGetRecordType(Answer1) == DNS_TYPE_A && IpChunk_Find(IPMiscellaneous, *Data1, &ActionType, &ActionData) == TRUE )
 				{
-					ShowBlockedMessage(Domain, RequestEntity, "Containing blocked ip, discarded");
-					DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
-					return TRUE;
+					switch( ActionType )
+					{
+						case IP_MISCELLANEOUS_TYPE_BLOCK:
+							if( Block == TRUE )
+							{
+								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in blocked list, discarded");
+								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
+								return TRUE;
+							}
+							break;
+
+						case IP_MISCELLANEOUS_TYPE_SUBSTITUTE:
+							memcpy(Data1, ActionData, 4);
+							break;
+
+						default:
+							break;
+					}
+
 				}
 
 				++Loop;
@@ -257,7 +346,14 @@ static BOOL WouldBeBlock(const char *RequestEntity, const char *Domain)
 	}
 }
 
-static void SendBack(SOCKET Socket, ControlHeader *Header, QueryContext *Context, int Length, char Protocal, BOOL NeededBlock)
+static void SendBack(SOCKET Socket,
+					 ControlHeader *Header,
+					 QueryContext *Context,
+					 int Length,
+					 char Protocal,
+					 StatisticType Type,
+					 BOOL NeededBlock
+					 )
 {
 	char	*RequestEntity = (char *)(Header + 1);
 	int32_t	QueryContextNumber;
@@ -277,7 +373,9 @@ static void SendBack(SOCKET Socket, ControlHeader *Header, QueryContext *Context
 	{
 		ThisContext = Bst_GetDataByNumber(Context, QueryContextNumber);
 
-		if( NeededBlock == FALSE || WouldBeBlock(RequestEntity, Header -> RequestingDomain) == FALSE )
+		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), Type);
+
+		if( DoIPMiscellaneous(RequestEntity, Header -> RequestingDomain, NeededBlock, TRUE) == FALSE )
 		{
 			if( ThisContext -> NeededHeader == TRUE )
 			{
@@ -308,10 +406,15 @@ static void SendBack(SOCKET Socket, ControlHeader *Header, QueryContext *Context
 	}
 }
 
-static void TCPSwepOutput(QueryContextEntry *Entry)
+static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 {
 	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'T');
 	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
+
+	if( Number == 1 )
+	{
+		AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+	}
 }
 
 int QueryDNSViaTCP(void)
@@ -407,7 +510,7 @@ int QueryDNSViaTCP(void)
 						break;
 					}
 
-					NewFamily = GetTCPAddress(&NewAddress, Header);
+					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
 						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
@@ -442,8 +545,6 @@ int QueryDNSViaTCP(void)
 					send(TCPQueryOutcomeSocket, (const char *)&TCPLength, 2, MSG_NOSIGNAL);
 					send(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), State - sizeof(ControlHeader), MSG_NOSIGNAL);
 
-					DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_TCP);
-
 				} else {
 					int	State;
 					uint16_t	TCPLength;
@@ -476,7 +577,7 @@ int QueryDNSViaTCP(void)
 						break;
 					}
 
-					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', FALSE);
+					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', STATISTIC_TYPE_TCP, FALSE);
 				}
 		}
 	}
@@ -500,8 +601,11 @@ int InitBlockedIP(StringList *l)
 		return 0;
 	}
 
-	BlockedIP = SafeMalloc(sizeof(IpChunk));
-	IpChunk_Init(BlockedIP);
+	if( IPMiscellaneous == NULL )
+	{
+		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
+		IpChunk_Init(IPMiscellaneous);
+	}
 
 	Itr = StringList_GetNext(l, NULL);
 
@@ -509,7 +613,46 @@ int InitBlockedIP(StringList *l)
 	{
 		IPv4AddressToNum(Itr, &Ip);
 
-		IpChunk_Add(BlockedIP, Ip);
+		IpChunk_Add(IPMiscellaneous, Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
+
+		Itr = StringList_GetNext(l, Itr);
+	}
+
+	StringList_Free(l);
+
+	return 0;
+}
+
+int InitIPSubstituting(StringList *l)
+{
+	const char	*Itr = NULL;
+
+	char	Origin_Str[] = "xxx.xxx.xxx.xxx";
+	char	Substituted_Str[] = "xxx.xxx.xxx.xxx";
+
+	uint32_t	Origin, Substituted;
+
+	if( l == NULL )
+	{
+		return 0;
+	}
+
+	if( IPMiscellaneous == NULL )
+	{
+		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
+		IpChunk_Init(IPMiscellaneous);
+	}
+
+	Itr = StringList_GetNext(l, NULL);
+
+	while( Itr != NULL )
+	{
+		sscanf(Itr, "%s %s", Origin_Str, Substituted_Str);
+
+		IPv4AddressToNum(Origin_Str, &Origin);
+		IPv4AddressToNum(Substituted_Str, &Substituted);
+
+		IpChunk_Add(IPMiscellaneous, Origin, IP_MISCELLANEOUS_TYPE_SUBSTITUTE, (const char *)&Substituted, 4);
 
 		Itr = StringList_GetNext(l, Itr);
 	}
@@ -550,10 +693,15 @@ static void SendQueryViaUDP(SOCKET		Socket,
 	}
 }
 
-static void UDPSwepOutput(QueryContextEntry *Entry)
+static void UDPSwepOutput(QueryContextEntry *Entry, int Number)
 {
 	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'U');
 	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
+
+	if( Number == 1 && ParallelQuery == FALSE )
+	{
+		AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_UDP);
+	}
 }
 
 int QueryDNSViaUDP(void)
@@ -650,15 +798,7 @@ int QueryDNSViaUDP(void)
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 
-					NewAddress = AddressChunk_GetDedicated(&Addresses, &NewFamily, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
-					if( NewAddress == NULL )
-					{
-						NewAddress = (struct sockaddr *)Addresses_Array.Data;
-						NumberOfAddresses = Addresses_Array.Used;
-						NewFamily = ParallelMainFamily;
-					} else {
-						NumberOfAddresses = 1;
-					}
+					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_UDP, &NewAddress, &NumberOfAddresses, &NewFamily);
 
 					if( NewFamily != LastFamily )
 					{
@@ -687,7 +827,6 @@ int QueryDNSViaUDP(void)
 									NewFamily
 									);
 
-					DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_UDP);
 				} else {
 					int State;
 
@@ -704,7 +843,7 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
-					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'U', TRUE);
+					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'U', STATISTIC_TYPE_UDP, UDPAntiPollution);
 				}
 			break;
 		}
@@ -806,6 +945,83 @@ int ProbeFakeAddresses(const char	*ServerAddress,
 
 	CLOSE_SOCKET(Sock);
 	return NumberOfAddresses;
+}
+
+int TestServer(struct TestServerArguments *Args)
+{
+	const char *RequestingDomain = "www.google.com";
+
+	char	RequestEntity[384] = {
+		00, 00, /* QueryIdentifier */
+		01, 00, /* Flags */
+		00, 01, /* QuestionCount */
+		00, 00, /* AnswerCount */
+		00, 00, /* NameServerCount */
+		00, 00, /* AdditionalCount */
+		/* Header end */
+	};
+
+	Address_Type	PeerAddr;
+	SOCKET	Sock;
+
+	sa_family_t	AddressFamily;
+
+	int		RequestLength;
+
+	char	NewlyReceived[2048];
+
+	Args -> ServerAddress = GoToNextNonSpace(Args -> ServerAddress);
+	if( strchr(Args -> ServerAddress, ':') != NULL && *(Args -> ServerAddress) != '[' )
+	{
+		char ServerAddress_Regulated[LENGTH_OF_IPV6_ADDRESS_ASCII + 3];
+		sprintf(ServerAddress_Regulated, "[%s]", Args -> ServerAddress);
+
+		AddressFamily = AddressList_ConvertToAddressFromString(&PeerAddr, ServerAddress_Regulated, 53);
+	} else {
+		AddressFamily = AddressList_ConvertToAddressFromString(&PeerAddr, Args -> ServerAddress, 53);
+	}
+
+	if( AddressFamily == AF_UNSPEC )
+	{
+		return -1;
+	}
+
+	Sock = socket(AddressFamily, SOCK_DGRAM, IPPROTO_UDP);
+	if( Sock == INVALID_SOCKET )
+	{
+		return -1;
+	}
+
+	SetSocketRecvTimeLimit(Sock, 2000);
+
+	if( DNSGenQuestionRecord(RequestEntity + 12, sizeof(RequestEntity) - 12, RequestingDomain, DNS_TYPE_A, DNS_CLASS_IN) == 0 )
+	{
+		return -1;
+	}
+
+	RequestLength = 12 + strlen(RequestingDomain) + 2 + 4;
+
+	*(Args -> Counter) = 0;
+
+	while( TRUE )
+	{
+		*(uint16_t *)RequestEntity = rand();
+
+		if( sendto(Sock, RequestEntity, RequestLength, 0, (struct sockaddr *)&(PeerAddr.Addr), GetAddressLength(AddressFamily)) == 0 )
+		{
+			CLOSE_SOCKET(Sock);
+			return -1;
+		}
+
+		if( recvfrom(Sock, NewlyReceived, sizeof(NewlyReceived), 0, NULL, NULL) <= 0 )
+		{
+			return -2;
+		}
+
+		++(*(Args -> Counter));
+	}
+
+	return 0;
 }
 
 int SetSocketWait(SOCKET sock, BOOL Wait)

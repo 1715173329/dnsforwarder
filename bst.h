@@ -29,7 +29,7 @@ int Bst_Add(Bst *t, const void *Data);
 
 int32_t Bst_Search(Bst *t, const void *Data, const void *Start);
 
-const char *Bst_Enum(Bst *t, int32_t *Start);
+void *Bst_Enum(Bst *t, int32_t *Start);
 
 #define	Bst_GetDataByNumber(t_ptr, number) (void *)(((Bst_NodeHead *)Array_GetBySubscript((t_ptr) -> Nodes, (number))) + 1)
 
@@ -40,6 +40,5 @@ int32_t Bst_Successor_ByNumber(Bst *t, int32_t NodeNumber);
 int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber);
 
 void Bst_Reset(Bst *t);
-
 
 #endif // BST_H_INCLUDED

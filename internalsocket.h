@@ -96,7 +96,7 @@ int32_t InternalInterface_QueryContextFind(QueryContext *Context, uint32_t Ident
 
 void InternalInterface_QueryContextRemove(QueryContext *Context, uint32_t Identifier, int32_t HashValue);
 
-BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *Entry));
+BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *, int));
 
 
 #endif // INTERNALSOCKET_H_INCLUDED

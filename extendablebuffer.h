@@ -22,7 +22,7 @@ typedef struct _ExtendableBuffer{
 } ExtendableBuffer;
 
 int ExtendableBuffer_Init(	__in ExtendableBuffer	*eb,
-							__in uint32_t		InitSize,
+							__in uint32_t			InitSize,
 							__in int32_t			GuardSize);
 /* Description:
  *  Initialize an ExtendableBuffer.
@@ -54,7 +54,7 @@ int ExtendableBuffer_Init(	__in ExtendableBuffer	*eb,
  */
 
 BOOL ExtendableBuffer_GuarantyLeft(	__in ExtendableBuffer	*eb,
-									__in uint32_t		GuarantiedSize);
+									__in uint32_t			GuarantiedSize);
 /* Description:
  *  Make sure that the number of unused(left) bytes (`Allocated' - `Used') is
  *  greater than `GuarantiedSize'. Straightforwardly, make sure the unused
@@ -82,8 +82,8 @@ BOOL ExtendableBuffer_GuarantyLeft(	__in ExtendableBuffer	*eb,
  */
 
 char *ExtendableBuffer_Expand(	__in ExtendableBuffer	*eb,
-								__in uint32_t		ExpandedSize,
-								__out_opt int32_t	*Offset
+								__in uint32_t			ExpandedSize,
+								__out_opt int32_t		*Offset
 								);
 /* Description:
  *  Increase the number of used bytes by `ExpandedSize'. There is a call to

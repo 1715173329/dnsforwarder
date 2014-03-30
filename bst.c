@@ -130,7 +130,7 @@ int Bst_Add(Bst *t, const void *Data)
 
 int32_t Bst_Search(Bst *t, const void *Data, const void *Start)
 {
-	int32_t			CurrentNode;
+	int32_t				CurrentNode;
 	const Bst_NodeHead	*Current;
 	int					CompareResult;
 
@@ -165,7 +165,7 @@ int32_t Bst_Search(Bst *t, const void *Data, const void *Start)
 	return -1;
 }
 
-const char *Bst_Enum(Bst *t, int32_t *Start)
+void *Bst_Enum(Bst *t, int32_t *Start)
 {
 	const Bst_NodeHead	*Node;
 
@@ -186,7 +186,7 @@ const char *Bst_Enum(Bst *t, int32_t *Start)
 
 		if( Node -> Parent > -2 )
 		{
-			return (const char *)(Node + 1);
+			return (void *)(Node + 1);
 		}
 
 		++(*Start);

@@ -126,8 +126,6 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 		} else {
 			if( ExistInfo != NULL )
 			{
-				++(ExistInfo -> Count);
-
 				switch( Type )
 				{
 					case STATISTIC_TYPE_REFUSED:
@@ -210,7 +208,7 @@ int DomainStatistic_Hold(void)
 
 		fprintf(MainFile,
 			    "-----------------------------------------\n"
-			    "Program starting time : %s\n"
+			    "Program startup time : %s\n"
 			    "Last statistic : %s\n"
 			    "Elapsed time : %ds\n"
 			    "\n"
@@ -284,14 +282,14 @@ int DomainStatistic_Hold(void)
 
 		EFFECTIVE_LOCK_RELEASE(StatisticLock);
 
-		fprintf(MainFile, "Total number of : Queried domains      : %d\n"
-						  "                  Requests             : %d\n"
-						  "                  Poisoned domains     : %d\n"
-						  "                  Refused&Failed       : %d\n"
-						  "                  Responses from hosts : %d\n"
-						  "                  Responses from cache : %d\n"
-						  "                  Responses via UDP    : %d\n"
-						  "                  Responses via TCP    : %d\n",
+		fprintf(MainFile, "Total number of : Queried domains        : %d\n"
+						  "                  Requests               : %d\n"
+						  "                  Known poisoned domains : %d\n"
+						  "                  Refused&Failed         : %d\n"
+						  "                  Responses from hosts   : %d\n"
+						  "                  Responses from cache   : %d\n"
+						  "                  Responses via UDP      : %d\n"
+						  "                  Responses via TCP      : %d\n",
 				DomainCount,
 				Sum.Count,
 				Sum.Poisoned,

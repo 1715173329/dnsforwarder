@@ -220,7 +220,7 @@ int DNSCache_Init(void)
 		}
 	}
 
-	if( _CacheSize % sizeof(void *) != 0 )
+	if( _CacheSize % 8 != 0 )
 	{
 		CacheSize = ROUND_UP(_CacheSize, 8);
 	} else {
@@ -745,6 +745,12 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 	if( Inited == FALSE )
 	{
 		return -1;
+	}
+
+	if( DNSGetAdditionalCount(RequestContent) > 0 )
+	{
+		DNSSetAdditionalCount(RequestContent, 0);
+		RequestLength = DNSJumpOverQuestionRecords(RequestContent) - RequestContent;
 	}
 
 	RecordsCount = DNSCache_GetByQuestion(RequestContent, RequestContent + RequestLength, BufferLength - RequestLength, &RecordsLength, time(NULL));

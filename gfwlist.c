@@ -181,7 +181,7 @@ static int LoadGfwList_Thread(void *Unused)
 		INFO("Loading GFW List From %s ...\n", GfwList);
 		if( GetFromInternet(GfwList, File) != 0 )
 		{
-			ERRORMSG("Downloading GFW List failed. Waiting %d second(s) for retry.\n", RetryInterval);
+			ERRORMSG("Downloading GFW List failed. Waiting %d second(s) to try again.\n", RetryInterval);
 			SLEEP(RetryInterval * 1000);
 		} else {
 			INFO("GFW List saved at %s.\n", File);

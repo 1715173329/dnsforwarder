@@ -44,7 +44,7 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num);
 
 #define DNSJumpOverAnswerRecords(dns_body)		DNSGetAnswerRecordPosition((dns_body), DNSGetAnswerCount(dns_body) + 1)
 
-#define DNSGetARecordLength(record_ptr)			(strlen(record_ptr) + 1 + 10 + DNSGetResourceDataLength(record_ptr))
+#define DNSGetARecordLength(record_ptr)			((DNSJumpOverName(record_ptr) - record_ptr) + 10 + DNSGetResourceDataLength(record_ptr))
 
 /* Common */
 const char *DNSJumpOverName(const char *NameStart);
