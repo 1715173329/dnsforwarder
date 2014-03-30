@@ -25,14 +25,17 @@ void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Doma
 	if( ShowMassages == TRUE || DEBUGMODE )
 	{
 		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
+	}
 
+	if( ShowMassages == TRUE )
+	{
 		printf("%s[R][%s][%s][%s] %s.\n",
-			  DateAndTime,
-			  Agent,
-			  DNSGetTypeName(Type),
-			  Domain,
-			  Massage
-			  );
+			   DateAndTime,
+			   Agent,
+			   DNSGetTypeName(Type),
+			   Domain,
+			   Massage
+			   );
 	}
 
 	DEBUG_FILE("[R][%s][%s][%s] %s.\n",
@@ -50,7 +53,10 @@ void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domai
 	if( ShowMassages == TRUE || DEBUGMODE )
 	{
 		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
+	}
 
+	if( ShowMassages == TRUE )
+	{
 		printf("%s[%c][%s][%s][%s] Time out.\n",
 			  DateAndTime,
 			  Protocol,

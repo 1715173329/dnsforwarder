@@ -255,9 +255,10 @@ void InternalInterface_QueryContextRemove(QueryContext *Context, uint32_t Identi
 	}
 }
 
-BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *Entry))
+BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, void (*OutputFunction)(QueryContextEntry *, int))
 {
 	int32_t Start = -1;
+	int		Number = 1;
 
 	QueryContextEntry	*Entry;
 
@@ -270,9 +271,11 @@ BOOL InternalInterface_QueryContextSwep(QueryContext *Context, time_t TimeOut, v
 		{
 			if( OutputFunction != NULL )
 			{
-				OutputFunction(Entry);
+				OutputFunction(Entry, Number);
 			}
 			Bst_Delete_ByNumber(Context, Start);
+
+			++Number;
 		}
 
 		Entry = Bst_Enum(Context, &Start);

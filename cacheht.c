@@ -18,7 +18,7 @@ static int CacheHT_CalculateSlotCount(int CacheSize)
 		PreValue = pow(log((double)CacheSize), 2);
 	}
 
-	return ROUND(PreValue, 10) + 6;
+	return ROUND(PreValue, 10) + 7;
 }
 
 int CacheHT_Init(CacheHT *h, char *BaseAddr, int CacheSize)

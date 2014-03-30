@@ -33,14 +33,14 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.str = "TCP";
     ConfigAddOption(&ConfigInfo, "PrimaryServer", STRATEGY_REPLACE, TYPE_STRING, TmpTypeDescriptor, "Primary server");
 
-    TmpTypeDescriptor.INT32 = 3;
-    ConfigAddOption(&ConfigInfo, "UDPThreads", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
-
     TmpTypeDescriptor.str = "8.8.8.8";
     ConfigAddOption(&ConfigInfo, "TCPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Server");
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Server");
+
+    TmpTypeDescriptor.boolean = FALSE;
+    ConfigAddOption(&ConfigInfo, "ParallelQuery", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "UDP Parallel Query");
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "ExcludedDomain", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
@@ -53,6 +53,9 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPBlock_IP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "DedicatedServer", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
@@ -68,7 +71,7 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, "Hosts File");
 
-    TmpTypeDescriptor.INT32 = 600;
+    TmpTypeDescriptor.INT32 = 18000;
     ConfigAddOption(&ConfigInfo, "HostsUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.INT32 = 30;
@@ -133,7 +136,7 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.boolean = TRUE;
     ConfigAddOption(&ConfigInfo, "GfwListBase64Decode", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.INT32 = 7200;
+    TmpTypeDescriptor.INT32 = 21600;
     ConfigAddOption(&ConfigInfo, "GfwListUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.INT32 = 30;
@@ -212,9 +215,10 @@ int QueryDNSInterfaceStart(void)
 	if( ConfigGetBoolean(&ConfigInfo, "UDPAntiPollution") == TRUE )
 	{
 		SetUDPAntiPollution(TRUE);
-		SetUDPAppendEDNSOpt(TRUE);
+		SetUDPAppendEDNSOpt(ConfigGetBoolean(&ConfigInfo, "UDPAppendEDNSOpt"));
 
 		InitBlockedIP(ConfigGetStringList(&ConfigInfo, "UDPBlock_IP"));
+		InitIPSubstituting(ConfigGetStringList(&ConfigInfo, "IPSubstituting"));
 	}
 
 	TransferStart(TRUE);
