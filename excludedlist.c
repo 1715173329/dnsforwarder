@@ -62,7 +62,7 @@ BOOL IsExcludedDomain(const char *Domain, int *HashValue)
 	return MatchDomain(&ExcludedDomains, Domain, HashValue);
 }
 
-static int TypeCompare(int *_1, int *_2)
+static int TypeCompare(const int *_1, const int *_2)
 {
 	return *_1 - *_2;
 }

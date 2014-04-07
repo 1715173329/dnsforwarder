@@ -110,7 +110,7 @@ static int DynamicHosts_Load(void)
 
 	RWLock_UnWLock(HostsLock);
 
-	INFO("Loading Hosts completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded.\n",
+	INFO("Loading hosts file completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded.\n",
 		IPv4Count,
 		IPv6Count,
 		CNameCount,
@@ -198,13 +198,15 @@ static void GetHostsFromInternet_Thread(void *Unused)
 	const char *URL = ConfigGetRawString(&ConfigInfo, "Hosts");
 	const char *Script = ConfigGetRawString(&ConfigInfo, "HostsScript");
 	int			HostsRetryInterval = ConfigGetInt32(&ConfigInfo, "HostsRetryInterval");
+	int			DownloadState;
 
 	while(1)
 	{
 
 		INFO("Getting Hosts From %s ...\n", URL);
 
-		if( GetFromInternet(URL, File) == 0 )
+		DownloadState = GetFromInternet(URL, File);
+		if( DownloadState == 0 )
 		{
 			INFO("Hosts saved at %s.\n", File);
 
@@ -224,7 +226,7 @@ static void GetHostsFromInternet_Thread(void *Unused)
 			SLEEP(UpdateInterval * 1000);
 
 		} else {
-			ERRORMSG("Getting Hosts from Internet failed. Waiting %d second(s) to try again.\n", HostsRetryInterval);
+			ERRORMSG("Getting Hosts from Internet failed : %d. Waiting %d second(s) to try again.\n", (-1) * DownloadState, HostsRetryInterval);
 			SLEEP(HostsRetryInterval * 1000);
 		}
 	}
@@ -354,31 +356,45 @@ static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName,
 	return RecordLength;
 }
 
-static void GetAnswersByName(SOCKET Socket, int Identifier, const char *Name, DNSRecordType Type)
+static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
 {
-	static char	RequestEntity[384] = {
-		00, 00, /* QueryIdentifier */
-		01, 00, /* Flags */
-		00, 01, /* QuestionCount */
-		00, 00, /* AnswerCount */
-		00, 00, /* NameServerCount */
-		00, 00, /* AdditionalCount */
-		/* Header end */
+	static struct _RequestEntity {
+		ControlHeader	Header;
+		char			Entity[384];
+	} RequestEntity = {
+		{CONTROLHEADER__PAD},
+		{
+			00, 00, /* QueryIdentifier */
+			01, 00, /* Flags */
+			00, 01, /* QuestionCount */
+			00, 00, /* AnswerCount */
+			00, 00, /* NameServerCount */
+			00, 00, /* AdditionalCount */
+			/* DNS Header end */
+		}
 	};
 
-	int RequestLength = 12;
+	static char *DNSEntity = RequestEntity.Entity;
 
-	char *NamePos = RequestEntity + 0x0C;
+	int RequestLength = sizeof(ControlHeader) + 12;
 
-	RequestLength += DNSGenQuestionRecord(NamePos, sizeof(RequestEntity) - 12, Name, Type, DNS_CLASS_IN);
-	if( RequestLength == 12 )
+	char *NamePos = DNSEntity + 0x0C;
+
+	RequestLength += DNSGenQuestionRecord(NamePos, sizeof(RequestEntity.Entity) - 12, Name, Type, DNS_CLASS_IN);
+	if( RequestLength == sizeof(ControlHeader) + 12 )
 	{
         return;
 	}
 
-	*(uint16_t *)RequestEntity = Identifier;
+	RequestEntity.Header.NeededHeader = TRUE;
+	strcpy(RequestEntity.Header.Agent, "CNameRedirect");
+	memcpy(&(RequestEntity.Header.BackAddress), BackAddress, sizeof(Address_Type));
+	strcpy(RequestEntity.Header.RequestingDomain, Name);
+	RequestEntity.Header.RequestingType = Type;
+	RequestEntity.Header.RequestingDomainHashValue = ELFHash(Name, 0);
+	*(uint16_t *)DNSEntity = Identifier;
 
-	InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_INCOME, Socket, RequestEntity, RequestLength);
+	InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_INCOME, Socket, (char *)&RequestEntity, RequestLength);
 }
 
 int DynamicHosts_SocketLoop(void)
@@ -389,6 +405,7 @@ int DynamicHosts_SocketLoop(void)
 
     SOCKET	HostsIncomeSocket;
     SOCKET	HostsOutcomeSocket;
+    Address_Type	OutcomeAddress;
     SOCKET	SendBackSocket;
 
 	static fd_set	ReadSet, ReadySet;
@@ -404,14 +421,14 @@ int DynamicHosts_SocketLoop(void)
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
     HostsIncomeSocket = InternalInterface_TryOpenLocal(10200, INTERNAL_INTERFACE_HOSTS);
-    HostsOutcomeSocket = InternalInterface_OpenASocket(MainFamily, NULL);
-
-    SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
+    HostsOutcomeSocket = InternalInterface_TryBindAddress(MAIN_WORKING_ADDRESS, 10225, &(OutcomeAddress));
 
 	if( HostsOutcomeSocket == INVALID_SOCKET )
 	{
 		return -1;
 	}
+
+	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
 
 	MaxFd = HostsIncomeSocket > HostsOutcomeSocket ? HostsIncomeSocket : HostsOutcomeSocket;
 	FD_ZERO(&ReadSet);
@@ -471,12 +488,6 @@ int DynamicHosts_SocketLoop(void)
 						TryLoadHosts();
 					}
 
-					if( DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) > 0 )
-					{
-						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 0);
-						State = DNSJumpOverQuestionRecords(RequestEntity + sizeof(ControlHeader)) - RequestEntity;
-					}
-
 					MatchState = Hosts_Match(&MainStaticContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
 					if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
 					{
@@ -507,7 +518,7 @@ int DynamicHosts_SocketLoop(void)
 																	ELFHash(MatchResult, 0)
 																	);
 
-							GetAnswersByName(HostsOutcomeSocket, NewIdentifier, MatchResult, Header -> RequestingType);
+							GetAnswersByName(HostsOutcomeSocket, &(OutcomeAddress), NewIdentifier, MatchResult, Header -> RequestingType);
 							++NewIdentifier;
 							NeededSendBack = FALSE;
 							break;
@@ -549,9 +560,11 @@ int DynamicHosts_SocketLoop(void)
 
 
 				} else {
-					int State;
-					static char	NewlyGeneratedRocord[2048];
+					int		State;
+					static char		NewlyGeneratedRocord[2048];
 					ControlHeader	*NewHeader = (ControlHeader *)NewlyGeneratedRocord;
+
+					int		RestLength;
 
 					int NewGeneratedLength = sizeof(ControlHeader);
 					int CompressedLength;
@@ -559,12 +572,12 @@ int DynamicHosts_SocketLoop(void)
 					int32_t	EntryNumber;
 					QueryContextEntry	*Entry;
 
-					char	*Result = RequestEntity;
+					char	*DNSResult = RequestEntity + sizeof(ControlHeader);
 
-					char *AnswersPos;
+					char	*AnswersPos;
 
 					State = recvfrom(HostsOutcomeSocket,
-									Result,
+									RequestEntity,
 									sizeof(RequestEntity),
 									0,
 									NULL,
@@ -576,28 +589,20 @@ int DynamicHosts_SocketLoop(void)
 						break;
 					}
 
-					DNSGetHostName(Result,
-									DNSJumpHeader(Result),
-									NewHeader -> RequestingDomain
-									);
+					DNSSetNameServerCount(DNSResult, 0);
 
-					NewHeader -> RequestingDomainHashValue = ELFHash(NewHeader -> RequestingDomain, 0);
+					AnswersPos = DNSJumpOverQuestionRecords(DNSResult);
 
-					DNSSetNameServerCount(Result, 0);
-					DNSSetAdditionalCount(Result, 0);
-
-					AnswersPos = DNSJumpOverQuestionRecords(Result);
-
-					if( DNSExpandCName_MoreSpaceNeeded(Result) > sizeof(RequestEntity) - State )
+					if( DNSExpandCName_MoreSpaceNeeded(DNSResult) > sizeof(RequestEntity) - State )
 					{
 						break;
 					}
 
-					DNSExpandCName(Result);
+					DNSExpandCName(DNSResult);
 
 					EntryNumber = InternalInterface_QueryContextFind(&Context,
-																	*(uint16_t *)Result,
-																	NewHeader -> RequestingDomainHashValue
+																	*(uint16_t *)DNSResult,
+																	Header -> RequestingDomainHashValue
 																	);
 
 					if( EntryNumber < 0 )
@@ -607,39 +612,68 @@ int DynamicHosts_SocketLoop(void)
 
 					Entry = Bst_GetDataByNumber(&Context, EntryNumber);
 
-					memcpy(NewlyGeneratedRocord + NewGeneratedLength, Result, 12);
+					memcpy(NewlyGeneratedRocord + NewGeneratedLength, DNSResult, 12);
 					*(uint16_t *)(NewlyGeneratedRocord + sizeof(ControlHeader)) = Entry -> Context.Hosts.Identifier;
 					NewGeneratedLength += 12;
 
-					NewGeneratedLength += DNSGenQuestionRecord(NewlyGeneratedRocord + NewGeneratedLength,
-																sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
-																Entry -> Domain,
-																Entry -> Type,
-																DNS_CLASS_IN
-																);
+					State = DNSGenQuestionRecord(NewlyGeneratedRocord + NewGeneratedLength,
+												 sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
+												 Entry -> Domain,
+												 Entry -> Type,
+												 DNS_CLASS_IN
+												 );
+					if( State > 0 )
+					{
+						NewGeneratedLength += State;
+					} else {
+						break;
+					}
 
-					NewGeneratedLength += DNSGenResourceRecord(NewlyGeneratedRocord + NewGeneratedLength,
-																sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
-																Entry -> Domain,
-																DNS_TYPE_CNAME,
-																DNS_CLASS_IN,
-                                                                60,
-                                                                DNSJumpHeader(Result),
-																strlen(DNSJumpHeader(Result)) + 1,
-																FALSE
-																);
+					State = DNSGenResourceRecord(NewlyGeneratedRocord + NewGeneratedLength,
+												 sizeof(NewlyGeneratedRocord) - NewGeneratedLength,
+												 Entry -> Domain,
+												 DNS_TYPE_CNAME,
+												 DNS_CLASS_IN,
+												 60,
+												 DNSJumpHeader(DNSResult),
+												 strlen(DNSJumpHeader(DNSResult)) + 1,
+												 FALSE
+												 );
+					if( State > 0 )
+					{
+						NewGeneratedLength += State;
+					} else {
+						break;
+					}
 
-					memcpy(NewlyGeneratedRocord + NewGeneratedLength, AnswersPos, DNSJumpOverAnswerRecords(Result) - AnswersPos);
-					NewGeneratedLength += (DNSJumpOverAnswerRecords(Result) - AnswersPos);
+					RestLength = DNSJumpOverAnswerRecords(DNSResult) - AnswersPos;
+					if( RestLength >= 0 && sizeof(NewlyGeneratedRocord) - NewGeneratedLength > (unsigned int)RestLength )
+					{
+						memcpy(NewlyGeneratedRocord + NewGeneratedLength, AnswersPos, RestLength);
+						NewGeneratedLength += RestLength;
+					} else {
+						break;
+					}
 
 					DNSSetNameServerCount(NewlyGeneratedRocord + sizeof(ControlHeader), 0);
-					DNSSetAdditionalCount(NewlyGeneratedRocord + sizeof(ControlHeader), 0);
 					DNSSetAnswerCount(NewlyGeneratedRocord + sizeof(ControlHeader), DNSGetAnswerCount(NewlyGeneratedRocord + sizeof(ControlHeader)) + 1);
 
 					CompressedLength = DNSCompress(NewlyGeneratedRocord + sizeof(ControlHeader), NewGeneratedLength - sizeof(ControlHeader));
 
+					if( Entry -> EDNSEnabled == TRUE )
+					{
+						memcpy(NewlyGeneratedRocord + CompressedLength + sizeof(ControlHeader), OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
+						CompressedLength += OPT_PSEUDORECORD_LENGTH;
+						DNSSetAdditionalCount(NewlyGeneratedRocord + sizeof(ControlHeader), 1);
+					} else {
+						DNSSetAdditionalCount(NewlyGeneratedRocord + sizeof(ControlHeader), 0);
+					}
+
 					if( Entry -> NeededHeader == TRUE )
 					{
+						strcpy(NewHeader -> RequestingDomain, Entry -> Domain);
+						NewHeader -> RequestingDomainHashValue = Entry -> Context.Hosts.HashValue;
+
 						sendto(SendBackSocket,
 								NewlyGeneratedRocord,
 								CompressedLength + sizeof(ControlHeader),
@@ -648,7 +682,6 @@ int DynamicHosts_SocketLoop(void)
 								GetAddressLength(Entry -> Context.Hosts.BackAddress.family)
 								);
 					} else {
-
 						sendto(SendBackSocket,
 								NewlyGeneratedRocord + sizeof(ControlHeader),
 								CompressedLength,
@@ -773,4 +806,6 @@ int DynamicHosts_Start(void)
 	{
 		CREATE_THREAD(GetHostsFromInternet_Thread, NULL, GetHosts_Thread);
 	}
+
+	return 0;
 }

@@ -3,6 +3,14 @@
 #include "utils.h"
 #include "dnsparser.h"
 
+const char OptPseudoRecord[] = {
+	0x00,
+	0x00, 0x29,
+	0x05, 0x00,
+	0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00
+};
+
 /* Other Codes */
 char *DNSLabelizedName(__inout char *Origin, __in size_t OriginSpaceLength){
 	unsigned char *LabelLength = (unsigned char *)Origin;

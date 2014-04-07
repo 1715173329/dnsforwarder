@@ -29,19 +29,18 @@ static QueryContext	Context;
 /* Functions */
 int QueryDNSListenTCPInit(void)
 {
-	const char	*LocalAddr = ConfigGetRawString(&ConfigInfo, "LocalInterface");
-	int			LocalPort = ConfigGetInt32(&ConfigInfo, "LocalPort");
-
 	RefusingResponseCode = ConfigGetInt32(&ConfigInfo, "RefusingResponseCode");
 
-	TCPIncomeSocket = InternalInterface_OpenTCP(LocalAddr, INTERNAL_INTERFACE_TCP_INCOME, LocalPort);
+	TCPIncomeSocket = InternalInterface_OpenTCP(MAIN_WORKING_ADDRESS, INTERNAL_INTERFACE_TCP_INCOME, MAIN_WORKING_PORT);
 	if( TCPIncomeSocket == INVALID_SOCKET )
 	{
 		ShowFatalMessage("Opening TCP socket failed.", GET_LAST_ERROR());
 		return -1;
+	} else {
+		INFO("TCP socket %s:%d created.\n", MAIN_WORKING_ADDRESS, MAIN_WORKING_PORT);
 	}
 
-	MainFamily = InternalInterface_GetAddress(INTERNAL_INTERFACE_TCP_INCOME, NULL);
+	InternalInterface_GetAddress(INTERNAL_INTERFACE_TCP_INCOME, NULL);
 
 	TCPOutcomeSocket = InternalInterface_TryBindLocal(10000, &TCPOutcomeAddress);
 
@@ -116,7 +115,7 @@ typedef struct _SocketInfo {
 
 static Bst	si;
 
-static int SocketInfoCompare(SocketInfo *_1, SocketInfo *_2)
+static int SocketInfoCompare(const SocketInfo *_1, const SocketInfo *_2)
 {
 	return (int)(_1 -> Socket) - (int)(_2 -> Socket);
 }
@@ -126,7 +125,7 @@ static int InitSocketInfo(void)
 	return Bst_Init(&si, NULL, sizeof(SocketInfo), SocketInfoCompare);
 }
 
-static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, const char *ClientAddress, int32_t *Number)
+static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, char *ClientAddress, int32_t *Number)
 {
 	int32_t Start = -1;
 	SocketInfo *Info;
@@ -139,7 +138,7 @@ static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, const char *Cli
 		if( FD_ISSET(Info -> Socket, ReadySet) )
 		{
 			Info -> TimeAdd = Now;
-			strcpy(Info -> Address, ClientAddress);
+			strcpy(ClientAddress, Info -> Address);
 			if( Number != NULL )
 			{
 				*Number = Start;
@@ -185,6 +184,9 @@ static BOOL SocketInfoSwep(fd_set *ReadSet)
 		{
 			CLOSE_SOCKET(Info -> Socket);
 			FD_CLR(Info -> Socket, ReadSet);
+
+			INFO("TCP connection to client %s closed.\n", Info -> Address);
+
 			Bst_Delete_ByNumber(&si, Start);
 		}
 
@@ -255,6 +257,9 @@ static int QueryDNSListenTCP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
+				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
+				while( TRUE ) SLEEP(100000);
 				break;
 
 			case 0:
@@ -289,26 +294,31 @@ static int QueryDNSListenTCP(void)
 
 					char	AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
 
-					if( MainFamily == AF_INET )
+					if( MAIN_FAMILY == AF_INET )
 					{
 						AddrLen = sizeof(struct sockaddr);
 						NewSocket = accept(TCPIncomeSocket,
 										  (struct sockaddr *)&(Address.Addr.Addr4),
 										  (socklen_t *)&AddrLen
 										  );
-						strcpy(AddressString, inet_ntoa(Address.Addr.Addr4.sin_addr));
 					} else {
 						AddrLen = sizeof(struct sockaddr_in6);
 						NewSocket = accept(TCPIncomeSocket,
 										  (struct sockaddr *)&(Address.Addr.Addr6),
 										  (socklen_t *)&AddrLen
 										  );
-						IPv6AddressToAsc(&Address, AddressString);
 					}
 
 					if( NewSocket != INVALID_SOCKET )
 					{
 						FD_SET(NewSocket, &ReadSet);
+
+						if( MAIN_FAMILY == AF_INET )
+						{
+							strcpy(AddressString, inet_ntoa(Address.Addr.Addr4.sin_addr));
+						} else {
+							IPv6AddressToAsc(&Address, AddressString);
+						}
 
 						if( NewSocket > MaxFd )
 						{
@@ -316,7 +326,9 @@ static int QueryDNSListenTCP(void)
 						}
 
 						SocketInfoAdd(NewSocket, AddressString);
+						INFO("TCP connection to client %s established.\n", AddressString);
 					}
+
 				} else if( FD_ISSET(TCPOutcomeSocket, &ReadySet) )
 				{
 					static char Result[2048];
@@ -355,6 +367,7 @@ static int QueryDNSListenTCP(void)
 							Bst_Delete_ByNumber(&si, Number);
 							FD_CLR(Socket, &ReadSet);
 							CLOSE_SOCKET(Socket);
+							INFO("Lost TCP connection to client %s.\n", Header -> Agent);
 							break;
 						}
 

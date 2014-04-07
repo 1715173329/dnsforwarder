@@ -138,7 +138,7 @@ static void ReloadCache(void)
 {
 	struct _Header	*Header = (struct _Header *)MapStart;
 
-	INFO("Loading the existing cache ...\n");
+	INFO("Reloading the cache ...\n");
 
 	CacheInfo = &(Header -> ht);
 
@@ -740,6 +740,7 @@ static int DNSCache_GetByQuestion(__in const char *Question, __inout char *Buffe
 
 int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferLength)
 {
+	BOOL	EDNSEnabled;
 	int		RecordsCount, RecordsLength;
 
 	if( Inited == FALSE )
@@ -747,7 +748,8 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 		return -1;
 	}
 
-	if( DNSGetAdditionalCount(RequestContent) > 0 )
+	EDNSEnabled = (DNSGetAdditionalCount(RequestContent) > 0);
+	if( EDNSEnabled == TRUE )
 	{
 		DNSSetAdditionalCount(RequestContent, 0);
 		RequestLength = DNSJumpOverQuestionRecords(RequestContent) - RequestContent;
@@ -768,6 +770,13 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 		((DNSHeader *)RequestContent) -> Flags.RecursionAvailable = 1;
 		((DNSHeader *)RequestContent) -> Flags.ResponseCode = 0;
 		((DNSHeader *)RequestContent) -> Flags.Type = 0;
+
+		if( EDNSEnabled == TRUE )
+		{
+			memcpy((char *)RequestContent + CompressedLength, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
+			CompressedLength += OPT_PSEUDORECORD_LENGTH;
+			DNSSetAdditionalCount(RequestContent, 1);
+		}
 
 		return CompressedLength;
 	} else {

@@ -195,6 +195,7 @@ static Cht_Node *CacheHT_FindPredecesor(CacheHT *h, Cht_Slot *Slot, int32_t SubS
 		}
 	}
 
+	return NULL;
 }
 
 int CacheHT_RemoveFromSlot(CacheHT *h, int32_t SubScriptOfNode, Cht_Node *Node)

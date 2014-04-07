@@ -505,7 +505,7 @@ int IPv6AddressToAsc(const void *Address, void *Buffer)
 int	GetConfigDirectory(char *out)
 {
 #ifdef WIN32
-
+	return -1;
 #else /* WIN32 */
 #ifndef ANDROID
 	struct passwd *pw = getpwuid(getuid());

@@ -244,7 +244,7 @@ void SetUDPAppendEDNSOpt(BOOL State)
 #define	IP_MISCELLANEOUS_TYPE_SUBSTITUTE	2
 static IpChunk	*IPMiscellaneous = NULL;
 
-static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOOL Block, BOOL Substitute)
+static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOOL Block, BOOL EDNSEnabled)
 {
 	int		AnswerCount;
 
@@ -263,7 +263,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 		int	ActionType;
 		const char *ActionData;
 
-		if( Block == TRUE && UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity) <= 0 )
+		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
 		{
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
@@ -375,7 +375,7 @@ static void SendBack(SOCKET Socket,
 
 		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), Type);
 
-		if( DoIPMiscellaneous(RequestEntity, Header -> RequestingDomain, NeededBlock, TRUE) == FALSE )
+		if( DoIPMiscellaneous(RequestEntity, Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled) == FALSE )
 		{
 			if( ThisContext -> NeededHeader == TRUE )
 			{
@@ -439,11 +439,11 @@ int QueryDNSViaTCP(void)
 	static char		RequestEntity[2048];
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
-	sa_family_t		LastFamily = MainFamily;
+	sa_family_t		LastFamily = MAIN_FAMILY;
 	struct sockaddr	*LastAddress = NULL;
 
 	TCPQueryIncomeSocket = InternalInterface_TryOpenLocal(10100, INTERNAL_INTERFACE_TCP_QUERY);
-	TCPQueryOutcomeSocket = socket(MainFamily, SOCK_STREAM, IPPROTO_TCP);
+	TCPQueryOutcomeSocket = socket(MAIN_FAMILY, SOCK_STREAM, IPPROTO_TCP);
 
 	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
 
@@ -467,6 +467,9 @@ int QueryDNSViaTCP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
+				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
+				while( TRUE ) SLEEP(100000);
 				break;
 
 			case 0:
@@ -513,9 +516,12 @@ int QueryDNSViaTCP(void)
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
-						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
+						{
+							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+							CLOSE_SOCKET(TCPQueryOutcomeSocket);
+						}
 
-						CLOSE_SOCKET(TCPQueryOutcomeSocket);
 						TCPQueryOutcomeSocket = socket(NewFamily, SOCK_STREAM, IPPROTO_TCP);
 						if( TCPQueryOutcomeSocket == INVALID_SOCKET )
 						{
@@ -537,6 +543,8 @@ int QueryDNSViaTCP(void)
 						}
 
 						FD_SET(TCPQueryOutcomeSocket, &ReadSet);
+
+						INFO("TCP connection to server established.\n");
 					}
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
@@ -553,6 +561,8 @@ int QueryDNSViaTCP(void)
 					{
 						CloseTCPConnection(TCPQueryOutcomeSocket);
 						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+
+						INFO("Lost TCP connection to server.\n");
 						break;
 					}
 
@@ -582,14 +592,6 @@ int QueryDNSViaTCP(void)
 		}
 	}
 }
-
-static char OptPseudoRecord[] = {
-	0x00,
-	0x00, 0x29,
-	0x05, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00
-};
 
 int InitBlockedIP(StringList *l)
 {
@@ -674,15 +676,6 @@ static void SendQueryViaUDP(SOCKET		Socket,
 
 	int		StateOfSending = 0;
 
-	if( UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
-	{
-		memcpy((char *)RequestEntity + EntityLength, OptPseudoRecord, sizeof(OptPseudoRecord));
-
-		DNSSetAdditionalCount(RequestEntity, 1);
-
-		EntityLength += sizeof(OptPseudoRecord);
-	}
-
 	while( NumberOfAddresses != 0 )
 	{
 		StateOfSending |= (sendto(Socket, RequestEntity, EntityLength, 0, Addresses_List, AddrLen) > 0);
@@ -753,6 +746,9 @@ int QueryDNSViaUDP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
+				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
+				while( TRUE ) SLEEP(100000);
 				break;
 
 			case 0:
@@ -796,14 +792,27 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
+					if( UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
+					{
+						memcpy(RequestEntity + State, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
+
+						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 1);
+
+						State += OPT_PSEUDORECORD_LENGTH;
+					}
+
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_UDP, &NewAddress, &NumberOfAddresses, &NewFamily);
 
 					if( NewFamily != LastFamily )
 					{
-						FD_CLR(UDPQueryOutcomeSocket, &ReadSet);
-						CLOSE_SOCKET(UDPQueryOutcomeSocket);
+						if( UDPQueryOutcomeSocket != INVALID_SOCKET )
+						{
+							FD_CLR(UDPQueryOutcomeSocket, &ReadSet);
+							CLOSE_SOCKET(UDPQueryOutcomeSocket);
+						}
+
 						UDPQueryOutcomeSocket = InternalInterface_OpenASocket(NewFamily, NULL);
 						if( UDPQueryOutcomeSocket == INVALID_SOCKET )
 						{
@@ -818,6 +827,8 @@ int QueryDNSViaUDP(void)
 						}
 						FD_SET(UDPQueryOutcomeSocket, &ReadSet);
 					}
+
+
 
 					SendQueryViaUDP(UDPQueryOutcomeSocket,
 									RequestEntity + sizeof(ControlHeader),

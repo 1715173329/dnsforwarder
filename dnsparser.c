@@ -108,7 +108,7 @@ int DNSGetDescriptor(DNSRecordType Type, BOOL NeededCache, const ElementDescript
 
 BOOL DNSIsLabeledName(char *DNSBody, char *Start)
 {
-
+	return FALSE;
 }
 
 const char *DNSJumpOverName(const char *NameStart)
@@ -572,7 +572,7 @@ char *GetAllAnswers(const char *DNSBody, char *Buffer, size_t BufferLength)
 
 int DNSExpand(char *DNSBody, int BufferLength)
 {
-
+	return -1;
 }
 
 void DNSCopyLable(const char *DNSBody, char *here, const char *src)

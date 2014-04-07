@@ -13,7 +13,7 @@
  * And `<value>' is the option's value, we just call it `value'.
  * A line started with `#' is a comment, which will be ignored when it is read.
  * A valid option can be followed a comment which will be ignored too:
- *  <Option> <value> # I'm comment.
+ *  <Option> <value> # I'm a comment.
  *
  */
 
@@ -59,10 +59,6 @@ typedef struct _Option{
 	/* Designate if this option is used. */
 	OptionStatus	Status;
 
-	/* Name */
-	char		*KeyName;
-
-
 	MultilineStrategy	Strategy;
 
 	/* Type */
@@ -86,9 +82,7 @@ typedef struct _ConfigFileInfo
 	FILE	*fp;
 
 	/* An array of all the options. */
-	Array	Options;
-
-	int		LastAccessedOption;
+	StringChunk	Options;
 } ConfigFileInfo;
 
 char *GetKeyNameAndValue(char *Line, const char *Delimiters);
