@@ -57,7 +57,7 @@ void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domai
 
 	if( ShowMassages == TRUE )
 	{
-		printf("%s[%c][%s][%s][%s] Time out.\n",
+		printf("%s[%c][%s][%s][%s] Timed out.\n",
 			  DateAndTime,
 			  Protocol,
 			  Agent,
@@ -66,7 +66,7 @@ void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domai
 			  );
 	}
 
-	DEBUG_FILE("[%c][%s][%s][%s] Time out.\n",
+	DEBUG_FILE("[%c][%s][%s][%s] Timed out.\n",
 		   Protocol,
 		   Agent,
 		   DNSGetTypeName(Type),

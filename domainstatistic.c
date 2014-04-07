@@ -15,7 +15,7 @@ typedef struct _DomainInfo{
 	int		Cache;
 	int		Udp;
 	int		Tcp;
-	int		Poisoned;
+	int		Spoofed;
 } DomainInfo;
 
 typedef struct _RankList{
@@ -117,7 +117,7 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 
 				case STATISTIC_TYPE_POISONED:
 					NewInfo.Count = 0;
-					NewInfo.Poisoned = TRUE;
+					NewInfo.Spoofed = TRUE;
 					break;
 
 			}
@@ -154,7 +154,7 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 						break;
 
 					case STATISTIC_TYPE_POISONED:
-						ExistInfo -> Poisoned = TRUE;
+						ExistInfo -> Spoofed = TRUE;
 						break;
 				}
 			}
@@ -167,7 +167,7 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 	return 0;
 }
 
-static int CountCompare(RankList *_1, RankList *_2)
+static int CountCompare(const RankList *_1, const RankList *_2)
 {
 	return (-1) * (_1 -> Info -> Count - _2 -> Info -> Count);
 }
@@ -213,7 +213,7 @@ int DomainStatistic_Hold(void)
 			    "Elapsed time : %ds\n"
 			    "\n"
 			    "Domain Statistic:\n"
-			    "                                                       Refused&Failed                     Poisoned?\n"
+			    "                                                       Refused&Failed                     	Spoofed?\n"
 			    "                                                 Domain   Total     | Hosts Cache   UDP   TCP     |\n",
 			InitTime_Str,
 			GenerateTime_Str,
@@ -247,7 +247,7 @@ int DomainStatistic_Hold(void)
 			Sum.Cache += Info -> Cache;
 			Sum.Udp += Info -> Udp;
 			Sum.Tcp += Info -> Tcp;
-			Sum.Poisoned += Info -> Poisoned;
+			Sum.Spoofed += Info -> Spoofed;
 
 			Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
 
@@ -269,7 +269,7 @@ int DomainStatistic_Hold(void)
 					ARank -> Info -> Cache,
 					ARank -> Info -> Udp,
 					ARank -> Info -> Tcp,
-					ARank -> Info -> Poisoned != FALSE ? "  Yes" : ""
+					ARank -> Info -> Spoofed != FALSE ? "  Yes" : ""
 					 );
 
 			++Loop;
@@ -282,17 +282,17 @@ int DomainStatistic_Hold(void)
 
 		EFFECTIVE_LOCK_RELEASE(StatisticLock);
 
-		fprintf(MainFile, "Total number of : Queried domains        : %d\n"
-						  "                  Requests               : %d\n"
-						  "                  Known poisoned domains : %d\n"
-						  "                  Refused&Failed         : %d\n"
-						  "                  Responses from hosts   : %d\n"
-						  "                  Responses from cache   : %d\n"
-						  "                  Responses via UDP      : %d\n"
-						  "                  Responses via TCP      : %d\n",
+		fprintf(MainFile, "Total number of : Queried domains       : %d\n"
+						  "                  Requests              : %d\n"
+						  "                  Known spoofed domains : %d\n"
+						  "                  Refused&Failed        : %d\n"
+						  "                  Responses from hosts  : %d\n"
+						  "                  Responses from cache  : %d\n"
+						  "                  Responses via UDP     : %d\n"
+						  "                  Responses via TCP     : %d\n",
 				DomainCount,
 				Sum.Count,
-				Sum.Poisoned,
+				Sum.Spoofed,
 				Sum.Refused,
 				Sum.Hosts,
 				Sum.Cache,

@@ -2,16 +2,21 @@
 #include "internalsocket.h"
 #include "addresslist.h"
 #include "querydnsbase.h"
+#include "dnsparser.h"
 #include "utils.h"
 
 int INTERNAL_INTERFACE_PRIMARY;
 int INTERNAL_INTERFACE_SECONDARY;
 
-sa_family_t	MainFamily = AF_UNSPEC;
+sa_family_t	MAIN_FAMILY = AF_UNSPEC;
+const char *MAIN_WORKING_ADDRESS = NULL;
+int			MAIN_WORKING_PORT = -1;
+
+static Address_Type			LocalWorkingAddress;
 
 static InternalInterface	Interfaces[7];
 
-void InternalInterface_Init(int PrimaryProtocal)
+int InternalInterface_Init(int PrimaryProtocal, const char *WorkingAddress, int Port)
 {
 	int loop;
 
@@ -29,6 +34,15 @@ void InternalInterface_Init(int PrimaryProtocal)
 		INTERNAL_INTERFACE_SECONDARY = INTERNAL_INTERFACE_UDP_QUERY;
     }
 
+    MAIN_FAMILY = AddressList_ConvertToAddressFromString(&LocalWorkingAddress, WorkingAddress, Port);
+    if( MAIN_FAMILY == AF_UNSPEC )
+    {
+		return -1;
+    }
+
+    MAIN_WORKING_ADDRESS = WorkingAddress;
+	MAIN_WORKING_PORT = Port;
+	return 0;
 }
 
 SOCKET InternalInterface_OpenASocket(sa_family_t Family, struct sockaddr *Address)
@@ -42,7 +56,12 @@ SOCKET InternalInterface_OpenASocket(sa_family_t Family, struct sockaddr *Addres
 
 	if( Address != NULL && bind(ret, Address, GetAddressLength(Family)) != 0 )
 	{
+		int	OriginalErrorCode;
+
+		OriginalErrorCode = GET_LAST_ERROR();
 		CLOSE_SOCKET(ret);
+		SET_LAST_ERROR(OriginalErrorCode);
+
 		return INVALID_SOCKET;
 	}
 
@@ -68,32 +87,46 @@ SOCKET InternalInterface_Open2(const char *Address, int Port, InternalInterfaceT
 	return InternalInterface_Open(Address, Type, Port);
 }
 
-SOCKET InternalInterface_TryBindLocal(int Port, Address_Type *Address)
+SOCKET InternalInterface_TryBindAddress(const char *Address_Str, int Port, Address_Type *Address)
 {
+	int MaxTime = 10000;
+
 	Address_Type Address1;
 	SOCKET ret;
+
+	do {
+		AddressList_ConvertToAddressFromString(&Address1, Address_Str, Port);
+		ret = InternalInterface_OpenASocket(MAIN_FAMILY, (struct sockaddr *)&(Address1.Addr));
+
+		++Port;
+		--MaxTime;
+	} while( ret == INVALID_SOCKET && MaxTime > 0 );
+
+	if( ret == INVALID_SOCKET )
+	{
+		return INVALID_SOCKET;
+	} else {
+		if( Address != NULL )
+		{
+			memcpy(Address, &Address1, sizeof(Address_Type));
+		}
+
+		return ret;
+	}
+}
+
+SOCKET InternalInterface_TryBindLocal(int Port, Address_Type *Address)
+{
 	const char	*LocalAddress;
 
-	if( MainFamily == AF_INET )
+	if( MAIN_FAMILY == AF_INET )
 	{
 		LocalAddress = "127.0.0.1";
 	} else {
 		LocalAddress = "[::1]";
 	}
 
-	do {
-		AddressList_ConvertToAddressFromString(&Address1, LocalAddress, Port);
-		ret = InternalInterface_OpenASocket(MainFamily, &(Address1.Addr));
-
-		++Port;
-	} while( ret == INVALID_SOCKET );
-
-	if( Address != NULL )
-	{
-		memcpy(Address, &Address1, sizeof(Address_Type));
-	}
-
-	return ret;
+	return InternalInterface_TryBindAddress(LocalAddress, Port, Address);
 }
 
 SOCKET InternalInterface_TryOpenLocal(int Port, InternalInterfaceType Type)
@@ -146,10 +179,20 @@ sa_family_t InternalInterface_GetAddress(InternalInterfaceType Type, struct sock
 
 	if( Out != NULL )
 	{
-		*Out = &(Interfaces[Type].Address.Addr);
+		*Out = (struct sockaddr *)&(Interfaces[Type].Address.Addr);
 	}
 
 	return Interfaces[Type].Address.family;
+}
+
+Address_Type *InternalInterface_GetAddress_Union(InternalInterfaceType Type)
+{
+	if( Interfaces[Type].Socket == INVALID_SOCKET )
+	{
+		return NULL;
+	}
+
+	return &(Interfaces[Type].Address);
 }
 
 int InternalInterface_SendTo(InternalInterfaceType Type, SOCKET ThisSocket, char *Content, int ContentLength)
@@ -164,10 +207,10 @@ int InternalInterface_SendTo(InternalInterfaceType Type, SOCKET ThisSocket, char
 
 void InternalInterface_InitControlHeader(ControlHeader *Header)
 {
-	Header -> _Pad = 0;
+	Header -> _Pad = CONTROLHEADER__PAD;
 }
 
-static int QueryContextCompare(QueryContextEntry *_1, QueryContextEntry *_2)
+static int QueryContextCompare(const QueryContextEntry *_1, const QueryContextEntry *_2)
 {
 	if( _1 -> Identifier != _2 -> Identifier )
 	{
@@ -184,15 +227,25 @@ int InternalInterface_InitQueryContext(QueryContext *Context)
 
 int InternalInterface_QueryContextAddUDP(QueryContext *Context, ControlHeader *Header)
 {
+	const char *RequestingEntity = (const char *)(Header + 1);
 	QueryContextEntry	New;
 
-	New.Identifier = *(uint16_t *)(Header + 1);
+	New.Identifier = *(uint16_t *)RequestingEntity;
 	New.HashValue = Header -> RequestingDomainHashValue;
+
 	New.TimeAdd = time(NULL);
 	New.NeededHeader = Header -> NeededHeader;
 	strcpy(New.Agent, Header -> Agent);
 	New.Type = Header -> RequestingType;
 	strcpy(New.Domain, Header -> RequestingDomain);
+
+	if( DNSGetAdditionalCount(RequestingEntity) > 0 )
+	{
+		New.EDNSEnabled = TRUE;
+	} else {
+		New.EDNSEnabled = FALSE;
+	}
+
 	memcpy(&(New.Context.BackAddress), &(Header -> BackAddress), sizeof(Address_Type));
 
 	return Bst_Add(Context, &New);
@@ -200,15 +253,26 @@ int InternalInterface_QueryContextAddUDP(QueryContext *Context, ControlHeader *H
 
 int InternalInterface_QueryContextAddTCP(QueryContext *Context, ControlHeader *Header, SOCKET Socket)
 {
+	const char *RequestingEntity = (const char *)(Header + 1);
 	QueryContextEntry	New;
 
-	New.Identifier = *(uint16_t *)(Header + 1);
+	New.Identifier = *(uint16_t *)RequestingEntity;
 	New.HashValue = Header -> RequestingDomainHashValue;
+
 	New.TimeAdd = time(NULL);
 	New.NeededHeader = Header -> NeededHeader;
 	strcpy(New.Agent, Header -> Agent);
+
 	New.Type = Header -> RequestingType;
 	strcpy(New.Domain, Header -> RequestingDomain);
+
+	if( DNSGetAdditionalCount(RequestingEntity) > 0 )
+	{
+		New.EDNSEnabled = TRUE;
+	} else {
+		New.EDNSEnabled = FALSE;
+	}
+
 	New.Context.Socket = Socket;
 
 	return Bst_Add(Context, &New);
@@ -216,13 +280,22 @@ int InternalInterface_QueryContextAddTCP(QueryContext *Context, ControlHeader *H
 
 int InternalInterface_QueryContextAddHosts(QueryContext *Context, ControlHeader *Header, uint32_t Identifier, int32_t HashValue)
 {
+	const char *RequestingEntity = (const char *)(Header + 1);
 	QueryContextEntry	New;
 
 	New.Identifier = Identifier;
 	New.HashValue = HashValue;
+
 	New.TimeAdd = time(NULL);
 	New.NeededHeader = Header -> NeededHeader;
 	strcpy(New.Agent, Header -> Agent);
+
+	if( DNSGetAdditionalCount(RequestingEntity) > 0 )
+	{
+		New.EDNSEnabled = TRUE;
+	} else {
+		New.EDNSEnabled = FALSE;
+	}
 
 	memcpy(&(New.Context.Hosts.BackAddress), &(Header -> BackAddress), sizeof(Address_Type));
 	New.Context.Hosts.Identifier = *(uint16_t *)(Header + 1);
@@ -240,6 +313,7 @@ int32_t InternalInterface_QueryContextFind(QueryContext *Context, uint32_t Ident
 
 	Key.Identifier = Identifier;
 	Key.HashValue = HashValue;
+
 	return Bst_Search(Context, &Key, NULL);
 }
 

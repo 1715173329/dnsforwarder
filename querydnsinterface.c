@@ -163,16 +163,43 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 	}
 }
 
+static int GetPrimaryProtocol(void)
+{
+	const char *PrimaryProtocol_Ori = ConfigGetRawString(&ConfigInfo, "PrimaryServer");
+	char	PrimaryProtocol[8];
+
+	strncpy(PrimaryProtocol, PrimaryProtocol_Ori, 5);
+
+	StrToLower(PrimaryProtocol);
+
+	if( strncmp(PrimaryProtocol, "tcp", 3) == 0 )
+	{
+		return DNS_QUARY_PROTOCOL_TCP;
+	} else if( strncmp(PrimaryProtocol, "udp", 3) == 0 ) {
+		return DNS_QUARY_PROTOCOL_UDP;
+	} else {
+		ERRORMSG("PrimaryServer `%s' may not a good idea.\n", PrimaryProtocol_Ori);
+		return -1;
+	}
+}
+
 int QueryDNSInterfaceStart(void)
 {
-	const char *LocalAddr;
+	const char	*LocalAddr = ConfigGetRawString(&ConfigInfo, "LocalInterface");
+	int			LocalPort = ConfigGetInt32(&ConfigInfo, "LocalPort");
+	int			PrimaryProtocol = GetPrimaryProtocol();
 
-	int IsZeroZeroZeroZero;
+	int			IsZeroZeroZeroZero;
 
 	if( ShowMassages == TRUE )
 	{
 		ConfigDisplay(&ConfigInfo);
 		putchar('\n');
+	}
+
+	if( PrimaryProtocol < 0 )
+	{
+		return -1;
 	}
 
 	srand(time(NULL));
@@ -181,14 +208,19 @@ int QueryDNSInterfaceStart(void)
 	GfwList_Init(FALSE);
 
 	InitAddress();
+
+	if( InternalInterface_Init(PrimaryProtocol, LocalAddr, LocalPort) != 0 )
+	{
+		ERRORMSG("Address %s:%d may not a good idea.\n", LocalAddr, LocalPort);
+		return -1;
+	}
+
 	DynamicHosts_Init();
 
 	if( ConfigGetBoolean(&ConfigInfo, "DomainStatistic") == TRUE )
 	{
 		DomainStatistic_Init(ConfigGetInt32(&ConfigInfo, "StatisticUpdateInterval"));
 	}
-
-	InternalInterface_Init(DNS_QUARY_PROTOCOL_UDP);
 
 	if( QueryDNSListenUDPInit() != 0 )
 	{
@@ -227,7 +259,6 @@ int QueryDNSInterfaceStart(void)
 
 	GfwList_PeriodicWork();
 
-	LocalAddr = ConfigGetRawString(&ConfigInfo, "LocalInterface");
 	IsZeroZeroZeroZero = !strncmp(LocalAddr, "0.0.0.0", 7);
 	INFO("Now you can set DNS%s%s.\n", IsZeroZeroZeroZero ? "" : " to ", IsZeroZeroZeroZero ? "" : LocalAddr);
 

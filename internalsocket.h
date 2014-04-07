@@ -23,15 +23,19 @@ typedef enum _InternalInterfaceType {
 extern int INTERNAL_INTERFACE_PRIMARY;
 extern int INTERNAL_INTERFACE_SECONDARY;
 
-extern sa_family_t	MainFamily;
+extern sa_family_t	MAIN_FAMILY;
+extern const char	*MAIN_WORKING_ADDRESS;
+extern int			MAIN_WORKING_PORT;
 
-void InternalInterface_Init(int PrimaryProtocal);
+int InternalInterface_Init(int PrimaryProtocal, const char *WorkingAddress, int Port);
 
 SOCKET InternalInterface_OpenASocket(sa_family_t Family, struct sockaddr *Address);
 
 SOCKET InternalInterface_Open(const char *AddressPort, InternalInterfaceType Type, int DefaultPort);
 
 SOCKET InternalInterface_Open2(const char *Address, int Port, InternalInterfaceType Type);
+
+SOCKET InternalInterface_TryBindAddress(const char *Address_Str, int Port, Address_Type *Address);
 
 SOCKET InternalInterface_TryBindLocal(int Port, Address_Type *Address);
 
@@ -43,7 +47,11 @@ SOCKET InternalInterface_GetSocket(InternalInterfaceType Type);
 
 sa_family_t InternalInterface_GetAddress(InternalInterfaceType Type, struct sockaddr **Out);
 
+Address_Type *InternalInterface_GetAddress_Union(InternalInterfaceType Type);
+
 int InternalInterface_SendTo(InternalInterfaceType Type, SOCKET ThisSocket, char *Content, int ContentLength);
+
+#define	CONTROLHEADER__PAD (~0)
 
 typedef struct _ControlHeader {
 	int32_t	_Pad;
@@ -64,11 +72,16 @@ void InternalInterface_InitControlHeader(ControlHeader *Header);
 typedef struct _QueryContextEntry {
 	uint32_t	Identifier;
 	int32_t		HashValue;
+
 	time_t		TimeAdd;
 	BOOL		NeededHeader;
 	char		Agent[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
+
 	int			Type;
 	char		Domain[129];
+
+	BOOL		EDNSEnabled;
+
 	union	{
 		Address_Type	BackAddress;
 		SOCKET	Socket;
@@ -78,6 +91,7 @@ typedef struct _QueryContextEntry {
 			int32_t			HashValue;
 		} Hosts;
 	} Context;
+
 } QueryContextEntry;
 
 typedef Bst	QueryContext;

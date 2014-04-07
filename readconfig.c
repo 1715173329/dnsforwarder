@@ -8,8 +8,7 @@
 int ConfigInitInfo(ConfigFileInfo *Info)
 {
 	Info -> fp = NULL;
-	Info -> LastAccessedOption = 0;
-	return Array_Init(&(Info -> Options), sizeof(ConfigOption), 0, FALSE, NULL);
+	return StringChunk_Init(&(Info -> Options), NULL);
 }
 
 int ConfigOpenFile(ConfigFileInfo *Info, const char *File)
@@ -29,12 +28,6 @@ int ConfigCloseFile(ConfigFileInfo *Info)
 int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strategy, OptionType Type, VType Initial, char *Caption)
 {
 	ConfigOption New;
-
-	New.KeyName = StringDup(KeyName);
-	if( New.KeyName == NULL )
-	{
-		return -1;
-	}
 
 	New.Type = Type;
 	New.Status = STATUS_DEFAULT_VALUE;
@@ -66,63 +59,34 @@ int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strat
 			break;
 	}
 
-	return Array_PushBack(&(Info -> Options), &New, NULL);
+	return StringChunk_Add(&(Info -> Options), KeyName, (const char *)&New, sizeof(ConfigOption));
 }
 
 int ConfigAddAlias(ConfigFileInfo *Info, char *Alias, char *Target)
 {
 	ConfigOption New;
 
-	New.KeyName = StringDup(Alias);
-	if( New.KeyName == NULL )
-	{
-		return -1;
-	}
-
 	New.Status = STATUS_ALIAS;
 	New.Caption = StringDup(Target);
 
-	return Array_PushBack(&(Info -> Options), &New, NULL);
+	return StringChunk_Add(&(Info -> Options), Alias, (const char *)&New, sizeof(ConfigOption));
 }
 
 static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info, const char *KeyName)
 {
-	int	loop;
 	ConfigOption *Option;
 
-	for(loop = Info -> LastAccessedOption; loop != Array_GetUsed(&(Info -> Options)); ++loop)
+	if( StringChunk_Match_NoWildCard(&(Info -> Options), KeyName, NULL, (char **)&Option) == TRUE )
 	{
-		Option = Array_GetBySubscript(&(Info -> Options), loop);
-
-		if( Option != NULL && strcmp(KeyName, Option -> KeyName) == 0 )
+		if( Option -> Status == STATUS_ALIAS )
 		{
-			Info -> LastAccessedOption = loop;
-			if( Option -> Status == STATUS_ALIAS )
-			{
-				return GetOptionOfAInfo(Info, Option -> Caption);
-			} else {
-				return Option;
-			}
+			return GetOptionOfAInfo(Info, Option -> Caption);
+		} else {
+			return Option;
 		}
+	} else {
+		return NULL;
 	}
-
-	for(loop = 0; loop != Info -> LastAccessedOption; ++loop)
-	{
-		Option = Array_GetBySubscript(&(Info -> Options), loop);
-
-		if( Option != NULL && strcmp(KeyName, Option -> KeyName) == 0 )
-		{
-			Info -> LastAccessedOption = loop;
-			if( Option -> Status == STATUS_ALIAS )
-			{
-				return GetOptionOfAInfo(Info, Option -> Caption);
-			} else {
-				return Option;
-			}
-		}
-	}
-
-	return NULL;
 }
 
 char *GetKeyNameAndValue(char *Line, const char *Delimiters)
@@ -515,13 +479,15 @@ void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 
 void ConfigDisplay(ConfigFileInfo *Info)
 {
-	int loop;
+	const char *Str;
+	int32_t Enum_Start;
 	ConfigOption *Option;
 
-	for(loop = 0; loop != Array_GetUsed(&(Info -> Options)); ++loop)
-	{
-		Option = Array_GetBySubscript(&(Info -> Options), loop);
+	Enum_Start = 0;
 
+	Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (char **)&Option);
+	while( Str != NULL )
+	{
 		if( Option != NULL && Option -> Caption != NULL && Option -> Status != STATUS_ALIAS )
 		{
 			switch( Option -> Type )
@@ -550,5 +516,7 @@ void ConfigDisplay(ConfigFileInfo *Info)
 					break;
 			}
 		}
+
+		Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (char **)&Option);
 	}
 }

@@ -21,6 +21,9 @@
 
 #define DNSSetAdditionalCount(dns_start, AdC)	SET_16_BIT_U_INT((char *)(dns_start) + 10, AdC)
 
+extern const char OptPseudoRecord[];
+#define	OPT_PSEUDORECORD_LENGTH	11
+
 char *DNSLabelizedName(__inout char *Origin, __in size_t OriginSpaceLength);
 
 int DNSCompress(__inout char *DNSBody, __in int DNSBodyLength);
