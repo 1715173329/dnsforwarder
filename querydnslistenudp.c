@@ -24,9 +24,9 @@ static int			MaximumMessageSize;
 static int			RefusingResponseCode = 0;
 
 /* Functions */
-int QueryDNSListenUDPInit(void)
+int QueryDNSListenUDPInit(ConfigFileInfo *ConfigInfo)
 {
-	RefusingResponseCode = ConfigGetInt32(&ConfigInfo, "RefusingResponseCode");
+	RefusingResponseCode = ConfigGetInt32(ConfigInfo, "RefusingResponseCode");
 	UDPIncomeSocket = InternalInterface_Open2(MAIN_WORKING_ADDRESS, MAIN_WORKING_PORT, INTERNAL_INTERFACE_UDP_INCOME);
 	if( UDPIncomeSocket == INVALID_SOCKET )
 	{

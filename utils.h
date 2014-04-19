@@ -111,4 +111,8 @@ char *GoToPrevNonSpace(char *Here);
 
 int GetAddressLength(sa_family_t Family);
 
+int SetProgramEnvironment(const char *Name, const char *Value);
+
+int ExpandPath(char *String, int BufferLength);
+
 #endif /* _UTILS_ */

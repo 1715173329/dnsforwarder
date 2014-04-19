@@ -171,16 +171,15 @@ static void CreateNewCache(void)
 
 }
 
-static int InitCacheInfo(BOOL Reload)
+static int InitCacheInfo(ConfigFileInfo *ConfigInfo, BOOL Reload)
 {
-
 	if( Reload == TRUE )
 	{
 		if( IsReloadable() )
 		{
 			ReloadCache();
 		} else {
-			if( ConfigGetBoolean(&ConfigInfo, "OverwriteCache") == FALSE )
+			if( ConfigGetBoolean(ConfigInfo, "OverwriteCache") == FALSE )
 			{
 				return -1;
 			} else {
@@ -194,25 +193,25 @@ static int InitCacheInfo(BOOL Reload)
 	return 0;
 }
 
-int DNSCache_Init(void)
+int DNSCache_Init(ConfigFileInfo *ConfigInfo)
 {
-	int			_CacheSize = ConfigGetInt32(&ConfigInfo, "CacheSize");
-	const char	*CacheFile = ConfigGetRawString(&ConfigInfo, "CacheFile");
+	int			_CacheSize = ConfigGetInt32(ConfigInfo, "CacheSize");
+	const char	*CacheFile = ConfigGetRawString(ConfigInfo, "CacheFile");
 	int			InitCacheInfoState;
 
-	if( ConfigGetBoolean(&ConfigInfo, "UseCache") == FALSE )
+	if( ConfigGetBoolean(ConfigInfo, "UseCache") == FALSE )
 	{
 		return 0;
 	}
 
-	IgnoreTTL = ConfigGetBoolean(&ConfigInfo, "IgnoreTTL");
+	IgnoreTTL = ConfigGetBoolean(ConfigInfo, "IgnoreTTL");
 
-	OverrideTTL = ConfigGetInt32(&ConfigInfo, "OverrideTTL");
+	OverrideTTL = ConfigGetInt32(ConfigInfo, "OverrideTTL");
 	if( OverrideTTL > -1 )
 	{
 		TTLMultiple = 1;
 	} else {
-		TTLMultiple = ConfigGetInt32(&ConfigInfo, "MultipleTTL");
+		TTLMultiple = ConfigGetInt32(ConfigInfo, "MultipleTTL");
 		if( TTLMultiple < 1 )
 		{
 			ERRORMSG("Invalid `MultipleTTL'.\n");
@@ -233,7 +232,7 @@ int DNSCache_Init(void)
 		return 1;
 	}
 
-	if( ConfigGetBoolean(&ConfigInfo, "MemoryCache") == TRUE )
+	if( ConfigGetBoolean(ConfigInfo, "MemoryCache") == TRUE )
 	{
 		MapStart = SafeMalloc(CacheSize);
 
@@ -243,7 +242,7 @@ int DNSCache_Init(void)
 			return 2;
 		}
 
-		InitCacheInfoState = InitCacheInfo(FALSE);
+		InitCacheInfoState = InitCacheInfo(ConfigInfo, FALSE);
 	} else {
 		BOOL FileExists;
 
@@ -290,9 +289,9 @@ int DNSCache_Init(void)
 
 		if( FileExists == FALSE )
 		{
-			InitCacheInfoState = InitCacheInfo(FALSE);
+			InitCacheInfoState = InitCacheInfo(ConfigInfo, FALSE);
 		} else {
-			InitCacheInfoState = InitCacheInfo(ConfigGetBoolean(&ConfigInfo, "ReloadCache"));
+			InitCacheInfoState = InitCacheInfo(ConfigInfo, ConfigGetBoolean(ConfigInfo, "ReloadCache"));
 		}
 	}
 
@@ -784,14 +783,14 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 	}
 }
 
-void DNSCacheClose(void)
+void DNSCacheClose(ConfigFileInfo *ConfigInfo)
 {
 	if(Inited == TRUE)
 	{
 		Inited = FALSE;
 		RWLock_WrLock(CacheLock);
 
-		if( ConfigGetBoolean(&ConfigInfo, "MemoryCache") == FALSE )
+		if( ConfigGetBoolean(ConfigInfo, "MemoryCache") == FALSE )
 		{
 			UNMAP_FILE(MapStart, CacheSize);
 			DESTROY_MAPPING(CacheMappingHandle);

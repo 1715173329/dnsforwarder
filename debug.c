@@ -6,7 +6,6 @@
 #include "common.h"
 
 /* Global Variables */
-ConfigFileInfo	ConfigInfo;
 BOOL			ShowMassages = TRUE;
 BOOL			ErrorMessages = TRUE;
 

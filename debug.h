@@ -1,20 +1,17 @@
 #ifndef DEBUG_H_INCLUDED
 #define DEBUG_H_INCLUDED
 
-#include "readconfig.h"
+#include "common.h"
 
 #define	PRINT(...)		if(ShowMassages == TRUE){ printf(__VA_ARGS__); } DEBUG_FILE(__VA_ARGS__);
 #define	INFO(...)		if(ShowMassages == TRUE){ printf("[INFO] "__VA_ARGS__); } DEBUG_FILE(__VA_ARGS__);
 #define	ERRORMSG(...)	if(ErrorMessages == TRUE){ fprintf(stderr, "[ERROR] "__VA_ARGS__); } DEBUG_FILE(__VA_ARGS__);
 
 /* Global Varibles */
-extern ConfigFileInfo	ConfigInfo;
 extern BOOL				ShowMassages;
 extern BOOL				ErrorMessages;
 
 #ifdef INTERNAL_DEBUG
-
-#include "common.h"
 
 #define	DEBUG_FILE(...)	Debug_PrintFile(__FUNCTION__, __LINE__, __VA_ARGS__)
 

@@ -51,6 +51,8 @@
 			<Add option="-DDOWNLOAD_LIBCURL" />
 			<Add option="-DBASE64_DECODER_OPENSSL" />
 			<Add option="-DHAVE_SYS_SYSCALL_H" />
+			<Add option="-DHAVE_SETENV" />
+			<Add option="-DHAVE_WORDEXP" />
 		</Compiler>
 		<Linker>
 			<Add option="-lcurl -lssl -lcrypto -pthread" />

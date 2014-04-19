@@ -6,7 +6,7 @@
 #include "dnscache.h"
 #include "common.h"
 
-int InitAddress(void);
+int InitAddress(ConfigFileInfo *ConfigInfo);
 
 BOOL SocketIsStillReadable(SOCKET Sock, int timeout);
 

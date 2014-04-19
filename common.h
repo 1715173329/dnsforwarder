@@ -104,7 +104,7 @@
 	 * 'sendto', 'recvfrom', 'setsockopt', 'shutdown'. */
 	#include <sys/socket.h>
 
-	#include <unistd.h>		/* For function 'close' , 'usleep' */
+	#include <unistd.h>		/* For function 'close' , 'sleep' */
 	#include <errno.h>		/* For extern variable 'errno'. */
 	#include <arpa/inet.h>	/* For function 'inet_addr'. */
 	#include <pthread.h>	/* Multithread support. */
@@ -213,7 +213,15 @@
 																	(addr_struct).sin_addr.s_addr = inet_addr(address_string); \
 																	(addr_struct).sin_port = htons(port);
 
-	#define	SLEEP(i)	(usleep((i) * 1000))
+	#define	SLEEP(i)	do \
+						{ \
+							int	Count = 1000; \
+							do \
+							{ \
+								usleep(i); \
+								--Count; \
+							} while( Count > 0 ); \
+						} while( 0 )
 
     /* As the name suggests */
 	#define GET_TEMP_DIR()	"/tmp"

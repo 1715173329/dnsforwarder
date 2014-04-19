@@ -1,4 +1,5 @@
 #include <stdlib.h>
+
 #ifndef WIN32
 #include <sys/wait.h>
 int Execute(const char *Cmd)
@@ -18,6 +19,7 @@ int Execute(const char *Cmd)
 	return -1;
 }
 #endif /* WIN32 */
+
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,18 +30,25 @@ int Execute(const char *Cmd)
 #include "dnsgenerator.h"
 
 #ifdef WIN32
-#include <wincrypt.h>
-#ifndef CryptStringToBinary
-		BOOL WINAPI CryptStringToBinaryA(const BYTE *,DWORD,DWORD,LPTSTR,DWORD *,DWORD *,DWORD *);
-#define	CryptStringToBinary CryptStringToBinaryA
-#endif /* CryptStringToBinary */
+	#include <wincrypt.h>
+		#ifndef CryptStringToBinary
+			BOOL WINAPI CryptStringToBinaryA(const BYTE *,DWORD,DWORD,LPTSTR,DWORD *,DWORD *,DWORD *);
+		#define	CryptStringToBinary CryptStringToBinaryA
+	#endif /* CryptStringToBinary */
+
 #else /* WIN32 */
-#ifdef BASE64_DECODER_OPENSSL
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-#endif /* BASE64_DECODER_OPENSSL */
-#ifdef BASE64_DECODER_UUDECODE
-#endif /* BASE64_DECODER_UUDECODE */
+
+	#ifdef BASE64_DECODER_OPENSSL
+		#include <openssl/bio.h>
+		#include <openssl/evp.h>
+	#endif /* BASE64_DECODER_OPENSSL */
+	#ifdef BASE64_DECODER_UUDECODE
+	#endif /* BASE64_DECODER_UUDECODE */
+
+	#ifdef HAVE_WORDEXP
+		#include <wordexp.h>
+	#endif
+
 #endif /* WIN32 */
 
 int SafeRealloc(void **Memory_ptr, size_t NewBytes)
@@ -750,4 +759,63 @@ int GetAddressLength(sa_family_t Family)
 			return -1;
 			break;
 	}
+}
+
+int SetProgramEnvironment(const char *Name, const char *Value)
+{
+#ifdef WIN32
+	return !SetEnvironmentVariable(Name, Value);
+#else
+#ifdef HAVE_SETENV
+	return setenv(Name, Value, 1);
+#else
+	return 0;
+#endif
+#endif
+}
+
+int ExpandPath(char *String, int BufferLength)
+{
+#ifdef WIN32
+	char	TempStr[2048];
+	int		State;
+
+	State = ExpandEnvironmentStrings(String, TempStr, sizeof(TempStr) - 1);
+
+	if( State == 0 || State >= sizeof(TempStr) - 1 )
+	{
+		return -1;
+	}
+
+	TempStr[sizeof(TempStr) - 1] = '\0';
+
+	if( strlen(TempStr) + 1 > BufferLength )
+	{
+		return -1;
+	}
+
+	strcpy(String, TempStr);
+
+	return 0;
+#else
+#ifdef HAVE_WORDEXP
+	wordexp_t Result;
+
+	if( wordexp(String, &Result, 0) != 0 )
+	{
+		wordfree(&Result);
+		return -1;
+	}
+
+	if( strlen(Result.we_wordv[0]) + 1 <= BufferLength )
+	{
+		strcpy(String, Result.we_wordv[0]);
+	}
+
+	wordfree(&Result);
+	return 0;
+#else
+	return 0;
+#endif
+#endif
 }
