@@ -27,9 +27,9 @@ static int			RefusingResponseCode = 0;
 static QueryContext	Context;
 
 /* Functions */
-int QueryDNSListenTCPInit(void)
+int QueryDNSListenTCPInit(ConfigFileInfo *ConfigInfo)
 {
-	RefusingResponseCode = ConfigGetInt32(&ConfigInfo, "RefusingResponseCode");
+	RefusingResponseCode = ConfigGetInt32(ConfigInfo, "RefusingResponseCode");
 
 	TCPIncomeSocket = InternalInterface_OpenTCP(MAIN_WORKING_ADDRESS, INTERNAL_INTERFACE_TCP_INCOME, MAIN_WORKING_PORT);
 	if( TCPIncomeSocket == INVALID_SOCKET )

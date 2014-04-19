@@ -193,11 +193,11 @@ static int TryLoadHosts(void)
 	return 0;
 }
 
-static void GetHostsFromInternet_Thread(void *Unused)
+static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 {
-	const char *URL = ConfigGetRawString(&ConfigInfo, "Hosts");
-	const char *Script = ConfigGetRawString(&ConfigInfo, "HostsScript");
-	int			HostsRetryInterval = ConfigGetInt32(&ConfigInfo, "HostsRetryInterval");
+	const char *URL = ConfigGetRawString(ConfigInfo, "Hosts");
+	const char *Script = ConfigGetRawString(ConfigInfo, "HostsScript");
+	int			HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
 	int			DownloadState;
 
 	while(1)
@@ -264,9 +264,10 @@ static BOOL Hosts_IsExcludedDomain(HostsContainer *Container, const char *Name)
 	return StringChunk_Match((StringChunk *)&(Container -> ExcludedDomains), Name, NULL, NULL);
 }
 
-#define	MATCH_STATE_PERFECT	0
+#define	MATCH_STATE_PERFECT		0
 #define	MATCH_STATE_ONLY_CNAME	1
-#define	MATCH_STATE_NONE	(-1)
+#define	MATCH_STATE_NONE		(-1)
+#define	MATCH_STATE_DESABLED	(-2)
 static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
 {
 	if( Container == NULL )
@@ -276,7 +277,7 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 
 	if( Hosts_IsExcludedDomain(Container, Name) == TRUE )
 	{
-		return MATCH_STATE_NONE;
+		return MATCH_STATE_DESABLED;
 	}
 
 	switch( Type )
@@ -728,19 +729,22 @@ BOOL Hosts_Try(const char *Domain, int Type)
 		} else {
 			return FALSE;
 		}
+	} else if( MatchState == MATCH_STATE_DESABLED )
+	{
+		return FALSE;
 	} else {
 		return TRUE;
 	}
 
 }
 
-int DynamicHosts_Init(void)
+int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	const char	*Path;
 
-	StaticHosts_Init();
+	StaticHosts_Init(ConfigInfo);
 
-	Path = ConfigGetRawString(&ConfigInfo, "Hosts");
+	Path = ConfigGetRawString(ConfigInfo, "Hosts");
 
 	if( Path == NULL )
 	{
@@ -748,7 +752,7 @@ int DynamicHosts_Init(void)
 		return 0;
 	}
 
-	UpdateInterval = ConfigGetInt32(&ConfigInfo, "HostsUpdateInterval");
+	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
 
 	RWLock_Init(HostsLock);
 
@@ -768,9 +772,9 @@ int DynamicHosts_Init(void)
 
 	} else {
 		/* Internet file */
-		File = ConfigGetRawString(&ConfigInfo, "HostsDownloadPath");
+		File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
 
-		if( ConfigGetInt32(&ConfigInfo, "HostsRetryInterval") < 1 )
+		if( ConfigGetInt32(ConfigInfo, "HostsRetryInterval") < 1 )
 		{
 			ERRORMSG("`HostsFlushTimeOnFailed' is too small (< 1).\n");
 			File = NULL;
@@ -796,7 +800,7 @@ int DynamicHosts_Init(void)
 
 }
 
-int DynamicHosts_Start(void)
+int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
 {
 	ThreadHandle	t;
 	CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
@@ -804,7 +808,7 @@ int DynamicHosts_Start(void)
 
 	if( Internet == TRUE )
 	{
-		CREATE_THREAD(GetHostsFromInternet_Thread, NULL, GetHosts_Thread);
+		CREATE_THREAD(GetHostsFromInternet_Thread, ConfigInfo, GetHosts_Thread);
 	}
 
 	return 0;

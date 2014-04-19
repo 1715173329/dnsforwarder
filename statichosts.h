@@ -44,6 +44,6 @@ int Hosts_InitContainer(HostsContainer	*Container);
 
 HostsRecordType Hosts_LoadFromMetaLine(HostsContainer *Container, char *MetaLine);
 
-int StaticHosts_Init(void);
+int StaticHosts_Init(ConfigFileInfo *ConfigInfo);
 
 #endif // STATICHOSTS_H_INCLUDED

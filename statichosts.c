@@ -283,11 +283,11 @@ HostsRecordType Hosts_LoadFromMetaLine(HostsContainer *Container, char *MetaLine
 	return Hosts_AddToContainer(Container, IPOrCName, Domain);
 }
 
-int StaticHosts_Init(void)
+int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	int		IPv4Count = 0, IPv6Count = 0, CNameCount = 0, ExcludedCount = 0;
 
-	StringList *AppendHosts = ConfigGetStringList(&ConfigInfo, "AppendHosts");
+	StringList *AppendHosts = ConfigGetStringList(ConfigInfo, "AppendHosts");
 	const char *Itr;
 	char Buffer[2 * DOMAIN_NAME_LENGTH_MAX + 2];
 

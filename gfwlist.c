@@ -164,11 +164,11 @@ DONE:
 	return Count;
 }
 
-static int LoadGfwList_Thread(void *Unused)
+static int LoadGfwList_Thread(ConfigFileInfo *ConfigInfo)
 {
-	int		UpdateInterval	=	ConfigGetInt32(&ConfigInfo, "GfwListUpdateInterval");
-	int		RetryInterval	=	ConfigGetInt32(&ConfigInfo, "GfwListRetryInterval");
-	BOOL	NeedBase64Decode	=	ConfigGetBoolean(&ConfigInfo, "GfwListBase64Decode");
+	int		UpdateInterval	=	ConfigGetInt32(ConfigInfo, "GfwListUpdateInterval");
+	int		RetryInterval	=	ConfigGetInt32(ConfigInfo, "GfwListRetryInterval");
+	BOOL	NeedBase64Decode	=	ConfigGetBoolean(ConfigInfo, "GfwListBase64Decode");
 	int		Count;
 
 	if( RetryInterval < 0 )
@@ -218,31 +218,31 @@ static int LoadGfwList_Thread(void *Unused)
 	return 0;
 }
 
-int GfwList_PeriodicWork(void)
+int GfwList_PeriodicWork(ConfigFileInfo *ConfigInfo)
 {
 	ThreadHandle gt;
 
 	if( GfwList != NULL )
 	{
-		CREATE_THREAD(LoadGfwList_Thread, NULL, gt);
+		CREATE_THREAD(LoadGfwList_Thread, ConfigInfo, gt);
 		DETACH_THREAD(gt);
 	}
 
 	return 0;
 }
 
-int GfwList_Init(BOOL StartPeriodWork)
+int GfwList_Init(ConfigFileInfo *ConfigInfo, BOOL StartPeriodWork)
 {
 	int			Count;
 
-	GfwList	=	ConfigGetRawString(&ConfigInfo, "GfwList");
+	GfwList	=	ConfigGetRawString(ConfigInfo, "GfwList");
 
 	if( GfwList == NULL )
 	{
 		return 0;
 	}
 
-	File	=	ConfigGetRawString(&ConfigInfo, "GfwListDownloadPath");
+	File	=	ConfigGetRawString(ConfigInfo, "GfwListDownloadPath");
 
 	RWLock_Init(GFWListLock);
 
@@ -271,7 +271,7 @@ int GfwList_Init(BOOL StartPeriodWork)
 
 	if( StartPeriodWork == TRUE )
 	{
-		GfwList_PeriodicWork();
+		GfwList_PeriodicWork(ConfigInfo);
 	}
 
 	return 0;

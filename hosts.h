@@ -4,10 +4,11 @@
 #include "statichosts.h"
 #include "querydnsbase.h"
 #include "extendablebuffer.h"
+#include "readconfig.h"
 
-int DynamicHosts_Init(void);
+int DynamicHosts_Init(ConfigFileInfo *ConfigInfo);
 
 BOOL Hosts_Try(const char *Domain, int Type);
 
-int DynamicHosts_Start(void);
+int DynamicHosts_Start(ConfigFileInfo *ConfigInfo);
 #endif // HOSTS_H_INCLUDED

@@ -367,6 +367,10 @@ int ConfigRead(ConfigFileInfo *Info)
                 {
 					break;
 				}
+
+				ExpandPath(ValuePos, sizeof(Buffer) - (ValuePos - Buffer));
+				/* No break */
+
 			case TYPE_STRING:
 				ParseString(Option, ValuePos, ReadStatus, TRUE, Info -> fp, Buffer, sizeof(Buffer));
 				break;

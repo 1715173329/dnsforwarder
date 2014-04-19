@@ -3,8 +3,9 @@
 
 #include "stringlist.h"
 #include "stringchunk.h"
+#include "readconfig.h"
 
-int ExcludedList_Init(void);
+int ExcludedList_Init(ConfigFileInfo *ConfigInfo);
 
 BOOL IsDisabledType(int Type);
 

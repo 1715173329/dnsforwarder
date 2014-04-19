@@ -2,8 +2,9 @@
 #define _QUERY_DNS_TCP_H_
 
 #include "common.h"
+#include "readconfig.h"
 
-int QueryDNSListenTCPInit(void);
+int QueryDNSListenTCPInit(ConfigFileInfo *ConfigInfo);
 
 void QueryDNSListenTCPStart(void);
 

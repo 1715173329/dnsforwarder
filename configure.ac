@@ -35,7 +35,7 @@ AC_CHECK_LIB(m, log, ,
 AC_CHECK_LIB(m, sqrt, , 
 	AC_MSG_ERROR(No libmath found.)
 	)
-	
+
 AC_ARG_ENABLE([android],
 	[AS_HELP_STRING([--enable-android],
 	    [compile for android (default=no)]
@@ -119,7 +119,7 @@ fi
 
 
 # Checks for header files.
-AC_CHECK_HEADERS([sys/syscall.h])
+AC_CHECK_HEADERS([sys/syscall.h wordexp.h])
 
 if test "$DOWNLOADER" == "libcurl"
 then
@@ -149,6 +149,8 @@ AC_TYPE_INT32_T
 AC_FUNC_FORK
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
+AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
+AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
 
 AC_ARG_ENABLE([spinlock],
 	[AS_HELP_STRING([--enable-spinlock],

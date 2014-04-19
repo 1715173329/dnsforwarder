@@ -41,6 +41,9 @@
    and to 0 otherwise. */
 #undef HAVE_REALLOC
 
+/* setenv */
+#undef HAVE_SETENV
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
@@ -70,6 +73,12 @@
 
 /* Define to 1 if you have the <vfork.h> header file. */
 #undef HAVE_VFORK_H
+
+/* wordexp */
+#undef HAVE_WORDEXP
+
+/* Define to 1 if you have the <wordexp.h> header file. */
+#undef HAVE_WORDEXP_H
 
 /* Define to 1 if `fork' works. */
 #undef HAVE_WORKING_FORK

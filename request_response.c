@@ -16,9 +16,9 @@ static BOOL			ParallelQuery;
 static sa_family_t	ParallelMainFamily;
 static Array		Addresses_Array;
 
-static int LoadDedicatedServer(void)
+static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 {
-	const StringList	*DedicatedServer	=	ConfigGetStringList(&ConfigInfo, "DedicatedServer");
+	const StringList	*DedicatedServer	=	ConfigGetStringList(ConfigInfo, "DedicatedServer");
 
 	const char	*Itr	=	NULL;
 
@@ -43,10 +43,10 @@ static int LoadDedicatedServer(void)
 	return 0;
 }
 
-int InitAddress(void)
+int InitAddress(ConfigFileInfo *ConfigInfo)
 {
-	StringList	*tcpaddrs	=	ConfigGetStringList(&ConfigInfo, "TCPServer");
-	StringList	*udpaddrs	=	ConfigGetStringList(&ConfigInfo, "UDPServer");
+	StringList	*tcpaddrs	=	ConfigGetStringList(ConfigInfo, "TCPServer");
+	StringList	*udpaddrs	=	ConfigGetStringList(ConfigInfo, "UDPServer");
 
 	const char	*Itr	=	NULL;
 
@@ -81,7 +81,7 @@ int InitAddress(void)
 		Itr = StringList_GetNext(udpaddrs, Itr);
 	}
 
-	ParallelQuery = ConfigGetBoolean(&ConfigInfo, "ParallelQuery");
+	ParallelQuery = ConfigGetBoolean(ConfigInfo, "ParallelQuery");
 	if( ParallelQuery == TRUE )
 	{
 		int NumberOfAddr;
@@ -132,7 +132,7 @@ int InitAddress(void)
 	StringList_Free(tcpaddrs);
 	StringList_Free(udpaddrs);
 
-	return LoadDedicatedServer();
+	return LoadDedicatedServer(ConfigInfo);
 
 }
 
