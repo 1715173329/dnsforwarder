@@ -12,15 +12,14 @@
 #include "rwlock.h"
 
 static BOOL			Internet = FALSE;
+static BOOL			StaticHostsInited = FALSE;
 
 static int			UpdateInterval;
-
 static time_t		LastUpdate = 0;
 
 static const char 	*File = NULL;
 
 static ThreadHandle	GetHosts_Thread;
-
 static RWLock		HostsLock;
 
 static volatile HostsContainer	*MainDynamicContainer = NULL;
@@ -742,7 +741,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	const char	*Path;
 
-	StaticHosts_Init(ConfigInfo);
+	StaticHostsInited = ( StaticHosts_Init(ConfigInfo) >= 0 );
 
 	Path = ConfigGetRawString(ConfigInfo, "Hosts");
 
@@ -774,9 +773,9 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 		/* Internet file */
 		File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
 
-		if( ConfigGetInt32(ConfigInfo, "HostsRetryInterval") < 1 )
+		if( ConfigGetInt32(ConfigInfo, "HostsRetryInterval") < 0 )
 		{
-			ERRORMSG("`HostsFlushTimeOnFailed' is too small (< 1).\n");
+			ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
 			File = NULL;
 			return 1;
 		}
@@ -787,7 +786,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 
 		if( FileIsReadable(File) )
 		{
-			INFO("Loading the existing Hosts ...\n");
+			INFO("Loading the existing hosts file ...\n");
 			DynamicHosts_Load();
 		} else {
 			INFO("Hosts file is unreadable, this may cause some failures.\n");
@@ -802,13 +801,16 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
 {
-	ThreadHandle	t;
-	CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
-	DETACH_THREAD(t);
-
-	if( Internet == TRUE )
+	if( StaticHostsInited == TRUE || File != NULL )
 	{
-		CREATE_THREAD(GetHostsFromInternet_Thread, ConfigInfo, GetHosts_Thread);
+		ThreadHandle	t;
+		CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
+		DETACH_THREAD(t);
+
+		if( Internet == TRUE )
+		{
+			CREATE_THREAD(GetHostsFromInternet_Thread, ConfigInfo, GetHosts_Thread);
+		}
 	}
 
 	return 0;
