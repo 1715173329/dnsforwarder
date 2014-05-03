@@ -154,7 +154,7 @@ AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relat
 
 AC_ARG_ENABLE([spinlock],
 	[AS_HELP_STRING([--enable-spinlock],
-	    [spinlock will be used. (default=yes)]
+	    [spinlock will be used (default=yes)]
 	)],
 	[   case "${enableval}" in
 	    yes)  AC_CHECK_FUNCS([pthread_spin_init]) ;;
@@ -167,7 +167,7 @@ AC_ARG_ENABLE([spinlock],
 	
 AC_ARG_ENABLE([rwlock],
 	[AS_HELP_STRING([--enable-rwlock],
-	    [rwlock will be used. (default=yes)]
+	    [rwlock will be used (default=yes)]
 	)],
 	[   case "${enableval}" in
 	    yes)  AC_CHECK_FUNCS([pthread_rwlock_init]) ;;
