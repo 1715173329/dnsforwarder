@@ -62,7 +62,6 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 		{
 			INFO("Bad address : %s\n", Itr);
 		} else {
-			DEBUG_FILE("Add TCP address : %s\n", Itr);
 		}
 
 		Itr = StringList_GetNext(tcpaddrs, Itr);
@@ -75,7 +74,6 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 		{
 			INFO("Bad address : %s\n", Itr);
 		} else {
-			DEBUG_FILE("Add UDP address : %s\n", Itr);
 		}
 
 		Itr = StringList_GetNext(udpaddrs, Itr);
@@ -98,20 +96,14 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 			ERRORMSG("No UDP server specified, cannot use parallel query.\n")
 			ParallelQuery = FALSE;
 		} else {
-			DEBUG_FILE("Enable parallel query.\n");
 
 			AddressChunk_GetOneUDPBySubscript(&Addresses, &ParallelMainFamily, 0);
 
 			if( ParallelMainFamily == AF_INET )
 			{
 				AddrLen = sizeof(struct sockaddr);
-
-				DEBUG_FILE("Parallel query servers family IPv4.\n");
-
 			} else {
 				AddrLen = sizeof(struct sockaddr_in6);
-
-				DEBUG_FILE("Parallel query servers family IPv6.\n");
 			}
 
 			Array_Init(&Addresses_Array, AddrLen, NumberOfAddr, FALSE, NULL);

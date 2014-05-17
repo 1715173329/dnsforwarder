@@ -38,12 +38,13 @@ void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Doma
 			   );
 	}
 
-	DEBUG_FILE("[R][%s][%s][%s] %s.\n",
-		   Agent,
-		   DNSGetTypeName(Type),
-		   Domain,
-		   Massage
-		   );
+	DEBUG_FILE("%s[R][%s][%s][%s] %s.\n",
+			   DateAndTime,
+			   Agent,
+			   DNSGetTypeName(Type),
+			   Domain,
+			   Massage
+			   );
 }
 
 void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol)
@@ -66,12 +67,13 @@ void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domai
 			  );
 	}
 
-	DEBUG_FILE("[%c][%s][%s][%s] Timed out.\n",
-		   Protocol,
-		   Agent,
-		   DNSGetTypeName(Type),
-		   Domain
-		   );
+	DEBUG_FILE("%s[%c][%s][%s][%s] Timed out.\n",
+			  DateAndTime,
+			  Protocol,
+			  Agent,
+			  DNSGetTypeName(Type),
+			  Domain
+			  );
 }
 
 void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter)
@@ -104,7 +106,8 @@ void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain,
 			   );
 	}
 
-	DEBUG_FILE("[%c][%s][%s][%s] An error occured : %d : %s .\n",
+	DEBUG_FILE("%s[%c][%s][%s][%s] An error occured : %d : %s .\n",
+			   DateAndTime,
 			   ProtocolCharacter,
 			   Agent,
 			   DNSGetTypeName(Type),
@@ -144,14 +147,15 @@ void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const ch
 			  );
 	}
 
-	DEBUG_FILE("[%c][%s][%s][%s] :%d bytes\n%s",
-			   ProtocolCharacter,
-			   Agent,
-			   DNSGetTypeName(Type),
-			   RequestingDomain,
-			   PackageLength,
-			   InfoBuffer
-			   );
+	DEBUG_FILE("%s[%c][%s][%s][%s] : %d bytes\n%s",
+			  DateAndTime,
+			  ProtocolCharacter,
+			  Agent,
+			  DNSGetTypeName(Type),
+			  RequestingDomain,
+			  PackageLength,
+			  InfoBuffer
+			  );
 }
 
 void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const char *Message)
@@ -172,7 +176,7 @@ void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const
 		printf("%s[B][%s] %s :\n%s", DateAndTime, RequestingDomain, Message == NULL ? "" : Message, InfoBuffer);
 	}
 
-	DEBUG_FILE("[B][%s] %s :\n%s", RequestingDomain, Message == NULL ? "" : Message, InfoBuffer);
+	DEBUG_FILE("%s[B][%s] %s :\n%s", DateAndTime, RequestingDomain, Message == NULL ? "" : Message, InfoBuffer);
 }
 
 void ShowFatalMessage(const char *Message, int ErrorCode)

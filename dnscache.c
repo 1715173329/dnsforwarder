@@ -77,8 +77,6 @@ static void DNSCacheTTLCountdown_Thread(void)
 
 					*(char *)(MapStart + Node -> Offset) = 0xFD;
 
-					DEBUG_FILE("Cache removed : %s.\n", MapStart + Node -> Offset + 1);
-
 					CacheHT_RemoveFromSlot(CacheInfo, loop, Node);
 
 					--(*CacheCount);
@@ -113,23 +111,17 @@ static BOOL IsReloadable(void)
 {
 	struct _Header	*Header = (struct _Header *)MapStart;
 
-	DEBUG_FILE("Program cache version : %d, the existing cache version : %d\n", CACHE_VERSION, Header -> Ver);
-
 	if( Header -> Ver != CACHE_VERSION )
 	{
 		ERRORMSG("The existing cache is not compatible with this version of program.\n");
 		return FALSE;
 	}
 
-	DEBUG_FILE("Specified cache size : %d, the existing cache size : %d\n", CacheSize, Header -> CacheSize);
-
 	if( Header -> CacheSize != CacheSize )
 	{
 		ERRORMSG("The size of the existing cache and the value of `CacheSize' should be equal.\n");
 		return FALSE;
 	}
-
-	DEBUG_FILE("The existing cache is to be reloaded.\n");
 
 	return TRUE;
 }
@@ -485,8 +477,6 @@ static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody,
 			Node -> TTL = RecordTTL;
 
 			Node -> TimeAdded = CurrentTime;
-
-			DEBUG_FILE("Added cache : %s, TTL : %d\n", Buffer + 1, RecordTTL);
 
 			/* Index this entry on the hash table */
 			CacheHT_InsertToSlot(CacheInfo, Buffer + 1, Subscript, Node, NULL);
