@@ -9,9 +9,6 @@
 BOOL			ShowMassages = TRUE;
 BOOL			ErrorMessages = TRUE;
 
-#ifdef INTERNAL_DEBUG
-
-static EFFECTIVE_LOCK	Debug_Mutex;
 static FILE				*Debug_File = NULL;
 
 static int	ThresholdLength = 0;
@@ -19,11 +16,14 @@ static int	CurrentLength = 0;
 static char	FilePath[1024];
 
 
-int Debug_Init(int _ThresholdLength)
+int Debug_Init(ConfigFileInfo *ConfigInfo)
 {
-	GetFileDirectory(FilePath);
-	strcat(FilePath, PATH_SLASH_STR);
-	strcat(FilePath, "Debug.log");
+	if( ConfigGetBoolean(ConfigInfo, "LogOn") == FALSE )
+	{
+		return 1;
+	}
+
+	sprintf(FilePath, "%s%cdnsforwarder.log", ConfigGetRawString(ConfigInfo, "LogFileFolder"), PATH_SLASH_CH);
 
 	Debug_File = fopen(FilePath, "r+");
 	if( Debug_File == NULL )
@@ -35,12 +35,9 @@ int Debug_Init(int _ThresholdLength)
 		CurrentLength = ftell(Debug_File);
 	}
 
-	EFFECTIVE_LOCK_INIT(Debug_Mutex);
+	ThresholdLength = ConfigGetInt32(ConfigInfo, "LogFileThresholdLength");
 
-	ThresholdLength = _ThresholdLength;
-
-	DEBUG_FILE("\n\n\n\n\nNew session\n");
-	DEBUG_FILE("CurrentLength : %d\n", CurrentLength);
+	Debug_PrintFile("\n\n\n\n\nNew session\n");
 
 	return 0;
 }
@@ -75,10 +72,9 @@ static void CheckLength(void)
 	}
 }
 
-void Debug_PrintFile(const char *Function, int Line, const char *format, ...)
+void Debug_PrintFile(const char *format, ...)
 {
 	va_list ap;
-	char DateAndTime[32];
 
 	if( Debug_Inited() == FALSE )
 	{
@@ -87,19 +83,11 @@ void Debug_PrintFile(const char *Function, int Line, const char *format, ...)
 
 	va_start(ap, format);
 
-	EFFECTIVE_LOCK_GET(Debug_Mutex);
-
 	CheckLength();
 
-	GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
-
-	CurrentLength += fprintf(Debug_File, "T:%d %s:%d %s : ", GET_THREAD_ID(), Function, Line, DateAndTime);
 	CurrentLength += vfprintf(Debug_File, format, ap);
 
 	fflush(Debug_File);
 
-	EFFECTIVE_LOCK_RELEASE(Debug_Mutex);
-
 	va_end(ap);
 }
-#endif

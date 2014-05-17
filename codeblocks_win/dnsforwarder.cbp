@@ -64,24 +64,6 @@
 					<Add option="-s" />
 				</Linker>
 			</Target>
-			<Target title="Release_x64_InternalDebug">
-				<Option platforms="Windows;" />
-				<Option output="./bin/Release_x64_id/dnsforwarder" prefix_auto="1" extension_auto="1" />
-				<Option object_output="./obj/Release_x64_id/" />
-				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_w64" />
-				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder\codeblocks_win\bin\Release\dnsforwarder.config&quot;' />
-				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-Os" />
-					<Add option="-O3" />
-					<Add option="-DWIN64" />
-					<Add option="-DINTERNAL_DEBUG" />
-				</Compiler>
-				<Linker>
-					<Add option="-s" />
-				</Linker>
-			</Target>
 			<Target title="Release_Android">
 				<Option platforms="Windows;" />
 				<Option output="./bin/Release_Android/dnsforwarder" prefix_auto="0" extension_auto="0" />
@@ -99,29 +81,6 @@
 					<Add option="-DDOWNLOAD_WGET" />
 					<Add option="-DBASE64_DECODER_UUDECODE" />
 					<Add option="-DANDROID" />
-				</Compiler>
-				<Linker>
-					<Add option="-s" />
-				</Linker>
-			</Target>
-			<Target title="Release_Android Internal_Debug">
-				<Option platforms="Windows;" />
-				<Option output="./bin/Release_Android_id/dnsforwarder" prefix_auto="0" extension_auto="0" />
-				<Option object_output="./obj/Release_Android_id/" />
-				<Option type="1" />
-				<Option compiler="gnu_gcc_compiler_arm-linux-androideabi" />
-				<Option projectCompilerOptionsRelation="1" />
-				<Option projectLinkerOptionsRelation="1" />
-				<Option projectIncludeDirsRelation="1" />
-				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-Os" />
-					<Add option="-O3" />
-					<Add option="-DHAVE_PTHREAD_RWLOCK_INIT" />
-					<Add option="-DDOWNLOAD_WGET" />
-					<Add option="-DBASE64_DECODER_UUDECODE" />
-					<Add option="-DANDROID" />
-					<Add option="-DINTERNAL_DEBUG" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
