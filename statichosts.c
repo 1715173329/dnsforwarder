@@ -82,7 +82,7 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 		/* Check if it is CNAME */
 		for(Itr = IPOrCName; *Itr != '\0'; ++Itr)
 		{
-			if( isalpha(*Itr) || *Itr == '-' || *Itr == '.' )
+			if( isalpha(*Itr) || *Itr == '-' )
 			{
 				return HOSTS_TYPE_CNAME;
 			}
