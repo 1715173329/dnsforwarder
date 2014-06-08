@@ -119,7 +119,7 @@ void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain,
 
 void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const char *Package, int PackageLength, char ProtocolCharacter)
 {
-	DNSRecordType	Type;
+	DNSRecordType	Type = DNS_TYPE_UNKNOWN;
 
 	char DateAndTime[32];
 	char InfoBuffer[1024];
