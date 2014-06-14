@@ -11,11 +11,10 @@
 #include "internalsocket.h"
 #include "rwlock.h"
 
-static BOOL			Internet = FALSE;
 static BOOL			StaticHostsInited = FALSE;
 
 static int			UpdateInterval;
-static time_t		LastUpdate = 0;
+static int			HostsRetryInterval;
 
 static const char 	*File = NULL;
 
@@ -118,93 +117,62 @@ static int DynamicHosts_Load(void)
 	return 0;
 }
 
-static BOOL NeedReload(void)
+const char **GetURLs(StringList *s)
 {
-	if( File == NULL )
+	const char **URLs;
+	int NumberOfURLs = 0;
+	int Count = StringList_Count(s);
+	const char *Str_Itr;
+
+	URLs = malloc(sizeof(char *) * (Count + 1));
+	if( URLs == NULL )
 	{
-		return FALSE;
+		return NULL;
 	}
 
-	if( time(NULL) - LastUpdate > UpdateInterval )
+	Str_Itr = StringList_GetNext(s, NULL);
+	while( Str_Itr != NULL )
 	{
+		URLs[NumberOfURLs] = Str_Itr;
+		++NumberOfURLs;
 
-#ifdef WIN32
-
-		static FILETIME	LastFileTime = {0, 0};
-		WIN32_FIND_DATA	Finddata;
-		HANDLE			Handle;
-
-		Handle = FindFirstFile(File, &Finddata);
-
-		if( Handle == INVALID_HANDLE_VALUE )
-		{
-			return FALSE;
-		}
-
-		if( memcmp(&LastFileTime, &(Finddata.ftLastWriteTime), sizeof(FILETIME)) != 0 )
-		{
-			LastUpdate = time(NULL);
-			LastFileTime = Finddata.ftLastWriteTime;
-			FindClose(Handle);
-			return TRUE;
-		} else {
-			LastUpdate = time(NULL);
-			FindClose(Handle);
-			return FALSE;
-		}
-
-#else /* WIN32 */
-		static time_t	LastFileTime = 0;
-		struct stat		FileStat;
-
-		if( stat(File, &FileStat) != 0 )
-		{
-
-			return FALSE;
-		}
-
-		if( LastFileTime != FileStat.st_mtime )
-		{
-			LastUpdate = time(NULL);
-			LastFileTime = FileStat.st_mtime;
-
-			return TRUE;
-		} else {
-			LastUpdate = time(NULL);
-
-			return FALSE;
-		}
-
-#endif /* WIN32 */
-	} else {
-		return FALSE;
+		Str_Itr = StringList_GetNext(s, Str_Itr);
 	}
+
+	URLs[NumberOfURLs] = NULL;
+
+	return URLs;
 }
 
-static int TryLoadHosts(void)
+static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File)
 {
-	if( NeedReload() == TRUE )
-	{
-		ThreadHandle t = INVALID_THREAD;
-		CREATE_THREAD(DynamicHosts_Load, NULL, t);
-		DETACH_THREAD(t);
-	}
-	return 0;
+	ERRORMSG("Getting Hosts %s failed. Waiting %d second(s) to try again.\n", URL, HostsRetryInterval);
+}
+
+static void GetHostsFromInternet_Succeed(const char *URL, const char *File)
+{
+	INFO("Hosts %s saved.\n", URL);
 }
 
 static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 {
-	const char *URL = ConfigGetRawString(ConfigInfo, "Hosts");
-	const char *Script = ConfigGetRawString(ConfigInfo, "HostsScript");
-	int			HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
+	const char	*Script = ConfigGetRawString(ConfigInfo, "HostsScript");
 	int			DownloadState;
+	const char	**URLs;
+
+	URLs = GetURLs(ConfigGetStringList(ConfigInfo, "Hosts"));
 
 	while(1)
 	{
 
-		INFO("Getting Hosts From %s ...\n", URL);
+		if( URLs[1] == NULL )
+		{
+			INFO("Getting hosts from %s ...\n", URLs[0]);
+		} else {
+			INFO("Getting hosts from various places ...\n");
+		}
 
-		DownloadState = GetFromInternet(URL, File);
+		DownloadState = GetFromInternet_MultiFiles(URLs, File, HostsRetryInterval, -1, GetHostsFromInternet_Failed, GetHostsFromInternet_Succeed);
 		if( DownloadState == 0 )
 		{
 			INFO("Hosts saved at %s.\n", File);
@@ -221,13 +189,9 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 			{
 				return;
 			}
-
-			SLEEP(UpdateInterval * 1000);
-
-		} else {
-			ERRORMSG("Getting Hosts from Internet failed : %d. Waiting %d second(s) to try again.\n", (-1) * DownloadState, HostsRetryInterval);
-			SLEEP(HostsRetryInterval * 1000);
 		}
+
+		SLEEP(UpdateInterval * 1000);
 	}
 }
 
@@ -266,7 +230,7 @@ static BOOL Hosts_IsExcludedDomain(HostsContainer *Container, const char *Name)
 #define	MATCH_STATE_PERFECT		0
 #define	MATCH_STATE_ONLY_CNAME	1
 #define	MATCH_STATE_NONE		(-1)
-#define	MATCH_STATE_DESABLED	(-2)
+#define	MATCH_STATE_DISABLED	(-2)
 static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
 {
 	if( Container == NULL )
@@ -276,7 +240,7 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 
 	if( Hosts_IsExcludedDomain(Container, Name) == TRUE )
 	{
-		return MATCH_STATE_DESABLED;
+		return MATCH_STATE_DISABLED;
 	}
 
 	switch( Type )
@@ -481,11 +445,6 @@ int DynamicHosts_SocketLoop(void)
 					if( State < 1 )
 					{
 						break;
-					}
-
-					if( Internet == FALSE )
-					{
-						TryLoadHosts();
 					}
 
 					MatchState = Hosts_Match(&MainStaticContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
@@ -728,7 +687,7 @@ BOOL Hosts_Try(const char *Domain, int Type)
 		} else {
 			return FALSE;
 		}
-	} else if( MatchState == MATCH_STATE_DESABLED )
+	} else if( MatchState == MATCH_STATE_DISABLED )
 	{
 		return FALSE;
 	} else {
@@ -752,48 +711,28 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 	}
 
 	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
+	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
 
 	RWLock_Init(HostsLock);
 
-	if( strncmp(Path, "http", 4) != 0 && strncmp(Path, "ftp", 3) != 0 )
+	File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
+
+	if( HostsRetryInterval < 0 )
 	{
-		/* Local file */
-		File = Path;
-
-		INFO("Hosts File : \"%s\"\n", Path);
-
-		if( DynamicHosts_Load() != 0 )
-		{
-			ERRORMSG("Loading Hosts failed.\n");
-			File = NULL;
-			return 1;
-		}
-
-	} else {
-		/* Internet file */
-		File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
-
-		if( ConfigGetInt32(ConfigInfo, "HostsRetryInterval") < 0 )
-		{
-			ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
-			File = NULL;
-			return 1;
-		}
-
-		Internet = TRUE;
-
-		INFO("Hosts File : \"%s\" -> \"%s\"\n", Path, File);
-
-		if( FileIsReadable(File) )
-		{
-			INFO("Loading the existing hosts file ...\n");
-			DynamicHosts_Load();
-		} else {
-			INFO("Hosts file is unreadable, this may cause some failures.\n");
-		}
+		ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
+		File = NULL;
+		return 1;
 	}
 
-	LastUpdate = time(NULL);
+	INFO("Local hosts file : \"%s\"\n", File);
+
+	if( FileIsReadable(File) )
+	{
+		INFO("Loading the existing hosts file ...\n");
+		DynamicHosts_Load();
+	} else {
+		INFO("Hosts file is unreadable, this may cause some failures.\n");
+	}
 
 	return 0;
 
@@ -801,13 +740,14 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
 {
-	if( StaticHostsInited == TRUE || File != NULL )
+	if( StaticHostsInited == TRUE )
 	{
 		ThreadHandle	t;
+
 		CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
 		DETACH_THREAD(t);
 
-		if( Internet == TRUE )
+		if( File != NULL )
 		{
 			CREATE_THREAD(GetHostsFromInternet_Thread, ConfigInfo, GetHosts_Thread);
 		}

@@ -302,7 +302,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 						case IP_MISCELLANEOUS_TYPE_BLOCK:
 							if( Block == TRUE )
 							{
-								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in blocked list, discarded");
+								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in `UDPBlock_IP', discarded");
 								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 								return TRUE;
 							}

@@ -1357,8 +1357,8 @@ Optional Features:
   --enable-android        compile for android (default=no)
   --enable-downloader     downloader, libcurl, wget, or no (default=libcurl)
   --enable-base64decoder  base64decoder, openssl or uudecode (default=openssl)
-  --enable-spinlock       spinlock will be used. (default=yes)
-  --enable-rwlock         rwlock will be used. (default=yes)
+  --enable-spinlock       spinlock will be used (default=yes)
+  --enable-rwlock         rwlock will be used (default=yes)
   --enable-debug          enable DEBUG mode (default=no)
   --enable-static         static link (default=no)
 

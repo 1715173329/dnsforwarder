@@ -819,3 +819,82 @@ int ExpandPath(char *String, int BufferLength)
 #endif
 #endif
 }
+
+char *GetLocalPathFromURL(const char *URL, char *Buffer, int BufferLength)
+{
+	const char *Itr;
+	char *Itr_Buffer;
+
+	Itr = strstr(URL, "://");
+	if( Itr == NULL )
+	{
+		return NULL;
+	}
+
+	++Itr;
+	for( ; *Itr == '/'; ++Itr );
+
+#ifndef WIN32
+	--Itr;
+#endif
+
+	if( strlen(Itr) + 1 > BufferLength )
+	{
+		return NULL;
+	}
+
+	strcpy(Buffer, Itr);
+
+#ifdef WIN32
+	for( Itr_Buffer = Buffer; *Itr_Buffer != '\0'; ++Itr_Buffer )
+	{
+		if( *Itr_Buffer == '/' )
+		{
+			*Itr_Buffer = '\\';
+		}
+	}
+#endif
+
+	if( ExpandPath(Buffer, BufferLength) == 0 )
+	{
+		return Buffer;
+	} else {
+		return NULL;
+	}
+
+}
+
+int CopyAFile(const char *Src, const char *Dst, BOOL Append)
+{
+	FILE *Src_Fp, *Dst_Fp;
+	int ch;
+
+	Src_Fp = fopen(Src, "r");
+	if( Src_Fp == NULL )
+	{
+		return -1;
+	}
+
+	Dst_Fp = fopen(Dst, Append == TRUE ? "a+" : "w");
+	if( Dst_Fp == NULL )
+	{
+		fclose(Src_Fp);
+		return -2;
+	}
+
+	do{
+		ch = fgetc(Src_Fp);
+		if( ch != EOF && !feof(Src_Fp) )
+		{
+			fputc(ch, Dst_Fp);
+		} else {
+			break;
+		}
+
+	} while( TRUE );
+
+	fclose(Src_Fp);
+	fclose(Dst_Fp);
+
+	return 0;
+}

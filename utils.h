@@ -115,4 +115,8 @@ int SetProgramEnvironment(const char *Name, const char *Value);
 
 int ExpandPath(char *String, int BufferLength);
 
+char *GetLocalPathFromURL(const char *URL, char *Buffer, int BufferLength);
+
+int CopyAFile(const char *Src, const char *Dst, BOOL Append);
+
 #endif /* _UTILS_ */
