@@ -228,7 +228,13 @@ static int DNSFetchFromHosts(char *Content, int ContentLength, SOCKET ThisSocket
 			break;
 
 		case MATCH_STATE_ONLY_CNAME:
-			return InternalInterface_SendTo(INTERNAL_INTERFACE_HOSTS, ThisSocket, Content, ContentLength);
+			if( InternalInterface_SendTo(INTERNAL_INTERFACE_HOSTS, ThisSocket, Content, ContentLength) > 0 )
+			{
+				return 0;
+			} else {
+				return -1;
+			}
+
 			break;
 
 		case MATCH_STATE_PERFECT:
@@ -289,8 +295,6 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 				return StateOfReceiving;
 			}
 		}
-
-
 
 	} else {
 		StateOfReceiving = -1;
