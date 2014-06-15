@@ -8,7 +8,11 @@
 
 int DynamicHosts_Init(ConfigFileInfo *ConfigInfo);
 
-BOOL Hosts_Try(const char *Domain, int Type);
+#define	MATCH_STATE_PERFECT		0
+#define	MATCH_STATE_ONLY_CNAME	1
+#define	MATCH_STATE_NONE		(-1)
+#define	MATCH_STATE_DISABLED	(-2)
+int Hosts_Try(char *Content, int *ContentLength);
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo);
 #endif // HOSTS_H_INCLUDED

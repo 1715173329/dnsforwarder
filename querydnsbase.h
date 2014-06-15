@@ -27,7 +27,7 @@ void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const
 
 void ShowFatalMessage(const char *Message, int ErrorCode);
 
-#define QUERY_RESULT_SUCESS		(0)
+#define QUERY_RESULT_SUCCESS		(0)
 #define QUERY_RESULT_DISABLE	(-1)
 #define QUERY_RESULT_ERROR		(-2)
 

@@ -227,10 +227,6 @@ static BOOL Hosts_IsExcludedDomain(HostsContainer *Container, const char *Name)
 	return StringChunk_Match((StringChunk *)&(Container -> ExcludedDomains), Name, NULL, NULL);
 }
 
-#define	MATCH_STATE_PERFECT		0
-#define	MATCH_STATE_ONLY_CNAME	1
-#define	MATCH_STATE_NONE		(-1)
-#define	MATCH_STATE_DISABLED	(-2)
 static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
 {
 	if( Container == NULL )
@@ -431,7 +427,7 @@ int DynamicHosts_SocketLoop(void)
 					int TotalLength = 0;
 					int	MatchState;
 					const char *MatchResult = NULL;
-					BOOL GetLock = FALSE;
+					BOOL GotLock = FALSE;
 					BOOL NeededSendBack = TRUE;
 
 					State = recvfrom(HostsIncomeSocket,
@@ -453,21 +449,39 @@ int DynamicHosts_SocketLoop(void)
 						RWLock_WrLock(HostsLock);
 						MatchState = Hosts_Match(MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
 
-						GetLock = TRUE;
+						GotLock = TRUE;
 					}
 
 					switch( MatchState )
 					{
 						case MATCH_STATE_PERFECT:
-							((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.Direction = 1;
-							((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.AuthoritativeAnswer = 0;
-							((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.RecursionAvailable = 1;
-							((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.ResponseCode = 0;
-							((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.Type = 0;
-							DNSSetAnswerCount(RequestEntity + sizeof(ControlHeader), 1);
-							TotalLength = State;
-							TotalLength += Hosts_GenerateSingleRecord(Header -> RequestingType, MatchResult, RequestEntity + State);
-							NeededSendBack = TRUE;
+							{
+								BOOL EDNSEnabled = FALSE;
+
+								if( DNSRemoveEDNSPseudoRecord(RequestEntity + sizeof(ControlHeader), &State) == EDNS_REMOVED )
+								{
+									EDNSEnabled = TRUE;
+								}
+
+								((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.Direction = 1;
+								((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.AuthoritativeAnswer = 0;
+								((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.RecursionAvailable = 1;
+								((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.ResponseCode = 0;
+								((DNSHeader *)(RequestEntity + sizeof(ControlHeader))) -> Flags.Type = 0;
+								DNSSetAnswerCount(RequestEntity + sizeof(ControlHeader), 1);
+								TotalLength = State;
+								TotalLength += Hosts_GenerateSingleRecord(Header -> RequestingType, MatchResult, RequestEntity + State);
+								NeededSendBack = TRUE;
+
+								if( EDNSEnabled == TRUE )
+								{
+									int	NewEntityLength = 0;
+
+									NewEntityLength = TotalLength - sizeof(ControlHeader);
+									DNSAppendEDNSPseudoRecord(RequestEntity + sizeof(ControlHeader), &NewEntityLength);
+									TotalLength = NewEntityLength + sizeof(ControlHeader);
+								}
+							}
 							break;
 
 						case MATCH_STATE_ONLY_CNAME:
@@ -483,7 +497,7 @@ int DynamicHosts_SocketLoop(void)
 							break;
 					}
 
-					if( GetLock == TRUE )
+					if( GotLock == TRUE )
 					{
 						RWLock_UnWLock(HostsLock);
 					}
@@ -664,36 +678,70 @@ int DynamicHosts_SocketLoop(void)
 
 }
 
-BOOL Hosts_Try(const char *Domain, int Type)
+int Hosts_Try(char *Content, int *ContentLength)
 {
-	int MatchState;
-	const char *Result;
+	ControlHeader	*Header = (ControlHeader *)Content;
+	char			*RequestEntity = Content + sizeof(ControlHeader);
 
-	MatchState = Hosts_Match(&MainStaticContainer, Domain, Type, &Result);
-	if( MatchState == MATCH_STATE_NONE )
-	{
-		if( MainDynamicContainer != NULL )
-		{
-			RWLock_WrLock(HostsLock);
-			MatchState = Hosts_Match(MainDynamicContainer, Domain, Type, &Result);
-			RWLock_UnWLock(HostsLock);
+	int			MatchState;
+	const char	*MatchResult;
+	BOOL		GotLock = FALSE;
 
-			if( MatchState == MATCH_STATE_NONE )
-			{
-				return FALSE;
-			} else {
-				return TRUE;
-			}
-		} else {
-			return FALSE;
-		}
-	} else if( MatchState == MATCH_STATE_DISABLED )
+	MatchState = Hosts_Match(&MainStaticContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
+	if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
 	{
-		return FALSE;
-	} else {
-		return TRUE;
+		RWLock_WrLock(HostsLock);
+		MatchState = Hosts_Match(MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
+		GotLock = TRUE;
 	}
 
+	if( MatchState == MATCH_STATE_PERFECT )
+	{
+		BOOL EDNSEnabled = FALSE;
+
+		switch( DNSRemoveEDNSPseudoRecord(RequestEntity, ContentLength) )
+		{
+			case EDNS_REMOVED:
+				EDNSEnabled = TRUE;
+				break;
+
+			case EDNS_NO_AR:
+				EDNSEnabled = FALSE;
+				break;
+
+			default:
+				if( GotLock == TRUE )
+				{
+					RWLock_UnWLock(HostsLock);
+				}
+
+				return MATCH_STATE_NONE;
+		}
+
+		((DNSHeader *)(RequestEntity)) -> Flags.Direction = 1;
+		((DNSHeader *)(RequestEntity)) -> Flags.AuthoritativeAnswer = 0;
+		((DNSHeader *)(RequestEntity)) -> Flags.RecursionAvailable = 1;
+		((DNSHeader *)(RequestEntity)) -> Flags.ResponseCode = 0;
+		((DNSHeader *)(RequestEntity)) -> Flags.Type = 0;
+		DNSSetAnswerCount(RequestEntity, 1);
+		*ContentLength += Hosts_GenerateSingleRecord(Header -> RequestingType, MatchResult, Content + *ContentLength);
+
+		if( EDNSEnabled == TRUE )
+		{
+			int	NewEntityLength = 0;
+
+			NewEntityLength = *ContentLength - sizeof(ControlHeader);
+			DNSAppendEDNSPseudoRecord(RequestEntity, &NewEntityLength);
+			*ContentLength = NewEntityLength + sizeof(ControlHeader);
+		}
+	}
+
+	if( GotLock == TRUE )
+	{
+		RWLock_UnWLock(HostsLock);
+	}
+
+	return MatchState;
 }
 
 int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)

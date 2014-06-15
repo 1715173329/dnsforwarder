@@ -18,8 +18,10 @@ typedef struct _ExtendableBuffer{
 	uint32_t		InitialSize;
 
 	/* GuardSize */
-	int32_t		GuardSize;
+	int32_t			GuardSize;
 } ExtendableBuffer;
+
+#define EXTENDABLEBUFFER_INIT_STATIC {NULL, 0, 0, 0, -1}
 
 int ExtendableBuffer_Init(	__in ExtendableBuffer	*eb,
 							__in uint32_t			InitSize,

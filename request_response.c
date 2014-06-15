@@ -232,6 +232,7 @@ void SetUDPAppendEDNSOpt(BOOL State)
 	UDPAppendEDNSOpt = State;
 }
 
+#define	IP_MISCELLANEOUS_TYPE_UNKNOWN		0
 #define	IP_MISCELLANEOUS_TYPE_BLOCK			1
 #define	IP_MISCELLANEOUS_TYPE_SUBSTITUTE	2
 static IpChunk	*IPMiscellaneous = NULL;
@@ -252,7 +253,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 		const unsigned char *Answer;
 		uint32_t *Data;
 
-		int	ActionType;
+		int	ActionType = IP_MISCELLANEOUS_TYPE_UNKNOWN;
 		const char *ActionData;
 
 		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
@@ -270,14 +271,9 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 		{
 			if( IPMiscellaneous != NULL )
 			{
-				if( IpChunk_Find(IPMiscellaneous, *Data, &ActionType, NULL) == TRUE )
+				if( IpChunk_Find(IPMiscellaneous, *Data, &ActionType, NULL) == TRUE && ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
 				{
-					if( ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
-					{
-						ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
-					} else {
-						ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
-					}
+					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 				} else {
 					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
 				}
@@ -819,8 +815,6 @@ int QueryDNSViaUDP(void)
 						}
 						FD_SET(UDPQueryOutcomeSocket, &ReadSet);
 					}
-
-
 
 					SendQueryViaUDP(UDPQueryOutcomeSocket,
 									RequestEntity + sizeof(ControlHeader),
