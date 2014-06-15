@@ -220,14 +220,23 @@ static int QueryFromServer(char *Content, int ContentLength, SOCKET ThisSocket)
 
 static int DNSFetchFromHosts(char *Content, int ContentLength, SOCKET ThisSocket)
 {
-	ControlHeader	*Header = (ControlHeader *)Content;
-
-	if( Hosts_Try(Header -> RequestingDomain, Header -> RequestingType) == TRUE )
+	switch ( Hosts_Try(Content, &ContentLength) )
 	{
-		return InternalInterface_SendTo(INTERNAL_INTERFACE_HOSTS, ThisSocket, Content, ContentLength);
-	} else {
-		return -1;
+		case MATCH_STATE_NONE:
+		case MATCH_STATE_DISABLED:
+			return -1;
+			break;
+
+		case MATCH_STATE_ONLY_CNAME:
+			return InternalInterface_SendTo(INTERNAL_INTERFACE_HOSTS, ThisSocket, Content, ContentLength);
+			break;
+
+		case MATCH_STATE_PERFECT:
+			return ContentLength;
+			break;
 	}
+
+	return -1;
 }
 
 int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket)
@@ -269,7 +278,19 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 			}
 		} else {
 			DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_HOSTS);
+			if( StateOfReceiving > 0 )
+			{
+				ShowNormalMassage(Header -> Agent,
+									Header -> RequestingDomain,
+									RequestEntity,
+									StateOfReceiving - sizeof(ControlHeader),
+									'H'
+									);
+				return StateOfReceiving;
+			}
 		}
+
+
 
 	} else {
 		StateOfReceiving = -1;
@@ -285,7 +306,7 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 	{
 		return QUERY_RESULT_ERROR;
 	} else {
-		return QUERY_RESULT_SUCESS;
+		return QUERY_RESULT_SUCCESS;
 	}
 }
 

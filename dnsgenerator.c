@@ -301,3 +301,30 @@ int DNSAppendAnswerRecord(__inout char *OriginBody, __in char *Record, __in int 
 	DNSSetAnswerCount(OriginBody, DNSGetAnswerCount(OriginBody) + 1);
 	return DNSJumpOverAnswerRecords(OriginBody) - OriginBody + RecordLength;
 }
+
+int DNSRemoveEDNSPseudoRecord(char *RequestContent, int *RequestLength)
+{
+	if( DNSGetAdditionalCount(RequestContent) == 1 )
+	{
+		const char *AdditionalRecords;
+		AdditionalRecords = DNSJumpOverQuestionRecords(RequestContent);
+		if( DNSGetRecordType(AdditionalRecords) == DNS_TYPE_OPT )
+		{
+			DNSSetAdditionalCount(RequestContent, 0);
+			*RequestLength -= OPT_PSEUDORECORD_LENGTH;
+
+			return EDNS_REMOVED;
+		} else {
+			return EDNS_NOT_EDNS;
+		}
+	} else {
+		return EDNS_NO_AR;
+	}
+}
+
+void DNSAppendEDNSPseudoRecord(char *RequestContent, int *RequestLength)
+{
+	memcpy((char *)RequestContent + *RequestLength, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
+	DNSSetAdditionalCount(RequestContent, 1);
+	*RequestLength += OPT_PSEUDORECORD_LENGTH;
+}

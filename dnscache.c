@@ -737,11 +737,18 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 		return -1;
 	}
 
-	EDNSEnabled = (DNSGetAdditionalCount(RequestContent) > 0);
-	if( EDNSEnabled == TRUE )
+	switch( DNSRemoveEDNSPseudoRecord(RequestContent, &RequestLength) )
 	{
-		DNSSetAdditionalCount(RequestContent, 0);
-		RequestLength = DNSJumpOverQuestionRecords(RequestContent) - RequestContent;
+		case EDNS_REMOVED:
+			EDNSEnabled = TRUE;
+			break;
+
+		case EDNS_NO_AR:
+			EDNSEnabled = FALSE;
+			break;
+
+		default:
+			return -1;
 	}
 
 	RecordsCount = DNSCache_GetByQuestion(RequestContent, RequestContent + RequestLength, BufferLength - RequestLength, &RecordsLength, time(NULL));
@@ -762,13 +769,15 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
 
 		if( EDNSEnabled == TRUE )
 		{
-			memcpy((char *)RequestContent + CompressedLength, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
-			CompressedLength += OPT_PSEUDORECORD_LENGTH;
-			DNSSetAdditionalCount(RequestContent, 1);
+			DNSAppendEDNSPseudoRecord(RequestContent, &CompressedLength);
 		}
 
 		return CompressedLength;
 	} else {
+		if( EDNSEnabled == TRUE )
+		{
+			DNSAppendEDNSPseudoRecord(RequestContent, &RequestLength);
+		}
 		return -1;
 	}
 }

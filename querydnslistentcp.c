@@ -77,7 +77,7 @@ static int Query(char *Content, int ContentLength, int BufferLength, SOCKET This
 
 	switch( State )
 	{
-		case QUERY_RESULT_SUCESS:
+		case QUERY_RESULT_SUCCESS:
 			InternalInterface_QueryContextAddTCP(&Context, Header, ThisSocket);
 			return 0;
 			break;

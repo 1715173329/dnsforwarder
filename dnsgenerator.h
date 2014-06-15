@@ -69,4 +69,11 @@ int DNSGenResourceRecord(	__out char		*Buffer,
 
 int DNSAppendAnswerRecord(__inout char *OriginBody, __in char *Record, __in int RecordLength);
 
+#define	EDNS_REMOVED	1
+#define	EDNS_NO_AR		0
+#define EDNS_NOT_EDNS	(-1)
+int DNSRemoveEDNSPseudoRecord(char *RequestContent, int *RequestLength);
+
+void DNSAppendEDNSPseudoRecord(char *RequestContent, int *RequestLength);
+
 #endif /* _DNS_GENERATOR_H_ */

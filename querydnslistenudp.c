@@ -90,7 +90,7 @@ static int Query(char *Content, int ContentLength, int BufferLength, Address_Typ
 	State = QueryBase(Content, ContentLength, BufferLength, UDPOutcomeSocket);
 	switch( State )
 	{
-		case QUERY_RESULT_SUCESS:
+		case QUERY_RESULT_SUCCESS:
 			ret = 0;
 			break;
 
