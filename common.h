@@ -94,6 +94,8 @@
 	#define WILDCARD_MATCH(p, s)	PathMatchSpec((s), (p))
 	#define WILDCARD_MATCHED		TRUE	/* Used as return value */
 
+	#define	CONNECT_FUNCTION_BLOCKED	WSAEWOULDBLOCK
+
 	typedef short	sa_family_t;
 
 #else /* For Linux below */
@@ -234,6 +236,8 @@
 
 	#define WILDCARD_MATCH(p, s)	fnmatch((p), (s), FNM_NOESCAPE)
 	#define WILDCARD_MATCHED	0
+
+	#define	CONNECT_FUNCTION_BLOCKED	EINPROGRESS
 
 #endif /* WIN32 */
 

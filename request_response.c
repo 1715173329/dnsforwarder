@@ -394,6 +394,45 @@ static void SendBack(SOCKET Socket,
 	}
 }
 
+static AddressList *TCPProxies = NULL;
+
+int TCPProxies_Init(StringList *Proxies)
+{
+	const char *Itr = NULL;
+
+	if( Proxies == NULL )
+	{
+		return 0;
+	}
+
+	if( TCPProxies == NULL )
+	{
+		TCPProxies = malloc(sizeof(AddressList));
+		if( TCPProxies == NULL )
+		{
+			return -1;
+		}
+
+		if( AddressList_Init(TCPProxies) != 0 )
+		{
+			return -2;
+		}
+	}
+
+	Itr = StringList_GetNext(Proxies, NULL);
+	while( Itr != NULL )
+	{
+		if( AddressList_Add_From_String(TCPProxies, Itr, 1080) != 0 )
+		{
+			INFO("Bad address : %s\n", Itr);
+		}
+
+		Itr = StringList_GetNext(Proxies, Itr);
+	}
+
+	return 0;
+}
+
 static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 {
 	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'T');
@@ -403,6 +442,67 @@ static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 	{
 		AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
 	}
+}
+
+static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Family)
+{
+#   define  CONNECT_TIMEOUT 2
+
+	SOCKET TCPSocket;
+#ifdef WIN32
+	clock_t TimeStart;
+#endif
+	fd_set rfd;
+	struct timeval TimeLimit = {CONNECT_TIMEOUT, 0};
+
+	INFO("Connecting to TCP server ...\n");
+
+#ifdef WIN32
+	TimeStart = clock();
+#endif
+
+	TCPSocket = socket(Family, SOCK_STREAM, IPPROTO_TCP);
+	if( TCPSocket == INVALID_SOCKET )
+	{
+		ERRORMSG("Cannot create socket for TCP query.\n");
+		return INVALID_SOCKET;
+	}
+
+	SetSocketNonBlock(TCPSocket, TRUE);
+
+	if( connect(TCPSocket, ServerAddress, GetAddressLength(Family)) != 0 )
+	{
+		if( GET_LAST_ERROR() != CONNECT_FUNCTION_BLOCKED )
+		{
+			ERRORMSG("Cannot connect to TCP server.\n");
+			CLOSE_SOCKET(TCPSocket);
+			return INVALID_SOCKET;
+		}
+	}
+
+	FD_ZERO(&rfd);
+	FD_SET(TCPSocket, &rfd);
+
+	switch(select(TCPSocket + 1, NULL, &rfd, NULL, &TimeLimit))
+	{
+		case 0:
+		case SOCKET_ERROR:
+			CLOSE_SOCKET(TCPSocket);
+			INFO("Connecting to TCP server timed out.\n");
+			return INVALID_SOCKET;
+			break;
+
+		default:
+#ifdef WIN32
+			INFO("TCP connection to server established. Time consumed : %dms\n", (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
+#else
+			INFO("TCP connection to server established. Time consumed : %d.%ds\n", CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec, 1000000 - TimeLimit.tv_usec);
+#endif
+			return TCPSocket;
+			break;
+	}
+
+	return INVALID_SOCKET;
 }
 
 int QueryDNSViaTCP(void)
@@ -418,7 +518,7 @@ int QueryDNSViaTCP(void)
 	static fd_set	ReadSet, ReadySet;
 
 	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {2, 0};
+	static const struct timeval	ShortTime = {10, 0};
 
 	struct timeval	TimeLimit = LongTime;
 
@@ -444,7 +544,6 @@ int QueryDNSViaTCP(void)
 	FD_ZERO(&ReadSet);
 	FD_ZERO(&ReadySet);
 	FD_SET(TCPQueryIncomeSocket, &ReadSet);
-	FD_SET(TCPQueryOutcomeSocket, &ReadSet);
 
 	InternalInterface_InitQueryContext(&Context);
 
@@ -461,7 +560,7 @@ int QueryDNSViaTCP(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2, TCPSwepOutput) == TRUE )
+				if( InternalInterface_QueryContextSwep(&Context, 10, TCPSwepOutput) == TRUE )
 				{
 					TimeLimit = LongTime;
 				} else {
@@ -504,21 +603,17 @@ int QueryDNSViaTCP(void)
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
+
 						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
 						{
 							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 							CLOSE_SOCKET(TCPQueryOutcomeSocket);
 						}
 
-						TCPQueryOutcomeSocket = socket(NewFamily, SOCK_STREAM, IPPROTO_TCP);
+						TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, NewFamily);
 						if( TCPQueryOutcomeSocket == INVALID_SOCKET )
 						{
 							LastFamily = AF_UNSPEC;
-							break;
-						}
-
-						if( connect(TCPQueryOutcomeSocket, NewAddress, GetAddressLength(NewFamily)) != 0 )
-						{
 							AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
 							break;
 						}
@@ -531,8 +626,6 @@ int QueryDNSViaTCP(void)
 						}
 
 						FD_SET(TCPQueryOutcomeSocket, &ReadSet);
-
-						INFO("TCP connection to server established.\n");
 					}
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
@@ -547,10 +640,10 @@ int QueryDNSViaTCP(void)
 
 					if( recv(TCPQueryOutcomeSocket, (char *)&TCPLength, 2, MSG_NOSIGNAL) < 2 )
 					{
-						CloseTCPConnection(TCPQueryOutcomeSocket);
-						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+                        CloseTCPConnection(TCPQueryOutcomeSocket);
+                        FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 
-						INFO("Lost TCP connection to server.\n");
+                        INFO("TCP server closed the connection.\n");
 						break;
 					}
 
@@ -559,6 +652,8 @@ int QueryDNSViaTCP(void)
 					if( TCPLength > sizeof(RequestEntity) - sizeof(ControlHeader) )
 					{
 						ClearTCPSocketBuffer(TCPQueryOutcomeSocket, TCPLength);
+						AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+						INFO("TCP stream is longer than the buffer, discarded.\n");
 						break;
 					}
 
@@ -572,6 +667,8 @@ int QueryDNSViaTCP(void)
 					{
 						CloseTCPConnection(TCPQueryOutcomeSocket);
 						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+						AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+						INFO("TCP stream is too short, server may have some failures.\n");
 						break;
 					}
 
@@ -698,7 +795,7 @@ int QueryDNSViaUDP(void)
 	static fd_set	ReadSet, ReadySet;
 
 	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {2, 0};
+	static const struct timeval	ShortTime = {5, 0};
 
 	struct timeval	TimeLimit = LongTime;
 
@@ -756,7 +853,7 @@ int QueryDNSViaUDP(void)
 				++NumberOfQueryBeforeSwep;
 				if( NumberOfQueryBeforeSwep > 1024 )
 				{
-					InternalInterface_QueryContextSwep(&Context, 2, UDPSwepOutput);
+					InternalInterface_QueryContextSwep(&Context, 5, UDPSwepOutput);
 					NumberOfQueryBeforeSwep = 0;
 				}
 
@@ -1043,6 +1140,43 @@ int SetSocketRecvTimeLimit(SOCKET sock, int time)
 #else
 	struct timeval Time = {time / 1000, (time % 1000) * 1000};
 	return setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&Time, sizeof(Time));
+#endif
+}
+
+int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked)
+{
+#ifdef WIN32
+	unsigned long NonBlock = 1;
+
+	if( ioctlsocket(sock, FIONBIO, &NonBlock) != 0 )
+	{
+		return -1;
+	} else {
+		return 0;
+	}
+#else
+	int Flags;
+	int BlockFlag;
+
+	Flags = fcntl(sock, F_GETFL, 0);
+	if( Flags < 0 )
+	{
+		return -1;
+	}
+
+	if( NonBlocked == TRUE )
+	{
+        BlockFlag = O_NONBLOCK;
+	} else {
+        BlockFlag = ~O_NONBLOCK;
+	}
+
+	if( fcntl(sock, F_SETFL, Flags | O_NONBLOCK) < 0 )
+	{
+		return -1;
+	}
+
+	return 0;
 #endif
 }
 

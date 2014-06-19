@@ -55,6 +55,9 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     ConfigAddOption(&ConfigInfo, "TCPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Server");
 
     TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "TCPProxy", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Server");
 
     TmpTypeDescriptor.boolean = FALSE;
@@ -234,6 +237,8 @@ int QueryDNSInterfaceStart(void)
 	GfwList_Init(&ConfigInfo, FALSE);
 
 	InitAddress(&ConfigInfo);
+
+	TCPProxies_Init(ConfigGetStringList(&ConfigInfo, "TCPProxy"));
 
 	if( InternalInterface_Init(PrimaryProtocol, LocalAddr, LocalPort) != 0 )
 	{

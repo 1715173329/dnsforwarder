@@ -22,12 +22,12 @@ int AddressChunk_Init(AddressChunk *ac)
 
 int AddressChunk_AddATCPAddress_FromString(AddressChunk *ac, const char *Addr_Port)
 {
-	return AddressList_Add_From_String(&(ac -> TCPAddresses), Addr_Port);
+	return AddressList_Add_From_String(&(ac -> TCPAddresses), Addr_Port, 53);
 }
 
 int AddressChunk_AddAUDPAddress_FromString(AddressChunk *ac, const char *Addr_Port)
 {
-	return AddressList_Add_From_String(&(ac -> UDPAddresses), Addr_Port);
+	return AddressList_Add_From_String(&(ac -> UDPAddresses), Addr_Port, 53);
 }
 
 int AddressChunk_AddADedicatedAddress_FromString(AddressChunk *ac, const char *Domain, const char *Addr_Port)

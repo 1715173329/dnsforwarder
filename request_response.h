@@ -19,6 +19,8 @@ int SendAndReveiveRawMessageViaTCP(SOCKET			Sock,
 								   uint16_t		*TCPLength /* Big-endian */
 								   );
 
+int TCPProxies_Init(StringList *Proxies);
+
 int QueryDNSViaTCP(void);
 
 void SetUDPAntiPollution(BOOL State);
@@ -49,6 +51,8 @@ int SetSocketWait(SOCKET sock, BOOL Wait);
 int SetSocketSendTimeLimit(SOCKET sock, int time);
 
 int SetSocketRecvTimeLimit(SOCKET sock, int time);
+
+int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked);
 
 BOOL TCPSocketIsHealthy(SOCKET sock);
 

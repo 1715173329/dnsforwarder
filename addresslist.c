@@ -116,11 +116,11 @@ sa_family_t AddressList_ConvertToAddressFromString(Address_Type *Out, const char
 	}
 }
 
-int AddressList_Add_From_String(AddressList *a, const char *Addr_Port)
+int AddressList_Add_From_String(AddressList *a, const char *Addr_Port, int DefaultPort)
 {
 	Address_Type	Tmp;
 
-	if( AddressList_ConvertToAddressFromString(&Tmp, Addr_Port, 53) == AF_UNSPEC )
+	if( AddressList_ConvertToAddressFromString(&Tmp, Addr_Port, DefaultPort) == AF_UNSPEC )
 	{
 		return -1;
 	}
