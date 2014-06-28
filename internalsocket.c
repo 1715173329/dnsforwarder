@@ -222,7 +222,7 @@ static int QueryContextCompare(const QueryContextEntry *_1, const QueryContextEn
 
 int InternalInterface_InitQueryContext(QueryContext *Context)
 {
-	return Bst_Init(Context, NULL, sizeof(QueryContextEntry), QueryContextCompare);
+	return Bst_Init(Context, NULL, sizeof(QueryContextEntry), (int (*)(const void *, const void *))QueryContextCompare);
 }
 
 int InternalInterface_QueryContextAddUDP(QueryContext *Context, ControlHeader *Header)

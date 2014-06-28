@@ -34,7 +34,7 @@ int Array_Init(__in Array *a, __in int DataLength, __in int InitialCount, __in B
 
 	return 0;
 }
-/* Subscript is always non-negative. */
+/* Subscripts are always non-negative. */
 void *Array_GetBySubscript(__in Array *a, __in int Subscript)
 {
 	if( Subscript >= 0 && Subscript < a -> Used )
@@ -50,7 +50,7 @@ void *Array_GetBySubscript(__in Array *a, __in int Subscript)
 	}
 }
 
-/* Subscribe returned */
+/* Subscript returned */
 int Array_PushBack(__in Array *a, __in_opt const void *Data, __in_opt void *Boundary /* Only used by grow down array */)
 {
 	if( a -> Allocated >= 0 )
