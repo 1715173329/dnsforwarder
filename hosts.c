@@ -371,7 +371,7 @@ int DynamicHosts_SocketLoop(void)
 	static fd_set	ReadSet, ReadySet;
 
 	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {2, 0};
+	static const struct timeval	ShortTime = {10, 0};
 
 	struct timeval	TimeLimit = LongTime;
 
@@ -410,7 +410,7 @@ int DynamicHosts_SocketLoop(void)
 				break;
 
 			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 2, NULL) == TRUE )
+				if( InternalInterface_QueryContextSwep(&Context, 10, NULL) == TRUE )
 				{
 					TimeLimit = LongTime;
 				} else {

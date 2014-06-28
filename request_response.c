@@ -251,7 +251,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 	if( AnswerCount > 0 )
 	{
 		const unsigned char *Answer;
-		uint32_t *Data;
+		char *Data;
 
 		int	ActionType = IP_MISCELLANEOUS_TYPE_UNKNOWN;
 		const char *ActionData;
@@ -265,13 +265,30 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 
 		Answer = (const unsigned char *)DNSGetAnswerRecordPosition(RequestEntity, 1);
 
-		Data = (uint32_t *)DNSGetResourceDataPos(Answer);
+		Data = (char *)DNSGetResourceDataPos(Answer);
 
-		if( Block == TRUE && DNSGetRecordType(Answer) == DNS_TYPE_A && *Answer != 0xC0 )
+		if( Block == TRUE && *Answer != 0xC0 )
 		{
 			if( IPMiscellaneous != NULL )
 			{
-				if( IpChunk_Find(IPMiscellaneous, *Data, &ActionType, NULL) == TRUE && ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
+				BOOL FindResult;
+
+				switch( DNSGetRecordType(Answer) )
+				{
+					case DNS_TYPE_A:
+						FindResult = IpChunk_Find(IPMiscellaneous, *(uint32_t *)Data, &ActionType, NULL);
+						break;
+
+					case DNS_TYPE_AAAA:
+						FindResult = IpChunk_Find6(IPMiscellaneous, Data, &ActionType, NULL);
+						break;
+
+					default:
+						goto NonFalseResult;
+						break;
+				}
+
+				if( FindResult == TRUE && ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
 				{
 					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 				} else {
@@ -283,15 +300,33 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 			return TRUE;
 		}
 
+NonFalseResult:
+
 		if( IPMiscellaneous != NULL )
 		{
 			int					Loop		=	1;
 			const unsigned char	*Answer1	=	Answer;
-			uint32_t			*Data1		=	Data;
+			char				*Data1		=	Data;
+			BOOL				FindResult;
 
 			do
 			{
-				if( DNSGetRecordType(Answer1) == DNS_TYPE_A && IpChunk_Find(IPMiscellaneous, *Data1, &ActionType, &ActionData) == TRUE )
+				switch( DNSGetRecordType(Answer1) )
+				{
+					case DNS_TYPE_A:
+						FindResult = IpChunk_Find(IPMiscellaneous, *(uint32_t *)Data1, &ActionType, &ActionData);
+						break;
+
+					case DNS_TYPE_AAAA:
+						FindResult = IpChunk_Find6(IPMiscellaneous, Data1, &ActionType, &ActionData);
+						break;
+
+					default:
+						goto ItrEnd;
+						break;
+				}
+
+				if( FindResult == TRUE )
 				{
 					switch( ActionType )
 					{
@@ -314,6 +349,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 
 				}
 
+ItrEnd:
 				++Loop;
 
 				if( Loop > AnswerCount )
@@ -322,7 +358,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 				}
 
 				Answer1 = (const unsigned char *)DNSGetAnswerRecordPosition(RequestEntity, Loop);
-				Data1 = (uint32_t *)DNSGetResourceDataPos(Answer1);
+				Data1 = (char *)DNSGetResourceDataPos(Answer1);
 
 			} while( TRUE );
 
@@ -681,7 +717,7 @@ int QueryDNSViaTCP(void)
 int InitBlockedIP(StringList *l)
 {
 	const char	*Itr = NULL;
-	uint32_t	Ip;
+	char	Ip[16];
 
 	if( l == NULL )
 	{
@@ -698,9 +734,15 @@ int InitBlockedIP(StringList *l)
 
 	while( Itr != NULL )
 	{
-		IPv4AddressToNum(Itr, &Ip);
-
-		IpChunk_Add(IPMiscellaneous, Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
+		if( strchr(Itr, '.') != NULL )
+		{
+			IPv4AddressToNum(Itr, Ip);
+			IpChunk_Add(IPMiscellaneous, *(uint32_t *)Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
+		} else if( strchr(Itr, ':') != NULL )
+		{
+			IPv6AddressToNum(Itr, Ip);
+			IpChunk_Add6(IPMiscellaneous, Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
+		} else {}
 
 		Itr = StringList_GetNext(l, Itr);
 	}

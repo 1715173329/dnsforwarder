@@ -76,7 +76,7 @@ static int LoadDisableType(ConfigFileInfo *ConfigInfo)
 	const char *OneTypePendingToAdd_Str;
 	int OneTypePendingToAdd;
 
-	if( Bst_Init(&DisabledTypes, NULL, sizeof(int), TypeCompare) != 0 )
+	if( Bst_Init(&DisabledTypes, NULL, sizeof(int), (int (*)(const void *, const void *))TypeCompare) != 0 )
 	{
 		return -1;
 	}

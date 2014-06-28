@@ -253,7 +253,7 @@ int DomainStatistic_Hold(void)
 
 		}
 
-		Array_Sort(&Ranks, CountCompare);
+		Array_Sort(&Ranks, (int (*)(const void *, const void *))CountCompare);
 
 		Loop = 0;
 		ARank = Array_GetBySubscript(&Ranks, 0);

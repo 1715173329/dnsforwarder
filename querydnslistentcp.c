@@ -122,7 +122,7 @@ static int SocketInfoCompare(const SocketInfo *_1, const SocketInfo *_2)
 
 static int InitSocketInfo(void)
 {
-	return Bst_Init(&si, NULL, sizeof(SocketInfo), SocketInfoCompare);
+	return Bst_Init(&si, NULL, sizeof(SocketInfo), (int (*)(const void *, const void *))SocketInfoCompare);
 }
 
 static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, char *ClientAddress, int32_t *Number)
@@ -230,7 +230,7 @@ static int QueryDNSListenTCP(void)
 	int		NumberOfQueryBeforeSwep = 0;
 
 	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {2, 0};
+	static const struct timeval	ShortTime = {10, 0};
 
 	struct timeval	TimeLimit = LongTime;
 
@@ -268,7 +268,7 @@ static int QueryDNSListenTCP(void)
 					Bst_Reset(&Context);
 					TimeLimit = LongTime;
 				} else {
-					InternalInterface_QueryContextSwep(&Context, 2, NULL);
+					InternalInterface_QueryContextSwep(&Context, 10, NULL);
 					TimeLimit = ShortTime;
 				}
 
