@@ -29,6 +29,7 @@
 #endif /* NODOWNLOAD */
 
 #include "downloader.h"
+#include "debug.h"
 
 int GetFromInternet_MultiFiles(const char	**URLs,
 							   const char	*File,
@@ -45,6 +46,9 @@ int GetFromInternet_MultiFiles(const char	**URLs,
 	if( fp != NULL )
 	{
 		fclose(fp);
+	} else {
+		ERRORMSG("Cannot read file %s\n", File);
+		return -1;
 	}
 
 	while( *URLs != NULL )

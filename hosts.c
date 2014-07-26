@@ -189,6 +189,8 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 			{
 				return;
 			}
+		} else {
+			ERRORMSG("Getting hosts file(s) failed.\n");
 		}
 
 		SLEEP(UpdateInterval * 1000);
