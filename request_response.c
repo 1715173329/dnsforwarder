@@ -480,7 +480,7 @@ static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 	}
 }
 
-static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Family)
+static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Family, const char *Type)
 {
 #   define  CONNECT_TIMEOUT 2
 
@@ -491,7 +491,7 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 	fd_set rfd;
 	struct timeval TimeLimit = {CONNECT_TIMEOUT, 0};
 
-	INFO("Connecting to TCP server ...\n");
+	INFO("Connecting to %s ...\n", Type);
 
 #ifdef WIN32
 	TimeStart = clock();
@@ -510,7 +510,7 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 	{
 		if( GET_LAST_ERROR() != CONNECT_FUNCTION_BLOCKED )
 		{
-			ERRORMSG("Cannot connect to TCP server.\n");
+			ERRORMSG("Cannot connect to %s.\n", Type);
 			CLOSE_SOCKET(TCPSocket);
 			return INVALID_SOCKET;
 		}
@@ -524,21 +524,92 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 		case 0:
 		case SOCKET_ERROR:
 			CLOSE_SOCKET(TCPSocket);
-			INFO("Connecting to TCP server timed out.\n");
+			INFO("Connecting to %s timed out.\n", Type);
 			return INVALID_SOCKET;
 			break;
 
 		default:
 #ifdef WIN32
-			INFO("TCP connection to server established. Time consumed : %dms\n", (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
+			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
-			INFO("TCP connection to server established. Time consumed : %d.%ds\n", CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec, 1000000 - TimeLimit.tv_usec);
+			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec, 1000000 - TimeLimit.tv_usec);
 #endif
 			return TCPSocket;
 			break;
 	}
 
 	return INVALID_SOCKET;
+}
+
+static int TCPProxyPreparation(SOCKET Sock, const struct sockaddr	*NestedAddress, sa_family_t Family)
+{
+    char AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII];
+    char NumberOfCharacter;
+    char Port[8];
+    char RecvBuffer[16];
+
+    if( Family == AF_INET )
+    {
+		strcpy(AddressString, inet_ntoa(((const struct sockaddr_in *)NestedAddress) -> sin_addr));
+		sprintf(Port, "%d", ((const struct sockaddr_in *)NestedAddress) -> sin_port);
+    } else {
+		IPv6AddressToAsc(&(((const struct sockaddr_in6 *)NestedAddress) -> sin6_addr), AddressString);
+		sprintf(Port, "%d", ((const struct sockaddr_in6 *)NestedAddress) -> sin6_port);
+    }
+
+	if( send(Sock, "\x05\x01\x00", 3, 0) != 3 )
+	{
+		return -1;
+	}
+
+	recv(Sock, RecvBuffer, 2, MSG_NOSIGNAL);
+	if( RecvBuffer[0] != '\x05' || RecvBuffer[1] != '\x00' )
+	{
+		return -1;
+	}
+
+	if( send(Sock, "\x05\x01\x00\x03", 4, 0) != 4 )
+	{
+		return -1;
+	}
+	NumberOfCharacter = strlen(AddressString);
+	if( send(Sock, &NumberOfCharacter, 1, 0) != 1 )
+	{
+		return -1;
+	}
+	if( send(Sock, AddressString, NumberOfCharacter, 0) != NumberOfCharacter )
+	{
+		return -1;
+	}
+	if( send(Sock, Port, strlen(Port), 0) != strlen(Port) )
+	{
+		return -1;
+	}
+
+	recv(Sock, RecvBuffer, 4, MSG_NOSIGNAL);
+	if( RecvBuffer[1] != '\x00' )
+	{
+		return -1;
+	}
+
+	switch( RecvBuffer[3] )
+	{
+		case 0x01:
+			NumberOfCharacter = 6;
+			break;
+
+		case 0x03:
+			recv(Sock, &NumberOfCharacter, 1, MSG_NOSIGNAL);
+			NumberOfCharacter += 2;
+			break;
+
+		case 0x04:
+			NumberOfCharacter = 18;
+	}
+	ClearTCPSocketBuffer(Sock, NumberOfCharacter);
+
+	return 0;
+
 }
 
 int QueryDNSViaTCP(void)
@@ -567,16 +638,11 @@ int QueryDNSViaTCP(void)
 	struct sockaddr	*LastAddress = NULL;
 
 	TCPQueryIncomeSocket = InternalInterface_TryOpenLocal(10100, INTERNAL_INTERFACE_TCP_QUERY);
-	TCPQueryOutcomeSocket = socket(MAIN_FAMILY, SOCK_STREAM, IPPROTO_TCP);
+	TCPQueryOutcomeSocket = INVALID_SOCKET;
 
 	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
 
-	if( TCPQueryOutcomeSocket == INVALID_SOCKET )
-	{
-		return -1;
-	}
-
-	MaxFd = TCPQueryIncomeSocket > TCPQueryOutcomeSocket ? TCPQueryIncomeSocket : TCPQueryOutcomeSocket;
+	MaxFd = TCPQueryIncomeSocket;
 	FD_ZERO(&ReadSet);
 	FD_ZERO(&ReadySet);
 	FD_SET(TCPQueryIncomeSocket, &ReadSet);
@@ -619,9 +685,9 @@ int QueryDNSViaTCP(void)
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
 					int	State;
+					uint16_t	TCPLength;
 					sa_family_t	NewFamily;
 					struct sockaddr	*NewAddress;
-					uint16_t	TCPLength;
 
 					State = recvfrom(TCPQueryIncomeSocket,
 									RequestEntity,
@@ -639,19 +705,43 @@ int QueryDNSViaTCP(void)
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
-
 						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
 						{
 							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 							CLOSE_SOCKET(TCPQueryOutcomeSocket);
 						}
 
-						TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, NewFamily);
-						if( TCPQueryOutcomeSocket == INVALID_SOCKET )
+						if( TCPProxies == NULL )
 						{
-							LastFamily = AF_UNSPEC;
-							AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
-							break;
+							TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, NewFamily, "TCP server");
+							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
+							{
+								LastFamily = AF_UNSPEC;
+								AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+								break;
+							}
+						} else {
+							struct sockaddr	*NewProxy;
+							sa_family_t	ProxyFamily;
+
+							NewProxy = AddressList_GetOne(TCPProxies, &ProxyFamily);
+							TCPQueryOutcomeSocket = ConnectToTCPServer(NewProxy, ProxyFamily, "TCP proxy");
+							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
+							{
+								LastFamily = AF_UNSPEC;
+								AddressList_Advance(TCPProxies);
+								break;
+							}
+
+							if( TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress, NewFamily) != 0 )
+							{
+								ERRORMSG("Cannot communicate with TCP proxy.\n");
+								LastFamily = AF_UNSPEC;
+								CloseTCPConnection(TCPQueryOutcomeSocket);
+								TCPQueryOutcomeSocket = INVALID_SOCKET;
+								AddressList_Advance(TCPProxies);
+								break;
+							}
 						}
 
 						LastFamily = NewFamily;
@@ -679,7 +769,7 @@ int QueryDNSViaTCP(void)
                         CloseTCPConnection(TCPQueryOutcomeSocket);
                         FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 
-                        INFO("TCP server closed the connection.\n");
+                        INFO("TCP %s closed the connection.\n", TCPProxies == NULL ? "server" : "proxy");
 						break;
 					}
 
