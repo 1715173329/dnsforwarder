@@ -317,7 +317,7 @@ static int QueryDNSListenTCP(void)
 						{
 							strcpy(AddressString, inet_ntoa(Address.Addr.Addr4.sin_addr));
 						} else {
-							IPv6AddressToAsc(&Address, AddressString);
+							IPv6AddressToAsc(&(Address.Addr.Addr6.sin6_addr), AddressString);
 						}
 
 						if( NewSocket > MaxFd )
