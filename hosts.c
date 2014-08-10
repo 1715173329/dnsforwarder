@@ -790,7 +790,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
 {
-	if( StaticHostsInited == TRUE )
+	if( StaticHostsInited == TRUE || File != NULL )
 	{
 		ThreadHandle	t;
 

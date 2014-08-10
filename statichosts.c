@@ -299,7 +299,7 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	if( AppendHosts == NULL )
 	{
-		return 0;
+		return -1;
 	}
 
 	Itr = StringList_GetNext(AppendHosts, NULL);

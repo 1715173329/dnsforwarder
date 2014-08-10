@@ -1,3 +1,4 @@
+#include <string.h>
 #include "ipchunk.h"
 
 static int Compare(IpElement *_1, IpElement *_2)

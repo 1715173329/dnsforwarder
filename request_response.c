@@ -532,7 +532,7 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 #ifdef WIN32
 			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
-			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec, 1000000 - TimeLimit.tv_usec);
+			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, (int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec), (int)(1000000 - TimeLimit.tv_usec));
 #endif
 			return TCPSocket;
 			break;
@@ -546,7 +546,8 @@ static int TCPProxyPreparation(SOCKET Sock, const struct sockaddr	*NestedAddress
     char AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII];
     char NumberOfCharacter;
     char Port[8];
-    char RecvBuffer[16];
+    char RecvBuffer[16] = {-1};
+    int ret;
 
     if( Family == AF_INET )
     {
@@ -562,34 +563,38 @@ static int TCPProxyPreparation(SOCKET Sock, const struct sockaddr	*NestedAddress
 		return -1;
 	}
 
-	recv(Sock, RecvBuffer, 2, MSG_NOSIGNAL);
+    if( SocketIsStillReadable(Sock, 10) && recv(Sock, RecvBuffer, 2, MSG_NOSIGNAL) != 2 )
+    {
+        return -2;
+    }
+
 	if( RecvBuffer[0] != '\x05' || RecvBuffer[1] != '\x00' )
 	{
-		return -1;
+		return -3;
 	}
 
 	if( send(Sock, "\x05\x01\x00\x03", 4, 0) != 4 )
 	{
-		return -1;
+		return -4;
 	}
 	NumberOfCharacter = strlen(AddressString);
 	if( send(Sock, &NumberOfCharacter, 1, 0) != 1 )
 	{
-		return -1;
+		return -5;
 	}
 	if( send(Sock, AddressString, NumberOfCharacter, 0) != NumberOfCharacter )
 	{
-		return -1;
+		return -6;
 	}
 	if( send(Sock, Port, strlen(Port), 0) != strlen(Port) )
 	{
-		return -1;
+		return -7;
 	}
 
 	recv(Sock, RecvBuffer, 4, MSG_NOSIGNAL);
 	if( RecvBuffer[1] != '\x00' )
 	{
-		return -1;
+		return -8;
 	}
 
 	switch( RecvBuffer[3] )
@@ -723,6 +728,7 @@ int QueryDNSViaTCP(void)
 						} else {
 							struct sockaddr	*NewProxy;
 							sa_family_t	ProxyFamily;
+							int ret;
 
 							NewProxy = AddressList_GetOne(TCPProxies, &ProxyFamily);
 							TCPQueryOutcomeSocket = ConnectToTCPServer(NewProxy, ProxyFamily, "TCP proxy");
@@ -1303,7 +1309,7 @@ int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked)
         BlockFlag = ~O_NONBLOCK;
 	}
 
-	if( fcntl(sock, F_SETFL, Flags | O_NONBLOCK) < 0 )
+	if( fcntl(sock, F_SETFL, Flags | BlockFlag) < 0 )
 	{
 		return -1;
 	}
