@@ -415,7 +415,7 @@ static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody,
 	Buffer[0] = CACHE_START;
 
 	/* Assign the name of the cache */
-	DNSGetHostName(DNSBody, RecordBody, Buffer + 1);
+	DNSGetHostName(DNSBody, RecordBody, Buffer + 1, sizeof(Buffer) -1);
 
 	/* Jump just over the name */
 	BufferItr += strlen(Buffer);
@@ -672,7 +672,7 @@ static int DNSCache_GetByQuestion(__in const char *Question, __inout char *Buffe
 
 	*RecordsLength = 0;
 
-	DNSGetHostName(Question, DNSJumpHeader(Question), Name);
+	DNSGetHostName(Question, DNSJumpHeader(Question), Name, sizeof(Name));
 
 	Type = (DNSRecordType)DNSGetRecordType(DNSJumpHeader(Question));
 	Class = (DNSRecordClass)DNSGetRecordClass(DNSJumpHeader(Question));

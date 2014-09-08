@@ -79,7 +79,8 @@ static int Query(char *Content, int ContentLength, int BufferLength, Address_Typ
 		Header -> RequestingDomain[0] = '\0';
 		DNSGetHostName(RequestEntity,
 					   DNSJumpHeader(RequestEntity),
-					   Header -> RequestingDomain
+					   Header -> RequestingDomain,
+					   sizeof(Header -> RequestingDomain)
 					   );
 		StrToLower(Header -> RequestingDomain);
 		Header -> RequestingType =

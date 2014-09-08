@@ -49,7 +49,7 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num);
 /* Common */
 const char *DNSJumpOverName(const char *NameStart);
 
-int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer);
+int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength);
 
 int DNSGetHostNameLength(const char *DNSBody, const char *NameStart);
 

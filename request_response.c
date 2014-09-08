@@ -385,7 +385,8 @@ static void SendBack(SOCKET Socket,
 
 	DNSGetHostName(RequestEntity,
 				   DNSJumpHeader(RequestEntity),
-				   Header -> RequestingDomain
+				   Header -> RequestingDomain,
+				   sizeof(Header -> RequestingDomain)
 				   );
 
 	StrToLower(Header -> RequestingDomain);
