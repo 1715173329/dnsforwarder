@@ -159,13 +159,20 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num)
 	return SR;
 }
 
-int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer)
+int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength)
 {
 	int AllLabelLen = 0;
 	int flag = 0;
 	unsigned char LabelLen;
 
-	while(1)
+	--BufferLength;
+
+	if( BufferLength < 1 )
+	{
+		return 0;
+	}
+
+	while( AllLabelLen < BufferLength )
 	{
 		LabelLen = GET_8_BIT_U_INT(NameStart);
 
@@ -205,7 +212,7 @@ int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer)
 }
 
 
-int DNSGetHostNameLength /* include terminated-zero */ (const char *DNSBody, const char *NameStart)
+int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, const char *NameStart)
 {
 	int NameLen = 0;
 	unsigned char LabelLen;
@@ -294,7 +301,7 @@ DNSDataInfo DNSParseData(const char *DNSBody,
 				break;
 
 			Result.DataLength = DNSGetHostNameLength(DNSBody, PendingData);
-			DNSGetHostName(DNSBody, PendingData, (char *)Buffer);
+			DNSGetHostName(DNSBody, PendingData, (char *)Buffer, INT_MAX);
 			Result.DataType = DNS_DATA_TYPE_STRING;
 			break;
 
