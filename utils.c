@@ -210,7 +210,7 @@ int	Base64Decode(const char *File)
 		return -7;
 	}
 
-	if( CryptStringToBinary((const BYTE *)FileContent, FileSize, 0x00000001, NULL, &OutFileSize, NULL, NULL) != TRUE )
+	if( CryptStringToBinary((LPCSTR)FileContent, FileSize, 0x00000001, NULL, &OutFileSize, NULL, NULL) != TRUE )
 	{
 		SafeFree(FileContent);
 		fclose(fp);
@@ -226,7 +226,7 @@ int	Base64Decode(const char *File)
 	}
 
 
-	if( CryptStringToBinary((const BYTE *)FileContent, FileSize, 0x00000001, ResultContent, &OutFileSize, NULL, NULL) != TRUE )
+	if( CryptStringToBinary((LPCSTR)FileContent, FileSize, 0x00000001, (BYTE *)ResultContent, &OutFileSize, NULL, NULL) != TRUE )
 	{
 		SafeFree(ResultContent);
 		SafeFree(FileContent);
@@ -823,7 +823,9 @@ int ExpandPath(char *String, int BufferLength)
 char *GetLocalPathFromURL(const char *URL, char *Buffer, int BufferLength)
 {
 	const char *Itr;
+#ifdef WIN32
 	char *Itr_Buffer;
+#endif
 
 	Itr = strstr(URL, "://");
 	if( Itr == NULL )
