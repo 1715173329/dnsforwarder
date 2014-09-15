@@ -250,7 +250,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 
 	if( AnswerCount > 0 )
 	{
-		const unsigned char *Answer;
+		const char *Answer;
 		char *Data;
 
 		int	ActionType = IP_MISCELLANEOUS_TYPE_UNKNOWN;
@@ -263,11 +263,11 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 			return TRUE;
 		}
 
-		Answer = (const unsigned char *)DNSGetAnswerRecordPosition(RequestEntity, 1);
+		Answer = (const char *)DNSGetAnswerRecordPosition(RequestEntity, 1);
 
 		Data = (char *)DNSGetResourceDataPos(Answer);
 
-		if( Block == TRUE && *Answer != 0xC0 )
+		if( Block == TRUE && (const unsigned char)*Answer != 0xC0 )
 		{
 			if( IPMiscellaneous != NULL )
 			{
@@ -284,7 +284,7 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 						break;
 
 					default:
-						goto NonFalseResult;
+						goto PhaseTwo;
 						break;
 				}
 
@@ -300,14 +300,14 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 			return TRUE;
 		}
 
-NonFalseResult:
+PhaseTwo:
 
 		if( IPMiscellaneous != NULL )
 		{
-			int					Loop		=	1;
-			const unsigned char	*Answer1	=	Answer;
-			char				*Data1		=	Data;
-			BOOL				FindResult;
+			int			Loop		=	1;
+			const char	*Answer1	=	Answer;
+			char		*Data1		=	Data;
+			BOOL		FindResult;
 
 			do
 			{
@@ -357,7 +357,7 @@ ItrEnd:
 					break;
 				}
 
-				Answer1 = (const unsigned char *)DNSGetAnswerRecordPosition(RequestEntity, Loop);
+				Answer1 = (const char *)DNSGetAnswerRecordPosition(RequestEntity, Loop);
 				Data1 = (char *)DNSGetResourceDataPos(Answer1);
 
 			} while( TRUE );
@@ -478,6 +478,31 @@ static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 	if( Number == 1 )
 	{
 		AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+		if( TCPProxies != NULL )
+		{
+			AddressList_Advance(TCPProxies);
+		}
+	}
+}
+
+static BOOL SocketIsWritable(SOCKET sock, int Timeout)
+{
+	struct timeval TimeLimit = {Timeout / 1000, (Timeout % 1000) * 1000};
+	fd_set rfd;
+
+	FD_ZERO(&rfd);
+	FD_SET(sock, &rfd);
+
+	switch(select(sock + 1, NULL, &rfd, NULL, &TimeLimit))
+	{
+		case 0:
+		case SOCKET_ERROR:
+			return FALSE;
+			break;
+
+		default:
+			return TRUE;
+			break;
 	}
 }
 
@@ -542,59 +567,141 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 	return INVALID_SOCKET;
 }
 
+static int TCPSend_Wrapper(SOCKET Sock, const char *Start, int Length)
+{
+#define DEFAULT_TIME_OUT__SEND 2000 /*  */
+	while( send(Sock, Start, Length, MSG_NOSIGNAL) != Length )
+	{
+		int LastError = GET_LAST_ERROR();
+#ifdef WIN32
+		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
+		{
+			if( SocketIsWritable(Sock, 2000) == TRUE )
+			{
+				continue;
+			}
+		}
+#else
+		if( LastError == EAGAIN || LastError == EWOULDBLOCK )
+		{
+			if( SocketIsWritable(Sock, 2000) == TRUE )
+			{
+				continue;
+			}
+		}
+#endif
+		return (-1) * LastError;
+	}
+
+	return Length;
+}
+
+static int TCPRecv_Wrapper(SOCKET Sock, char *Buffer, int BufferSize)
+{
+	int Recvlength;
+
+	while( (Recvlength = recv(Sock, Buffer, BufferSize, MSG_NOSIGNAL)) < 0 )
+	{
+		int LastError = GET_LAST_ERROR();
+#ifdef WIN32
+		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
+		{
+			if( SocketIsStillReadable(Sock, 20000) == TRUE )
+			{
+				continue;
+			}
+		}
+#else
+		if( LastError == EAGAIN || LastError ==  EWOULDBLOCK )
+		{
+			if( SocketIsStillReadable(Sock, 20000) == TRUE )
+			{
+				continue;
+			}
+		}
+#endif
+		return (-1) * LastError;
+	}
+
+	return Recvlength;
+}
+
+static void ShowSocketError(const char *Prompts, int ErrorNum)
+{
+	char	ErrorMessage[320];
+
+	if( ErrorMessages == TRUE )
+	{
+		GetErrorMsg(ErrorNum, ErrorMessage, sizeof(ErrorMessage));
+		ERRORMSG("%s : %d : %s\n", Prompts, ErrorNum, ErrorMessage);
+	}
+}
+
 static int TCPProxyPreparation(SOCKET Sock, const struct sockaddr	*NestedAddress, sa_family_t Family)
 {
     char AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII];
     char NumberOfCharacter;
-    char Port[8];
-    char RecvBuffer[16] = {-1};
+    unsigned short Port;
+    char RecvBuffer[16];
     int ret;
 
     if( Family == AF_INET )
     {
 		strcpy(AddressString, inet_ntoa(((const struct sockaddr_in *)NestedAddress) -> sin_addr));
-		sprintf(Port, "%d", ((const struct sockaddr_in *)NestedAddress) -> sin_port);
+		Port = ((const struct sockaddr_in *)NestedAddress) -> sin_port;
     } else {
 		IPv6AddressToAsc(&(((const struct sockaddr_in6 *)NestedAddress) -> sin6_addr), AddressString);
-		sprintf(Port, "%d", ((const struct sockaddr_in6 *)NestedAddress) -> sin6_port);
+		Port = ((const struct sockaddr_in6 *)NestedAddress) -> sin6_port;
     }
 
-	if( send(Sock, "\x05\x01\x00", 3, 0) != 3 )
+	if( TCPSend_Wrapper(Sock, "\x05\x01\x00", 3) != 3 )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, negotiation error", GET_LAST_ERROR());
 		return -1;
 	}
 
-    if( SocketIsStillReadable(Sock, 10) && recv(Sock, RecvBuffer, 2, MSG_NOSIGNAL) != 2 )
+    if( (ret = TCPRecv_Wrapper(Sock, RecvBuffer, 2)) != 2 )
     {
+		/*printf("--------------GetLastError : %d, ret : %d\n", GET_LAST_ERROR(), ret);*/
+		ShowSocketError("Cannot communicate with TCP proxy, negotiation error", GET_LAST_ERROR());
         return -2;
     }
 
 	if( RecvBuffer[0] != '\x05' || RecvBuffer[1] != '\x00' )
 	{
+		/*printf("---------3 : %x %x\n", RecvBuffer[0], RecvBuffer[1]);*/
+		ShowSocketError("Cannot communicate with TCP proxy, negotiation error", GET_LAST_ERROR());
 		return -3;
 	}
 
-	if( send(Sock, "\x05\x01\x00\x03", 4, 0) != 4 )
+	INFO("Connecting to TCP server.\n");
+
+	if( TCPSend_Wrapper(Sock, "\x05\x01\x00\x03", 4) != 4 )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
 		return -4;
 	}
 	NumberOfCharacter = strlen(AddressString);
-	if( send(Sock, &NumberOfCharacter, 1, 0) != 1 )
+	if( TCPSend_Wrapper(Sock, &NumberOfCharacter, 1) != 1 )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
 		return -5;
 	}
-	if( send(Sock, AddressString, NumberOfCharacter, 0) != NumberOfCharacter )
+	if( TCPSend_Wrapper(Sock, AddressString, NumberOfCharacter) != NumberOfCharacter )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
 		return -6;
 	}
-	if( send(Sock, Port, strlen(Port), 0) != strlen(Port) )
+	if( TCPSend_Wrapper(Sock, (const char *)&Port, sizeof(Port)) != sizeof(Port) )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
 		return -7;
 	}
 
-	recv(Sock, RecvBuffer, 4, MSG_NOSIGNAL);
+	TCPRecv_Wrapper(Sock, RecvBuffer, 4);
 	if( RecvBuffer[1] != '\x00' )
 	{
+		ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
 		return -8;
 	}
 
@@ -605,14 +712,22 @@ static int TCPProxyPreparation(SOCKET Sock, const struct sockaddr	*NestedAddress
 			break;
 
 		case 0x03:
-			recv(Sock, &NumberOfCharacter, 1, MSG_NOSIGNAL);
+			TCPRecv_Wrapper(Sock, &NumberOfCharacter, 1);
 			NumberOfCharacter += 2;
 			break;
 
 		case 0x04:
 			NumberOfCharacter = 18;
+			break;
+
+		default:
+			/*printf("------Here : %d %d %d %d\n", RecvBuffer[0], RecvBuffer[1], RecvBuffer[2], RecvBuffer[3]);*/
+			ShowSocketError("Cannot communicate with TCP proxy, connection to TCP server error", GET_LAST_ERROR());
+			return -9;
 	}
 	ClearTCPSocketBuffer(Sock, NumberOfCharacter);
+
+	INFO("Connected to TCP server.\n");
 
 	return 0;
 
@@ -690,20 +805,20 @@ int QueryDNSViaTCP(void)
 
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
-					int	State;
+					int	RecvState, SendState;
 					uint16_t	TCPLength;
 					sa_family_t	NewFamily;
 					struct sockaddr	*NewAddress;
 
-					State = recvfrom(TCPQueryIncomeSocket,
-									RequestEntity,
-									sizeof(RequestEntity),
-									0,
-									NULL,
-									NULL
-									);
+					RecvState = recvfrom(TCPQueryIncomeSocket,
+								RequestEntity,
+								sizeof(RequestEntity),
+								0,
+								NULL,
+								NULL
+								);
 
-					if( State < 1 )
+					if( RecvState < 1 )
 					{
 						break;
 					}
@@ -740,9 +855,10 @@ int QueryDNSViaTCP(void)
 								break;
 							}
 
-							if( TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress, NewFamily) != 0 )
+							ret = TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress, NewFamily);
+							/* printf("-----------ret : %d\n", ret);*/
+							if( ret != 0 )
 							{
-								ERRORMSG("Cannot communicate with TCP proxy.\n");
 								LastFamily = AF_UNSPEC;
 								CloseTCPConnection(TCPQueryOutcomeSocket);
 								TCPQueryOutcomeSocket = INVALID_SOCKET;
@@ -762,15 +878,38 @@ int QueryDNSViaTCP(void)
 					}
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
+/*
+					if( TCPProxies != NULL )
+					{
+						send(TCPQueryOutcomeSocket, 0x47, 1, MSG_NOSIGNAL);
+					}
+*/
+					TCPLength = htons(RecvState - sizeof(ControlHeader));
 
-					TCPLength = htons(State - sizeof(ControlHeader));
-					send(TCPQueryOutcomeSocket, (const char *)&TCPLength, 2, MSG_NOSIGNAL);
-					send(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), State - sizeof(ControlHeader), MSG_NOSIGNAL);
+					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, (const char *)&TCPLength, 2);
+					if( SendState < 0 )
+					{
+						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						break;
+					}
+
+					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), RecvState - sizeof(ControlHeader));
+					if( SendState < 0 )
+					{
+						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						break;
+					}
 
 				} else {
 					int	State;
 					uint16_t	TCPLength;
-
+/*
+					if( TCPProxies != NULL )
+					{
+						char _0x72;
+						recv(TCPQueryOutcomeSocket, _0x72, 1, MSG_NOSIGNAL);
+					}
+*/
 					if( recv(TCPQueryOutcomeSocket, (char *)&TCPLength, 2, MSG_NOSIGNAL) < 2 )
 					{
                         CloseTCPConnection(TCPQueryOutcomeSocket);
