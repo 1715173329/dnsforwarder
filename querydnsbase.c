@@ -218,21 +218,28 @@ static int QueryFromServer(char *Content, int ContentLength, SOCKET ThisSocket)
 	return InternalInterface_SendTo(Interface, ThisSocket, Content, ContentLength);
 }
 
+#define DNS_FETCH_FROM_HOSTS_OK	0
+#define DNS_FETCH_FROM_HOSTS_NONE_RESULT	(-1)
+#define DNS_FETCH_FROM_HOSTS_DISABLE_IPV6	(-2)
 static int DNSFetchFromHosts(char *Content, int ContentLength, SOCKET ThisSocket)
 {
 	switch ( Hosts_Try(Content, &ContentLength) )
 	{
 		case MATCH_STATE_NONE:
 		case MATCH_STATE_DISABLED:
-			return -1;
+			return DNS_FETCH_FROM_HOSTS_NONE_RESULT;
+			break;
+
+		case MATCH_STATE_DISABLE_IPV6:
+			return DNS_FETCH_FROM_HOSTS_DISABLE_IPV6;
 			break;
 
 		case MATCH_STATE_ONLY_CNAME:
 			if( InternalInterface_SendTo(INTERNAL_INTERFACE_HOSTS, ThisSocket, Content, ContentLength) > 0 )
 			{
-				return 0;
+				return DNS_FETCH_FROM_HOSTS_OK;
 			} else {
-				return -1;
+				return DNS_FETCH_FROM_HOSTS_NONE_RESULT;
 			}
 
 			break;
@@ -240,9 +247,11 @@ static int DNSFetchFromHosts(char *Content, int ContentLength, SOCKET ThisSocket
 		case MATCH_STATE_PERFECT:
 			return ContentLength;
 			break;
-	}
 
-	return -1;
+		default:
+			return DNS_FETCH_FROM_HOSTS_NONE_RESULT;
+			break;
+	}
 }
 
 int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket)
@@ -273,7 +282,7 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 		/* First query from hosts and cache */
 		StateOfReceiving = DNSFetchFromHosts(Content, ContentLength, ThisSocket);
 
-		if( StateOfReceiving < 0 )
+		if( StateOfReceiving == DNS_FETCH_FROM_HOSTS_NONE_RESULT )
 		{
 			StateOfReceiving = DNSCache_FetchFromCache(RequestEntity, ContentLength - sizeof(ControlHeader), BufferLength - sizeof(ControlHeader));
 			if( StateOfReceiving > 0 )
@@ -282,6 +291,11 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 				DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_CACHE);
 				return StateOfReceiving;
 			}
+		} else if( StateOfReceiving == DNS_FETCH_FROM_HOSTS_DISABLE_IPV6 )
+		{
+			DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_REFUSED);
+			ShowRefusingMassage(Header -> Agent, Header -> RequestingType, Header -> RequestingDomain, "Disabled by hosts");
+			return QUERY_RESULT_DISABLE;
 		} else {
 			DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), STATISTIC_TYPE_HOSTS);
 			if( StateOfReceiving > 0 )

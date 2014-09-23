@@ -16,6 +16,8 @@ static BOOL			StaticHostsInited = FALSE;
 static int			UpdateInterval;
 static int			HostsRetryInterval;
 
+static BOOL			DisableIpv6WhenIpv4Exists = FALSE;
+
 static const char 	*File = NULL;
 
 static ThreadHandle	GetHosts_Thread;
@@ -254,6 +256,11 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 			break;
 
 		case DNS_TYPE_AAAA:
+			if( DisableIpv6WhenIpv4Exists == TRUE && Hosts_FindIPv4(Container, Name) != NULL )
+			{
+				return MATCH_STATE_DISABLE_IPV6;
+			}
+
 			*Result = Hosts_FindIPv6(Container, Name);
 			if( *Result == NULL )
 			{
@@ -752,6 +759,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	StaticHostsInited = ( StaticHosts_Init(ConfigInfo) >= 0 );
 
+	DisableIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo, "DisableIpv6WhenIpv4Exists");
 	Path = ConfigGetRawString(ConfigInfo, "Hosts");
 
 	if( Path == NULL )
