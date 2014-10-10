@@ -41,30 +41,51 @@ int GetFromInternet_MultiFiles(const char	**URLs,
 {
 	int State = FALSE;
 	FILE *fp;
+	char *TempFile;
 
-	fp = fopen(File, "w");
+	TempFile = SafeMalloc(strlen(File) + sizeof("") + 1);
+	if( TempFile == NULL )
+	{
+		ERRORMSG("Cannot create temp file %s\n", TempFile);
+		return -1;
+	}
+
+	strcpy(TempFile, File);
+	strcat(TempFile, ".tmp");
+
+	fp = fopen(TempFile, "w");
 	if( fp != NULL )
 	{
 		fclose(fp);
 	} else {
-		ERRORMSG("Cannot read file %s\n", File);
-		return -1;
+		ERRORMSG("Cannot create temp file %s\n", TempFile);
+		SafeFree(TempFile);
+		return -2;
 	}
 
 	while( *URLs != NULL )
 	{
-		State |= !GetFromInternet_SingleFile(*URLs, File, TRUE, RetryInterval, RetryTimes, ErrorCallBack, SuccessCallBack);
+		State |= !GetFromInternet_SingleFile(*URLs, TempFile, TRUE, RetryInterval, RetryTimes, ErrorCallBack, SuccessCallBack);
 
-		fp = fopen(File, "a+");
+		fp = fopen(TempFile, "a+");
 		if( fp != NULL )
 		{
 			fputc('\n', fp);
 			fclose(fp);
+		} else {
+			break;
 		}
 
 		++URLs;
 	}
 
+	if( State && TRUE )
+	{
+		remove(File);
+		rename(TempFile, File);
+	}
+
+	SafeFree(TempFile);
 	return !State;
 }
 
@@ -110,9 +131,19 @@ int GetFromInternet_SingleFile(const char	*URL,
 
 		return 0;
 	} else {
+		int Ret = -1;
+		char *TempFile;
+		TempFile = SafeMalloc(strlen(File) + sizeof(".tmp") + 1);
+		if( TempFile == NULL )
+		{
+			return -1;
+		}
+		strcpy(TempFile, File);
+		strcat(TempFile, ".tmp");
+
 		while( RetryTimes != 0 )
 		{
-			DownloadState = GetFromInternet_Base(URL, File, Append);
+			DownloadState = GetFromInternet_Base(URL, TempFile);
 			if( DownloadState == 0 )
 			{
 				if( SuccessCallBack != NULL )
@@ -120,7 +151,19 @@ int GetFromInternet_SingleFile(const char	*URL,
 					SuccessCallBack(URL, File);
 				}
 
-				return 0;
+				if( CopyAFile(TempFile, File, Append) != 0 )
+				{
+					if( ErrorCallBack != NULL )
+					{
+						ErrorCallBack(0, URL, File);
+					}
+
+					Ret = -1;
+					break;
+				} else {
+					Ret = 0;
+					break;
+				}
 			} else {
 				if( RetryTimes > 0 )
 				{
@@ -136,7 +179,9 @@ int GetFromInternet_SingleFile(const char	*URL,
 			}
 		}
 
-		return -1;
+		remove(TempFile);
+		SafeFree(TempFile);
+		return Ret;
 	}
 }
 
@@ -151,7 +196,7 @@ static size_t WriteFileCallback(void *Contents, size_t Size, size_t nmemb, void 
 }
 #endif /* DOWNLOAD_LIBCURL */
 
-int GetFromInternet_Base(const char *URL, const char *File, BOOL Append)
+int GetFromInternet_Base(const char *URL, const char *File)
 {
 #ifndef NODOWNLOAD
 #	ifdef WIN32
@@ -182,7 +227,7 @@ int GetFromInternet_Base(const char *URL, const char *File, BOOL Append)
 
 	InternetSetOption(webopenurl, INTERNET_OPTION_CONNECT_TIMEOUT, &TimeOut, sizeof(TimeOut));
 
-	fp = fopen(File, Append == TRUE ? "a+" : "wb" );
+	fp = fopen(File, "wb" );
 	if( fp == NULL )
 	{
 		ret = -1 * GetLastError();
@@ -225,7 +270,7 @@ int GetFromInternet_Base(const char *URL, const char *File, BOOL Append)
 
 	FILE *fp;
 
-	fp = fopen(File, Append == TRUE ? "a+" : "w");
+	fp = fopen(File, "w");
 	if( fp == NULL )
 	{
 		return -1;
@@ -262,12 +307,7 @@ int GetFromInternet_Base(const char *URL, const char *File, BOOL Append)
 #		ifdef DOWNLOAD_WGET
 	char Cmd[2048];
 
-	if( Append == TRUE )
-	{
-		sprintf(Cmd, "wget -t 2 -T 60 -q --no-check-certificate %s -O - >> %s ", URL, File);
-	} else {
-		sprintf(Cmd, "wget -t 2 -T 60 -q --no-check-certificate %s -O %s ", URL, File);
-	}
+	sprintf(Cmd, "wget -t 2 -T 60 -q --no-check-certificate %s -O %s ", URL, File);
 
 	return Execute(Cmd);
 #		endif /* DOWNLOAD_WGET */

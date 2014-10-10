@@ -28,4 +28,6 @@ const char *StringList_Find(StringList *s, const char *str);
 
 #define StringList_Free(s_ptr)	(ExtendableBuffer_Free((ExtendableBuffer *)(s_ptr)))
 
+const char **SplitURLs(StringList *s);
+
 #endif // STRINGLIST_H_INCLUDED

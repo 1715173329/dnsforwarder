@@ -412,9 +412,9 @@ StringList *ConfigGetStringList(ConfigFileInfo *Info, char *KeyName)
 		} else {
 			return &(Option -> Holder.str);
 		}
+	} else {
+		return NULL;
 	}
-
-	return NULL;
 }
 
 int32_t ConfigGetNumberOfStrings(ConfigFileInfo *Info, char *KeyName)
@@ -424,9 +424,9 @@ int32_t ConfigGetNumberOfStrings(ConfigFileInfo *Info, char *KeyName)
 	if( Option != NULL )
 	{
 		return StringList_Count(&(Option -> Holder.str));
+	} else {
+		return 0;
 	}
-
-	return 0;
 }
 
 int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName)
@@ -436,9 +436,9 @@ int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName)
 	if( Option != NULL )
 	{
 		return Option -> Holder.INT32;
+	} else {
+		return 0;
 	}
-
-	return 0;
 }
 
 BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
@@ -448,9 +448,9 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 	if( Option != NULL )
 	{
 		return Option -> Holder.boolean;
+	} else {
+		return FALSE;
 	}
-
-	return FALSE;
 }
 
 void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)

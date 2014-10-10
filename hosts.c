@@ -54,6 +54,7 @@ static int DynamicHosts_Load(void)
 	TempContainer = (HostsContainer *)SafeMalloc(sizeof(HostsContainer));
 	if( TempContainer == NULL )
 	{
+		fclose(fp);
 		return -1;
 	}
 
@@ -116,34 +117,8 @@ static int DynamicHosts_Load(void)
 		CNameCount,
 		ExcludedCount);
 
+	fclose(fp);
 	return 0;
-}
-
-const char **GetURLs(StringList *s)
-{
-	const char **URLs;
-	int NumberOfURLs = 0;
-	int Count = StringList_Count(s);
-	const char *Str_Itr;
-
-	URLs = malloc(sizeof(char *) * (Count + 1));
-	if( URLs == NULL )
-	{
-		return NULL;
-	}
-
-	Str_Itr = StringList_GetNext(s, NULL);
-	while( Str_Itr != NULL )
-	{
-		URLs[NumberOfURLs] = Str_Itr;
-		++NumberOfURLs;
-
-		Str_Itr = StringList_GetNext(s, Str_Itr);
-	}
-
-	URLs[NumberOfURLs] = NULL;
-
-	return URLs;
 }
 
 static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File)
@@ -162,7 +137,7 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 	int			DownloadState;
 	const char	**URLs;
 
-	URLs = GetURLs(ConfigGetStringList(ConfigInfo, "Hosts"));
+	URLs = SplitURLs(ConfigGetStringList(ConfigInfo, "Hosts"));
 
 	while(1)
 	{
@@ -456,7 +431,7 @@ int DynamicHosts_SocketLoop(void)
 					if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
 					{
 						RWLock_WrLock(HostsLock);
-						MatchState = Hosts_Match(MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
+						MatchState = Hosts_Match((HostsContainer *)MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
 
 						GotLock = TRUE;
 					}
@@ -504,6 +479,10 @@ int DynamicHosts_SocketLoop(void)
 							++NewIdentifier;
 							NeededSendBack = FALSE;
 							break;
+
+						default:
+							NeededSendBack = FALSE;
+							break;
 					}
 
 					if( GotLock == TRUE )
@@ -539,7 +518,6 @@ int DynamicHosts_SocketLoop(void)
 											'H'
 											);
 					}
-
 
 				} else {
 					int		State;
@@ -700,7 +678,7 @@ int Hosts_Try(char *Content, int *ContentLength)
 	if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
 	{
 		RWLock_WrLock(HostsLock);
-		MatchState = Hosts_Match(MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
+		MatchState = Hosts_Match((HostsContainer *)MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
 		GotLock = TRUE;
 	}
 

@@ -164,3 +164,30 @@ void StringList_Catenate(StringList *des, StringList *src)
 
 	ExtendableBuffer_Add(des, src -> Data, src -> Used);
 }
+
+const char **SplitURLs(StringList *s)
+{
+	const char **URLs;
+	int NumberOfURLs = 0;
+	int Count = StringList_Count(s);
+	const char *Str_Itr;
+
+	URLs = malloc(sizeof(char *) * (Count + 1));
+	if( URLs == NULL )
+	{
+		return NULL;
+	}
+
+	Str_Itr = StringList_GetNext(s, NULL);
+	while( Str_Itr != NULL )
+	{
+		URLs[NumberOfURLs] = Str_Itr;
+		++NumberOfURLs;
+
+		Str_Itr = StringList_GetNext(s, Str_Itr);
+	}
+
+	URLs[NumberOfURLs] = NULL;
+
+	return URLs;
+}
