@@ -179,7 +179,7 @@ static int LoadGfwList_Thread(ConfigFileInfo *ConfigInfo)
 	while( TRUE )
 	{
 		INFO("Loading GFW List From %s ...\n", GfwList);
-		if( GetFromInternet_Base(GfwList, File, FALSE) != 0 )
+		if( GetFromInternet_Base(GfwList, File) != 0 )
 		{
 			ERRORMSG("Downloading GFW List failed. Waiting %d second(s) to try again.\n", RetryInterval);
 			SLEEP(RetryInterval * 1000);
@@ -288,7 +288,7 @@ BOOL GfwList_Match(const char *Domain, int *HashValue)
 
 	RWLock_RdLock(GFWListLock);
 
-	Result = MatchDomain(&(MainContainer -> GFWList), Domain, HashValue);
+	Result = MatchDomain((StringChunk *)&(MainContainer -> GFWList), Domain, HashValue);
 
 	RWLock_UnRLock(GFWListLock);
 

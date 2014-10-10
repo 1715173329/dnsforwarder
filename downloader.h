@@ -18,6 +18,6 @@ int GetFromInternet_SingleFile(const char	*URL,
 							   void			(*SuccessCallBack)(const char *URL, const char *File)
 							   );
 
-int GetFromInternet_Base(const char *URL, const char *File, BOOL Append);
+int GetFromInternet_Base(const char *URL, const char *File);
 
 #endif // DOWNLOADER_H_INCLUDED
