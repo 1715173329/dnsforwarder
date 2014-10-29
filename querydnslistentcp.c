@@ -258,9 +258,16 @@ static int QueryDNSListenTCP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
-				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
-				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
-				while( TRUE ) SLEEP(100000);
+				{
+					int LastError = GET_LAST_ERROR();
+					ERRORMSG("SOCKET_ERROR Reached, 1.\n");
+					if( FatalErrorDecideding(LastError) != 0 )
+					{
+						ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+						ERRORMSG(" !!!!! Something bad happend, please restart this program. %d\n", LastError);
+						while( TRUE ) SLEEP(100000);
+					}
+				}
 				break;
 
 			case 0:

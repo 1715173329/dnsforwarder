@@ -900,3 +900,20 @@ int CopyAFile(const char *Src, const char *Dst, BOOL Append)
 
 	return 0;
 }
+
+int FatalErrorDecideding(int LastError)
+{
+#ifdef WIN32
+	if( LastError == WSAEINVAL || LastError == WSAEINTR || LastError == WSAEINPROGRESS )
+	{
+		return 0;
+	}
+#else
+	if( LastError == EINTR || LastError == EAGAIN )
+	{
+		return 0;
+	}
+#endif
+
+	return -1;
+}

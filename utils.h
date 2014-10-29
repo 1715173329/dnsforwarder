@@ -119,4 +119,6 @@ char *GetLocalPathFromURL(const char *URL, char *Buffer, int BufferLength);
 
 int CopyAFile(const char *Src, const char *Dst, BOOL Append);
 
+int FatalErrorDecideding(int LastError);
+
 #endif /* _UTILS_ */

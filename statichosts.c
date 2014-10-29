@@ -70,6 +70,11 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 		return HOSTS_TYPE_EXCLUEDE;
 	}
 
+	if( *IPOrCName == '@' && !isspace(*(IPOrCName + 1)) )
+	{
+		return HOSTS_TYPE_CNAME_EXCLUEDE;
+	}
+
 	if( isxdigit(*IPOrCName) )
 	{
 		const char *Itr;
@@ -117,111 +122,170 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 	}
 }
 
-static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
 {
 	OffsetOfHosts	r;
 	char			NumericIP[16];
 
+	if( StringChunk_Match_NoWildCard(&(Container -> Ipv6Hosts), Domain, NULL, NULL) == TRUE )
+	{
+		INFO("IPv6 Host is duplicated : %s, take only the first occurrence.\n", Domain);
+		return -1;
+	}
+
+	IPv6AddressToNum(IPOrCName, NumericIP);
+
+	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_AAAA, NumericIP, 16);
+
+	if( r.Offset < 0 )
+	{
+		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 16);
+
+		if( r.Offset < 0 )
+		{
+			return -1;
+		}
+
+	}
+
+	StringChunk_Add(&(Container -> Ipv6Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+
+	return 0;
+}
+
+static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+{
+	OffsetOfHosts	r;
+	char			NumericIP[4];
+
+	if( StringChunk_Match_NoWildCard(&(Container -> Ipv4Hosts), Domain, NULL, NULL) == TRUE )
+	{
+		INFO("IPv4 Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		return -1;
+	}
+
+	IPv4AddressToNum(IPOrCName, NumericIP);
+
+	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_A, NumericIP, 4);
+
+	if( r.Offset < 0 )
+	{
+		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 4);
+
+		if( r.Offset < 0 )
+		{
+			return -1;
+		}
+
+	}
+
+	StringChunk_Add(&(Container -> Ipv4Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+
+	return 0;
+}
+
+static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+{
+	OffsetOfHosts	r;
+
+	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
+	{
+		ERRORMSG("Hosts is too long : %s %s\n", IPOrCName, Domain);
+		return -1;
+	}
+
+	if( StringChunk_Match_NoWildCard(&(Container -> CNameHosts), Domain, NULL, NULL) == TRUE )
+	{
+		INFO("CName redirection domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		return -1;
+	}
+
+	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_CNAME, IPOrCName, strlen(IPOrCName) + 1);
+
+	if( r.Offset < 0 )
+	{
+		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), IPOrCName, strlen(IPOrCName) + 1);
+
+		if( r.Offset < 0 )
+		{
+			return -1;
+		}
+
+	}
+
+	StringChunk_Add(&(Container -> CNameHosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+
+	return 0;
+}
+
+static int Hosts_AddExcludedContainer(HostsContainer *Container, const char *Domain)
+{
+	if( StringChunk_Match_NoWildCard(&(Container -> ExcludedDomains), Domain, NULL, NULL) == TRUE )
+	{
+		INFO("Excluded Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		return -1;
+	}
+
+	StringChunk_Add(&(Container -> ExcludedDomains), Domain, NULL, 0);
+
+	return 0;
+}
+
+static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+{
 	switch( Hosts_DetermineIPTypes(IPOrCName) )
 	{
 		case HOSTS_TYPE_AAAA:
-			if( StringChunk_Match_NoWildCard(&(Container -> Ipv6Hosts), Domain, NULL, NULL) == TRUE )
+			if( Hosts_AddIPV6ToContainer(Container, IPOrCName, Domain) != 0)
 			{
-				INFO("IPv6 Host is duplicated : %s, take only the first occurrence.\n", Domain);
 				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_AAAA;
 			}
-
-			IPv6AddressToNum(IPOrCName, NumericIP);
-
-			r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_AAAA, NumericIP, 16);
-
-			if( r.Offset < 0 )
-			{
-
-				r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 16);
-
-				if( r.Offset < 0 )
-				{
-					return HOSTS_TYPE_UNKNOWN;
-				}
-
-			}
-
-			StringChunk_Add(&(Container -> Ipv6Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
-
-			return HOSTS_TYPE_AAAA;
 			break;
 
 		case HOSTS_TYPE_A:
-			if( StringChunk_Match_NoWildCard(&(Container -> Ipv4Hosts), Domain, NULL, NULL) == TRUE )
+			if( Hosts_AddIPV4ToContainer(Container, IPOrCName, Domain) != 0 )
 			{
-				INFO("IPv4 Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
+				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_A;
+			}
+			break;
+
+		case HOSTS_TYPE_CNAME_EXCLUEDE:
+			++IPOrCName;
+
+			if( Hosts_AddExcludedContainer(Container, IPOrCName) != 0 )
+			{
 				return HOSTS_TYPE_UNKNOWN;
 			}
 
-			IPv4AddressToNum(IPOrCName, NumericIP);
-
-			r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_A, NumericIP, 4);
-
-			if( r.Offset < 0 )
+			if( Hosts_AddCNameContainer(Container, IPOrCName, Domain) != 0 )
 			{
-
-				r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 4);
-
-				if( r.Offset < 0 )
-				{
-					return HOSTS_TYPE_UNKNOWN;
-				}
-
+				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_CNAME_EXCLUEDE;
 			}
-
-			StringChunk_Add(&(Container -> Ipv4Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
-
-			return HOSTS_TYPE_A;
 			break;
 
 		case HOSTS_TYPE_CNAME:
-			if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
+			if( Hosts_AddCNameContainer(Container, IPOrCName, Domain) != 0 )
 			{
-				ERRORMSG("Hosts is too long : %s %s\n", IPOrCName, Domain);
 				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_CNAME;
 			}
-
-			if( StringChunk_Match_NoWildCard(&(Container -> CNameHosts), Domain, NULL, NULL) == TRUE )
-			{
-				INFO("CName redirection domain is duplicated : %s, take only the first occurrence.\n", Domain);
-				return HOSTS_TYPE_UNKNOWN;
-			}
-
-			r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_CNAME, IPOrCName, strlen(IPOrCName) + 1);
-
-			if( r.Offset < 0 )
-			{
-
-				r.Offset = ExtendableBuffer_Add(&(Container -> IPs), IPOrCName, strlen(IPOrCName) + 1);
-
-				if( r.Offset < 0 )
-				{
-					return HOSTS_TYPE_UNKNOWN;
-				}
-
-			}
-
-			StringChunk_Add(&(Container -> CNameHosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
-
-			return HOSTS_TYPE_CNAME;
 			break;
 
 		case HOSTS_TYPE_EXCLUEDE:
-			if( StringChunk_Match_NoWildCard(&(Container -> ExcludedDomains), Domain, NULL, NULL) == TRUE )
+
+			if( Hosts_AddExcludedContainer(Container, Domain) != 0 )
 			{
-				INFO("Excluded Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_EXCLUEDE;
 			}
-
-			StringChunk_Add(&(Container -> ExcludedDomains), Domain, NULL, 0);
-
-			return HOSTS_TYPE_EXCLUEDE;
 			break;
 
 		default:
@@ -329,6 +393,11 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 				case HOSTS_TYPE_EXCLUEDE:
 					++ExcludedCount;
 					break;
+
+			case HOSTS_TYPE_CNAME_EXCLUEDE:
+				++CNameCount;
+				++ExcludedCount;
+				break;
 
 				default:
 					break;

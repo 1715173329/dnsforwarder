@@ -90,6 +90,11 @@ static int DynamicHosts_Load(void)
 				++ExcludedCount;
 				break;
 
+			case HOSTS_TYPE_CNAME_EXCLUEDE:
+				++CNameCount;
+				++ExcludedCount;
+				break;
+
 			default:
 				break;
 		}
@@ -137,7 +142,7 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 	int			DownloadState;
 	const char	**URLs;
 
-	URLs = SplitURLs(ConfigGetStringList(ConfigInfo, "Hosts"));
+	URLs = StringList_ToCharPtrArray(ConfigGetStringList(ConfigInfo, "Hosts"));
 
 	while(1)
 	{
@@ -164,7 +169,7 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 			if( UpdateInterval < 0 )
 			{
-				return;
+				break;
 			}
 		} else {
 			ERRORMSG("Getting hosts file(s) failed.\n");
@@ -172,6 +177,8 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 		SLEEP(UpdateInterval * 1000);
 	}
+
+	SafeFree(URLs);
 }
 
 static const char *Hosts_FindFromContainer(HostsContainer *Container, StringChunk *SubContainer, const char *Name)
@@ -439,6 +446,7 @@ int DynamicHosts_SocketLoop(void)
 					switch( MatchState )
 					{
 						case MATCH_STATE_PERFECT:
+							ERRORMSG("A Bug hit.\n");
 							{
 								BOOL EDNSEnabled = FALSE;
 

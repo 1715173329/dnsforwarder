@@ -38,6 +38,8 @@ typedef enum _HostsRecordType{
 
 	HOSTS_TYPE_EXCLUEDE = 1 << 4,
 
+	HOSTS_TYPE_CNAME_EXCLUEDE = 1 << 5,
+
 } HostsRecordType;
 
 int Hosts_InitContainer(HostsContainer	*Container);
