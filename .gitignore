@@ -1,5 +1,6 @@
 *.bak
 *.o
+*.tmp
 codeblocks/obj/
 codeblocks/bin/
 codeblocks/*.depend

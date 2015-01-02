@@ -558,7 +558,7 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 #ifdef WIN32
 			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
-			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, (int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec), (int)(1000000 - TimeLimit.tv_usec));
+			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)), CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec)));
 #endif
 			return TCPSocket;
 			break;
@@ -897,13 +897,20 @@ int QueryDNSViaTCP(void)
 					if( SendState < 0 )
 					{
 						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						LastFamily = AF_UNSPEC;
+						CloseTCPConnection(TCPQueryOutcomeSocket);
+						TCPQueryOutcomeSocket = INVALID_SOCKET;
+						AddressList_Advance(TCPProxies);
 						break;
 					}
 
 					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), RecvState - sizeof(ControlHeader));
 					if( SendState < 0 )
 					{
-						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						ShowSocketError("Sending to TCP server failed (2)", (-1) * SendState);
+						CloseTCPConnection(TCPQueryOutcomeSocket);
+						TCPQueryOutcomeSocket = INVALID_SOCKET;
+						AddressList_Advance(TCPProxies);
 						break;
 					}
 
