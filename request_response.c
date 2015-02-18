@@ -555,6 +555,7 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 			break;
 
 		default:
+
 #ifdef WIN32
 			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
@@ -833,6 +834,8 @@ int QueryDNSViaTCP(void)
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
+
+						/* The server address has changed, rebuilding socket */
 						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
 						{
 							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
@@ -898,6 +901,7 @@ int QueryDNSViaTCP(void)
 					{
 						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
 						LastFamily = AF_UNSPEC;
+						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 						CloseTCPConnection(TCPQueryOutcomeSocket);
 						TCPQueryOutcomeSocket = INVALID_SOCKET;
 						AddressList_Advance(TCPProxies);
@@ -908,6 +912,7 @@ int QueryDNSViaTCP(void)
 					if( SendState < 0 )
 					{
 						ShowSocketError("Sending to TCP server failed (2)", (-1) * SendState);
+						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 						CloseTCPConnection(TCPQueryOutcomeSocket);
 						TCPQueryOutcomeSocket = INVALID_SOCKET;
 						AddressList_Advance(TCPProxies);
