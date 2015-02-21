@@ -307,7 +307,7 @@ static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName,
 	return RecordLength;
 }
 
-static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
+static int GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
 {
 	static struct _RequestEntity {
 		ControlHeader	Header;
@@ -345,7 +345,7 @@ static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Ident
 	RequestEntity.Header.RequestingDomainHashValue = ELFHash(Name, 0);
 	*(uint16_t *)DNSEntity = Identifier;
 
-	InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_INCOME, Socket, (char *)&RequestEntity, RequestLength);
+	return InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL, Socket, (char *)&RequestEntity, RequestLength);
 }
 
 int DynamicHosts_SocketLoop(void)

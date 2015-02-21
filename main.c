@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.14"
+#define VERSION__ "5.0.15"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 
@@ -277,7 +277,7 @@ int ArgParse(int argc, char *argv_ori[])
 				  "  -h         Show this help.\n"
 				  "\n"
 				  "Output format:\n"
-				  " Date & Time [Udp|Tcp|Cache|Hosts|Refused|Blocked][Client IP][Type in querying][Domain in querying] : Message size\n"
+				  " Date & Time [Udp|Tcp|Cache|Hosts|Refused|Blocked][Client IP][Queried type][Queried domain] : Message size\n"
 				  "    Results\n"
 				  );
 			exit(0);
