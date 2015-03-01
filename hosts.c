@@ -334,7 +334,7 @@ static int GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identi
 	RequestLength += DNSGenQuestionRecord(NamePos, sizeof(RequestEntity.Entity) - 12, Name, Type, DNS_CLASS_IN);
 	if( RequestLength == sizeof(ControlHeader) + 12 )
 	{
-        return;
+        return -1;
 	}
 
 	RequestEntity.Header.NeededHeader = TRUE;
