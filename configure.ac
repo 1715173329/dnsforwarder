@@ -111,11 +111,12 @@ then
 
 	AC_ARG_ENABLE([base64decoder],
 		[AS_HELP_STRING([--enable-base64decoder],
-			[base64decoder, openssl or uudecode (default=openssl)]
+			[base64decoder, openssl or coreutils or uudecode (default=openssl)]
 		)],
 		[   case "${enableval}" in
 			openssl)    BASE64DECODER=openssl;;
 			uudecode)   BASE64DECODER=uudecode;;
+			coreutils)  BASE64DECODER=coreutils;;
 			*)          AC_MSG_ERROR(bad value ${enableval} for --enable-base64decoder) ;;
 			esac
 		],
@@ -136,6 +137,10 @@ then
 	CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
 	fi
 
+	if test "$BASE64DECODER" == "coreutils"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_COREUTILS "
+	fi
 
 	# Checks for header files.
 	AC_CHECK_HEADERS([sys/syscall.h wordexp.h])
