@@ -44,6 +44,8 @@ int Execute(const char *Cmd)
 	#endif /* BASE64_DECODER_OPENSSL */
 	#ifdef BASE64_DECODER_UUDECODE
 	#endif /* BASE64_DECODER_UUDECODE */
+	#ifdef BASE64_DECODER_COREUTILS
+	#endif /* BASE64_DECODER_COREUTILS */
 
 	#ifdef HAVE_WORDEXP
 		#include <wordexp.h>
@@ -385,6 +387,40 @@ int	Base64Decode(const char *File)
 
 	return 0;
 #endif /* BASE64_DECODER_UUDECODE */
+#ifdef BASE64_DECODER_COREUTILS
+	char Cmd[2048];
+	FILE *fp;
+
+	sprintf(Cmd, "%s.base64", File);
+
+	fp = fopen(Cmd, "w");
+	if( fp == NULL )
+	{
+		return -1;
+	}
+
+	fclose(fp);
+
+	sprintf(Cmd, "cat %s >> %s.base64", File, File);
+
+	if( Execute(Cmd) != 0 )
+	{
+		return -1;
+	}
+
+	sprintf(Cmd, "rm %s", File);
+
+	if( Execute(Cmd) != 0 )
+	{
+		return -1;
+	}
+
+	sprintf(Cmd, "base64 -d %s.base64 > %s", File, File);
+
+	Execute(Cmd);
+
+	return 0;
+#endif /* BASE64_DECODER_COREUTILS */
 #endif /* WIN32 */
 }
 
