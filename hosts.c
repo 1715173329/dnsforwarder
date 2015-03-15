@@ -279,19 +279,23 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName, char *Buffer)
 {
 	int RecordLength;
+	int DataLength;
 
 	switch( Type )
 	{
 		case DNS_TYPE_A:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + 4;
+			DataLength = 4;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		case DNS_TYPE_AAAA:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + 16;
+			DataLength = 16;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		case DNS_TYPE_CNAME:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + strlen(IPOrCName) + 2;
+			DataLength = strlen(IPOrCName) + 2;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		default:
@@ -299,7 +303,7 @@ static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName,
 			break;
 	}
 
-	DNSGenResourceRecord(Buffer + 1, INT_MAX, "", Type, DNS_CLASS_IN, 60, IPOrCName, 4, FALSE);
+	DNSGenResourceRecord(Buffer + 1, INT_MAX, "", Type, DNS_CLASS_IN, 60, IPOrCName, DataLength, FALSE);
 
 	Buffer[0] = 0xC0;
 	Buffer[1] = 0x0C;
