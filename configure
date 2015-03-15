@@ -1358,7 +1358,8 @@ Optional Features:
   --enable-win            compile for win32 (default=no)
   --enable-android        compile for android (default=no)
   --enable-downloader     downloader, libcurl, wget, or no (default=libcurl)
-  --enable-base64decoder  base64decoder, openssl or uudecode (default=openssl)
+  --enable-base64decoder  base64decoder, openssl or coreutils or uudecode
+                          (default=openssl)
   --enable-spinlock       spinlock will be used (default=yes)
   --enable-rwlock         rwlock will be used (default=yes)
   --enable-debug          enable DEBUG mode (default=no)
@@ -4244,6 +4245,7 @@ if test "${enable_base64decoder+set}" = set; then :
   enableval=$enable_base64decoder;    case "${enableval}" in
 			openssl)    BASE64DECODER=openssl;;
 			uudecode)   BASE64DECODER=uudecode;;
+			coreutils)  BASE64DECODER=coreutils;;
 			*)          as_fn_error $? "bad value ${enableval} for --enable-base64decoder" "$LINENO" 5 ;;
 			esac
 
@@ -4312,6 +4314,10 @@ fi
 	CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
 	fi
 
+	if test "$BASE64DECODER" == "coreutils"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_COREUTILS "
+	fi
 
 	# Checks for header files.
 	ac_ext=c
