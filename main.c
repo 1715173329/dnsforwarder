@@ -260,7 +260,7 @@ int ArgParse(int argc, char *argv_ori[])
     {
     	if(strcmp("-h", *argv) == 0)
 		{
-			printf("DNSforwarder by holmium. Version "VERSION__" . License : GPL v3.\n Time of compilation : %s %s.\n\n", __DATE__, __TIME__);
+			printf("DNSforwarder by several people. Version "VERSION__" . License : GPL v3.\n Time of compilation : %s %s.\n\n", __DATE__, __TIME__);
 			printf("http://micasmica.blogspot.com/2011/08/dns.html\nhttps://github.com/holmium/dnsforwarder\n\n");
 			printf("Usage : %s [args].\n", strrchr(argv_ori[0], PATH_SLASH_CH) == NULL ? argv_ori[0] : strrchr(argv_ori[0], PATH_SLASH_CH) + 1);
 			printf(" [args] is case sensitivity and can be zero or more (in any order) of:\n"
@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
 
 	}
 
-    PRINTM("DNSforwarder by holmium. Version "VERSION__" . License : GPL v3.\nTime of compilation : %s %s.\n\n", __DATE__, __TIME__);
+    PRINTM("DNSforwarder by several people. Version "VERSION__" . License : GPL v3.\nTime of compilation : %s %s.\n\n", __DATE__, __TIME__);
 
 #ifndef WIN32
     PRINTM("Please run `dnsforwarder -p' if something wrong.\n\n")
