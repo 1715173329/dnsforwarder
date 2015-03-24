@@ -813,10 +813,12 @@ int QueryDNSViaTCP(void)
 
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
-					int	RecvState, SendState;
-					uint16_t	TCPLength;
-					sa_family_t	NewFamily;
+					int				RecvState, SendState;
+					sa_family_t		NewFamily;
 					struct sockaddr	*NewAddress;
+					static char		TCPRerequest[2048 - sizeof(ControlHeader) + 2];
+					uint16_t		*TCPLength = TCPRerequest;
+					int				TCPRerequestLength;
 
 					RecvState = recvfrom(TCPQueryIncomeSocket,
 								RequestEntity,
@@ -828,6 +830,7 @@ int QueryDNSViaTCP(void)
 
 					if( RecvState < 1 )
 					{
+						ERRORMSG("RecvState : %d (833).\n", RecvState);
 						break;
 					}
 
@@ -894,24 +897,19 @@ int QueryDNSViaTCP(void)
 						send(TCPQueryOutcomeSocket, 0x47, 1, MSG_NOSIGNAL);
 					}
 */
-					TCPLength = htons(RecvState - sizeof(ControlHeader));
-
-					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, (const char *)&TCPLength, 2);
-					if( SendState < 0 )
+					TCPRerequestLength = RecvState - sizeof(ControlHeader) + 2;
+					if( TCPRerequestLength > sizeof(TCPRerequest) )
 					{
-						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
-						LastFamily = AF_UNSPEC;
-						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
-						CloseTCPConnection(TCPQueryOutcomeSocket);
-						TCPQueryOutcomeSocket = INVALID_SOCKET;
-						AddressList_Advance(TCPProxies);
+						ERRORMSG("Segment too large (902).\n");
 						break;
 					}
+					*TCPLength = htons(TCPRerequestLength - 2);
+					memcpy(TCPRerequest + 2, RequestEntity + sizeof(ControlHeader), TCPRerequestLength - 2);
 
-					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), RecvState - sizeof(ControlHeader));
+					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, TCPRerequest, TCPRerequestLength);
 					if( SendState < 0 )
 					{
-						ShowSocketError("Sending to TCP server failed (2)", (-1) * SendState);
+						ShowSocketError("Sending to TCP server failed (912)", (-1) * SendState);
 						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
 						CloseTCPConnection(TCPQueryOutcomeSocket);
 						TCPQueryOutcomeSocket = INVALID_SOCKET;
