@@ -9,10 +9,10 @@ typedef struct _Array{
 	char		*Data;
 
 	/* Length of one element */
-	int32_t	DataLength;
+	int32_t		DataLength;
 
 	/* How many elements are there in this array. Always non-negative. */
-	int32_t	Used;
+	int32_t		Used;
 
 	/* How many rooms (one room one element) have been allocated.
 	 *   An Array, normally, grows up (towards high address). In this case,

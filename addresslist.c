@@ -165,3 +165,67 @@ struct sockaddr *AddressList_GetOne(AddressList *a, sa_family_t *family)
 {
 	return AddressList_GetOneBySubscript(a, family, a -> Counter % Array_GetUsed(&(a -> AddressList)));
 }
+
+struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t family)
+{
+	int Itr;
+	int NumberOfAddresses = AddressList_GetNumberOfAddresses(a);
+	struct sockaddr **AddrList, **AddrList_Ori;
+	struct sockaddr *OneAddr;
+	sa_family_t OneFamily = AF_UNSPEC;
+
+	AddrList = SafeMalloc(sizeof(struct sockaddr *) * (NumberOfAddresses + 1));
+	if( AddrList == NULL )
+	{
+		return NULL;
+	}
+
+	AddrList_Ori = AddrList;
+	Itr = 0;
+	while( Itr != NumberOfAddresses )
+	{
+		OneAddr = AddressList_GetOneBySubscript(a, &OneFamily, Itr);
+		if( OneFamily == family )
+		{
+			*AddrList = OneAddr;
+			++AddrList;
+		}
+		++Itr;
+	}
+
+	*AddrList = NULL;
+	return AddrList_Ori;
+}
+
+struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t ***families)
+{
+	int Itr;
+
+	int NumberOfAddresses = AddressList_GetNumberOfAddresses(a);
+	struct sockaddr **AddrList;
+
+	AddrList = SafeMalloc(sizeof(struct sockaddr *) * (NumberOfAddresses + 1));
+	if( AddrList == NULL )
+	{
+		return NULL;
+	}
+
+	*families = SafeMalloc(sizeof(sa_family_t *) * (NumberOfAddresses + 1));
+    if( *families == NULL )
+    {
+		SafeFree(AddrList);
+		return NULL;
+    }
+
+	Itr = 0;
+	while( Itr != NumberOfAddresses )
+	{
+		AddrList[Itr] = AddressList_GetOneBySubscript(a, (*families)[Itr], Itr);
+
+		++Itr;
+	}
+
+	AddrList[Itr] = NULL;
+	(*families)[Itr] = AF_UNSPEC;
+	return AddrList;
+}

@@ -5,13 +5,13 @@
 #include <ctype.h> /* isspace() */
 
 #ifndef NODOWNLOAD
-#ifndef WIN32
-#include <sys/types.h>
-#include <sys/stat.h>
-#ifdef DOWNLOAD_LIBCURL
-#include <curl/curl.h>
-#endif /* DOWNLOAD_LIBCURL */
-#endif /* WIN32 */
+	#ifndef WIN32
+		#include <sys/types.h>
+		#include <sys/stat.h>
+		#ifdef DOWNLOAD_LIBCURL
+			#include <curl/curl.h>
+		#endif /* DOWNLOAD_LIBCURL */
+	#endif /* WIN32 */
 #endif /* NODOWNLOAD */
 
 #include "dnsrelated.h"
@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.15"
+#define VERSION__ "5.0.16 (Debug Version)"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 

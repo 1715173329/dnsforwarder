@@ -92,6 +92,12 @@ struct sockaddr *AddressList_GetOne(__in		AddressList	*a,
  *  The pointer to the fetched address.
  */
 
+#define AddressList_GetNumberOfAddresses(a_ptr)	( Array_GetUsed(&((a_ptr) -> AddressList)) )
+
+/* You should free the return value and *families after the are no longer needed. */
+struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t family);
+struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t ***families);
+
 #define AddressList_Free(a_ptr)	(Array_Free(&((a_ptr) -> AddressList)))
 /* Description:
  *  Free an initialized AddressList.

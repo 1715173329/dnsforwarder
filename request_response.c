@@ -14,7 +14,7 @@ static AddressChunk	Addresses;
 static BOOL			ParallelQuery;
 
 static sa_family_t	ParallelMainFamily;
-static Array		Addresses_Array;
+static struct sockaddr **Addresses_Array;
 
 static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 {
@@ -84,28 +84,16 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 	{
 		int NumberOfAddr;
 
-		int AddrLen;
-
-		sa_family_t SubFamily;
-
-		struct sockaddr *OneAddr;
-
 		NumberOfAddr = StringList_Count(udpaddrs);
 		if( NumberOfAddr <= 0 )
 		{
 			ERRORMSG("No UDP server specified, cannot use parallel query.\n")
 			ParallelQuery = FALSE;
 		} else {
-
 			AddressChunk_GetOneUDPBySubscript(&Addresses, &ParallelMainFamily, 0);
 
-			if( ParallelMainFamily == AF_INET )
-			{
-				AddrLen = sizeof(struct sockaddr);
-			} else {
-				AddrLen = sizeof(struct sockaddr_in6);
-			}
-
+			Addresses_Array = AddressList_GetPtrListOfFamily(AddressChunk_GetUDPPart(&Addresses), ParallelMainFamily);
+/*
 			Array_Init(&Addresses_Array, AddrLen, NumberOfAddr, FALSE, NULL);
 
 			while( NumberOfAddr != 0 )
@@ -118,6 +106,7 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 
 				--NumberOfAddr;
 			}
+*/
 		}
 	}
 
@@ -131,36 +120,14 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 static sa_family_t GetAddress(ControlHeader		*Header,
 							  DNSQuaryProtocol	ProtocolUsed,
 							  struct sockaddr	**Addresses_List,
-							  int				*NumberOfAddresses,
 							  sa_family_t		*Family
 							  )
 {
 	*Addresses_List = AddressChunk_GetDedicated(&Addresses, Family, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
-
 	if( *Addresses_List == NULL )
 	{
-		if( ProtocolUsed == DNS_QUARY_PROTOCOL_UDP && ParallelQuery == TRUE )
-		{
-			*Addresses_List = (struct sockaddr *)Addresses_Array.Data;
-			if( NumberOfAddresses != NULL )
-			{
-				*NumberOfAddresses = Addresses_Array.Used;
-			}
-			*Family = ParallelMainFamily;
-		} else {
-			*Addresses_List = AddressChunk_GetOne(&Addresses, Family, ProtocolUsed);
-			if( NumberOfAddresses != NULL )
-			{
-				*NumberOfAddresses = 1;
-			}
-		}
-	} else {
-		if( NumberOfAddresses != NULL )
-		{
-			*NumberOfAddresses = 1;
-		}
+		*Addresses_List = AddressChunk_GetOne(&Addresses, Family, ProtocolUsed);
 	}
-
 	return *Family;
 }
 
@@ -508,7 +475,7 @@ static BOOL SocketIsWritable(SOCKET sock, int Timeout)
 
 static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Family, const char *Type)
 {
-#   define  CONNECT_TIMEOUT 2
+#   define  CONNECT_TIMEOUT 5
 
 	SOCKET TCPSocket;
 #ifdef WIN32
@@ -817,7 +784,7 @@ int QueryDNSViaTCP(void)
 					sa_family_t		NewFamily;
 					struct sockaddr	*NewAddress;
 					static char		TCPRerequest[2048 - sizeof(ControlHeader) + 2];
-					uint16_t		*TCPLength = TCPRerequest;
+					uint16_t		*TCPLength = (uint16_t *)TCPRerequest;
 					int				TCPRerequestLength;
 
 					RecvState = recvfrom(TCPQueryIncomeSocket,
@@ -832,9 +799,11 @@ int QueryDNSViaTCP(void)
 					{
 						ERRORMSG("RecvState : %d (833).\n", RecvState);
 						break;
+					} else {
+						INFO("<-Recved query %s, %d bytes.\n", Header -> RequestingDomain, RecvState);
 					}
 
-					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
+					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
 
@@ -915,6 +884,8 @@ int QueryDNSViaTCP(void)
 						TCPQueryOutcomeSocket = INVALID_SOCKET;
 						AddressList_Advance(TCPProxies);
 						break;
+					} else {
+						INFO("->Sended query %s\n", Header -> RequestingDomain);
 					}
 
 				} else {
@@ -1044,26 +1015,25 @@ int InitIPSubstituting(StringList *l)
 	return 0;
 }
 
-static void SendQueryViaUDP(SOCKET		Socket,
-							const char	*RequestEntity,
-							int			EntityLength,
-							struct sockaddr	*Addresses_List,
-							int			NumberOfAddresses,
-							sa_family_t	Family
+static int SendQueryViaUDP(SOCKET			Socket,
+							const char		*RequestEntity,
+							int				EntityLength,
+							struct sockaddr	**Addresses_List,
+							sa_family_t		Family
 							)
 {
 	int		AddrLen = GetAddressLength(Family);
 
 	int		StateOfSending = 0;
 
-	while( NumberOfAddresses != 0 )
+	while( *Addresses_List != NULL )
 	{
-		StateOfSending |= (sendto(Socket, RequestEntity, EntityLength, 0, Addresses_List, AddrLen) > 0);
+		StateOfSending |= (sendto(Socket, RequestEntity, EntityLength, 0, *Addresses_List, AddrLen) > 0);
 
-		Addresses_List = (struct sockaddr *)(((char *)Addresses_List) + AddrLen);
-
-		--NumberOfAddresses;
+		++Addresses_List;
 	}
+
+	return StateOfSending;
 }
 
 static void UDPSwepOutput(QueryContextEntry *Entry, int Number)
@@ -1102,7 +1072,7 @@ int QueryDNSViaUDP(void)
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
 	UDPQueryIncomeSocket =	InternalInterface_TryOpenLocal(10125, INTERNAL_INTERFACE_UDP_QUERY);
-	UDPQueryOutcomeSocket = InternalInterface_OpenASocket(ParallelMainFamily, NULL);
+	UDPQueryOutcomeSocket = InternalInterface_OpenASocket(LastFamily, NULL);
 
 	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
 
@@ -1162,8 +1132,7 @@ int QueryDNSViaUDP(void)
 				if( FD_ISSET(UDPQueryIncomeSocket, &ReadySet) )
 				{
 					int State;
-					struct sockaddr	*NewAddress;
-					int	NumberOfAddresses;
+					struct sockaddr	*NewAddress[2];
 					sa_family_t	NewFamily;
 
 					State = recvfrom(UDPQueryIncomeSocket,
@@ -1190,39 +1159,53 @@ int QueryDNSViaUDP(void)
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 
-					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_UDP, &NewAddress, &NumberOfAddresses, &NewFamily);
-
-					if( NewFamily != LastFamily )
+					NewAddress[0] = AddressChunk_GetDedicated(&Addresses, &NewFamily, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
+					if( ParallelQuery == FALSE || NewAddress[0] != NULL )
 					{
-						if( UDPQueryOutcomeSocket != INVALID_SOCKET )
+						if( NewAddress[0] == NULL )
 						{
-							FD_CLR(UDPQueryOutcomeSocket, &ReadSet);
-							CLOSE_SOCKET(UDPQueryOutcomeSocket);
+							NewAddress[0] = AddressChunk_GetOne(&Addresses, &NewFamily, DNS_QUARY_PROTOCOL_UDP);
 						}
 
-						UDPQueryOutcomeSocket = InternalInterface_OpenASocket(NewFamily, NULL);
-						if( UDPQueryOutcomeSocket == INVALID_SOCKET )
+						NewAddress[1] = NULL;
+
+						if( NewFamily != LastFamily )
 						{
-							LastFamily = AF_UNSPEC;
-							break;
+							if( UDPQueryOutcomeSocket != INVALID_SOCKET )
+							{
+								FD_CLR(UDPQueryOutcomeSocket, &ReadSet);
+								CLOSE_SOCKET(UDPQueryOutcomeSocket);
+							}
+
+							UDPQueryOutcomeSocket = InternalInterface_OpenASocket(NewFamily, NULL);
+							if( UDPQueryOutcomeSocket == INVALID_SOCKET )
+							{
+								LastFamily = AF_UNSPEC;
+								break;
+							}
+
+							LastFamily = NewFamily;
+							if( UDPQueryOutcomeSocket > MaxFd )
+							{
+								MaxFd = UDPQueryOutcomeSocket;
+							}
+							FD_SET(UDPQueryOutcomeSocket, &ReadSet);
 						}
 
-						LastFamily = NewFamily;
-						if( UDPQueryOutcomeSocket > MaxFd )
-						{
-							MaxFd = UDPQueryOutcomeSocket;
-						}
-						FD_SET(UDPQueryOutcomeSocket, &ReadSet);
+						SendQueryViaUDP(UDPQueryOutcomeSocket,
+										RequestEntity + sizeof(ControlHeader),
+										State - sizeof(ControlHeader),
+										NewAddress,
+										NewFamily
+										);
+					} else {
+						SendQueryViaUDP(UDPQueryOutcomeSocket,
+										RequestEntity + sizeof(ControlHeader),
+										State - sizeof(ControlHeader),
+										Addresses_Array,
+										ParallelMainFamily
+										);
 					}
-
-					SendQueryViaUDP(UDPQueryOutcomeSocket,
-									RequestEntity + sizeof(ControlHeader),
-									State - sizeof(ControlHeader),
-									NewAddress,
-									NumberOfAddresses,
-									NewFamily
-									);
-
 				} else {
 					int State;
 

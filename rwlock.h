@@ -18,9 +18,9 @@
 #else /* WIN32 */
 
 #ifdef HAVE_PTHREAD_RWLOCK_INIT
-typedef pthread_rwlock_t  RWLock;
+	typedef pthread_rwlock_t  RWLock;
 #else /* HAVE_PTHREAD_RWLOCK_INIT */
-typedef pthread_mutex_t  RWLock;
+	typedef pthread_mutex_t  RWLock;
 #endif /* HAVE_PTHREAD_RWLOCK_INIT */
 
 #endif /* WIN32 */
@@ -58,21 +58,21 @@ typedef pthread_mutex_t  RWLock;
 	#endif /* WIN64 */
 #else /* WIN32 */
 
-#ifdef HAVE_PTHREAD_RWLOCK_INIT
-	#define RWLock_Init(l)		pthread_rwlock_init(&(l), NULL)
-	#define RWLock_RdLock(l)	pthread_rwlock_rdlock(&(l))
-	#define RWLock_WrLock(l)	pthread_rwlock_wrlock(&(l))
-	#define RWLock_UnRLock(l)	pthread_rwlock_unlock(&(l))
-	#define RWLock_UnWLock(l)	pthread_rwlock_unlock(&(l))
-	#define RWLock_Destroy(l)	pthread_rwlock_destroy(&(l))
-#else
-	#define RWLock_Init(l)		(pthread_mutex_init(&(l), NULL))
-	#define RWLock_RdLock(l)	(pthread_mutex_lock(&(l)))
-	#define RWLock_WrLock(l)	(pthread_mutex_lock(&(l)))
-	#define RWLock_UnRLock(l)	(pthread_mutex_unlock(&(l)))
-	#define RWLock_UnWLock(l)	(pthread_mutex_unlock(&(l)))
-	#define RWLock_Destroy(l)	(pthread_mutex_destroy(&(l)))
-#endif
+	#ifdef HAVE_PTHREAD_RWLOCK_INIT
+		#define RWLock_Init(l)		pthread_rwlock_init(&(l), NULL)
+		#define RWLock_RdLock(l)	pthread_rwlock_rdlock(&(l))
+		#define RWLock_WrLock(l)	pthread_rwlock_wrlock(&(l))
+		#define RWLock_UnRLock(l)	pthread_rwlock_unlock(&(l))
+		#define RWLock_UnWLock(l)	pthread_rwlock_unlock(&(l))
+		#define RWLock_Destroy(l)	pthread_rwlock_destroy(&(l))
+	#else
+		#define RWLock_Init(l)		(pthread_mutex_init(&(l), NULL))
+		#define RWLock_RdLock(l)	(pthread_mutex_lock(&(l)))
+		#define RWLock_WrLock(l)	(pthread_mutex_lock(&(l)))
+		#define RWLock_UnRLock(l)	(pthread_mutex_unlock(&(l)))
+		#define RWLock_UnWLock(l)	(pthread_mutex_unlock(&(l)))
+		#define RWLock_Destroy(l)	(pthread_mutex_destroy(&(l)))
+	#endif
 #endif /* WIN32 */
 
 #endif // RWLOCK_H_INCLUDED

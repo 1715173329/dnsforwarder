@@ -182,6 +182,8 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.INT32 = 0;
     ConfigAddOption(&ConfigInfo, "RefusingResponseCode", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
+
+
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) == 0 )
 	{
 		ConfigRead(&ConfigInfo);

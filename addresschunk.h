@@ -28,4 +28,6 @@ struct sockaddr *AddressChunk_GetOneUDPBySubscript(AddressChunk *ac, sa_family_t
 
 int AddressChunk_Advance(AddressChunk *ac, DNSQuaryProtocol Protocol);
 
+#define AddressChunk_GetUDPPart(a_ptr) (&((a_ptr) -> UDPAddresses))
+
 #endif // ADDRESSCHUNK_H_INCLUDED
