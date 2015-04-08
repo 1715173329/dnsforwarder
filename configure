@@ -717,6 +717,7 @@ enable_option_checking
 enable_silent_rules
 with_ccflags
 enable_dependency_tracking
+enable_win
 enable_android
 enable_downloader
 enable_base64decoder
@@ -1354,9 +1355,11 @@ Optional Features:
                           do not reject slow dependency extractors
   --disable-dependency-tracking
                           speeds up one-time build
+  --enable-win            compile for win32 (default=no)
   --enable-android        compile for android (default=no)
   --enable-downloader     downloader, libcurl, wget, or no (default=libcurl)
-  --enable-base64decoder  base64decoder, openssl or uudecode (default=openssl)
+  --enable-base64decoder  base64decoder, openssl or coreutils or uudecode
+                          (default=openssl)
   --enable-spinlock       spinlock will be used (default=yes)
   --enable-rwlock         rwlock will be used (default=yes)
   --enable-debug          enable DEBUG mode (default=no)
@@ -1796,6 +1799,73 @@ $as_echo "$ac_res" >&6; }
 
 } # ac_fn_c_check_type
 
+# ac_fn_c_check_func LINENO FUNC VAR
+# ----------------------------------
+# Tests whether FUNC exists, setting the cache variable VAR accordingly
+ac_fn_c_check_func ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
+$as_echo_n "checking for $2... " >&6; }
+if eval \${$3+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $2 innocuous_$2
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $2 (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef $2
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $2 ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$2 || defined __stub___$2
+choke me
+#endif
+
+int
+main ()
+{
+return $2 ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  eval "$3=yes"
+else
+  eval "$3=no"
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_c_check_func
+
 # ac_fn_c_find_intX_t LINENO BITS VAR
 # -----------------------------------
 # Finds a signed integer type with width BITS, setting cache variable VAR
@@ -1872,72 +1942,59 @@ $as_echo "$ac_res" >&6; }
 
 } # ac_fn_c_find_intX_t
 
-# ac_fn_c_check_func LINENO FUNC VAR
-# ----------------------------------
-# Tests whether FUNC exists, setting the cache variable VAR accordingly
-ac_fn_c_check_func ()
+# ac_fn_c_find_uintX_t LINENO BITS VAR
+# ------------------------------------
+# Finds an unsigned integer type with width BITS, setting cache variable VAR
+# accordingly.
+ac_fn_c_find_uintX_t ()
 {
   as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
-$as_echo_n "checking for $2... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for uint$2_t" >&5
+$as_echo_n "checking for uint$2_t... " >&6; }
 if eval \${$3+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  eval "$3=no"
+     # Order is important - never check a type that is potentially smaller
+     # than half of the expected target width.
+     for ac_type in uint$2_t 'unsigned int' 'unsigned long int' \
+	 'unsigned long long int' 'unsigned short int' 'unsigned char'; do
+       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
-   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
-#define $2 innocuous_$2
-
-/* System header to define __stub macros and hopefully few prototypes,
-    which can conflict with char $2 (); below.
-    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
-    <limits.h> exists even on freestanding compilers.  */
-
-#ifdef __STDC__
-# include <limits.h>
-#else
-# include <assert.h>
-#endif
-
-#undef $2
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char $2 ();
-/* The GNU C library defines this for functions which it implements
-    to always fail with ENOSYS.  Some functions are actually named
-    something starting with __ and the normal name is an alias.  */
-#if defined __stub_$2 || defined __stub___$2
-choke me
-#endif
-
+$ac_includes_default
 int
 main ()
 {
-return $2 ();
+static int test_array [1 - 2 * !((($ac_type) -1 >> ($2 / 2 - 1)) >> ($2 / 2 - 1) == 3)];
+test_array [0] = 0;
+return test_array [0];
+
   ;
   return 0;
 }
 _ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  eval "$3=yes"
-else
-  eval "$3=no"
+if ac_fn_c_try_compile "$LINENO"; then :
+  case $ac_type in #(
+  uint$2_t) :
+    eval "$3=yes" ;; #(
+  *) :
+    eval "$3=\$ac_type" ;;
+esac
 fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+       if eval test \"x\$"$3"\" = x"no"; then :
+
+else
+  break
+fi
+     done
 fi
 eval ac_res=\$$3
 	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
 $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
 
-} # ac_fn_c_check_func
+} # ac_fn_c_find_uintX_t
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -2290,7 +2347,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-am__api_version='1.14'
+am__api_version='1.15'
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -2491,8 +2548,8 @@ test "$program_suffix" != NONE &&
 ac_script='s/[\\$]/&&/g;s/;s,x,x,$//'
 program_transform_name=`$as_echo "$program_transform_name" | sed "$ac_script"`
 
-# expand $ac_aux_dir to an absolute path
-am_aux_dir=`cd $ac_aux_dir && pwd`
+# Expand $ac_aux_dir to an absolute path.
+am_aux_dir=`cd "$ac_aux_dir" && pwd`
 
 if test x"${MISSING+set}" != xset; then
   case $am_aux_dir in
@@ -2511,7 +2568,7 @@ else
 $as_echo "$as_me: WARNING: 'missing' script is too old or missing" >&2;}
 fi
 
-if test x"${install_sh}" != xset; then
+if test x"${install_sh+set}" != xset; then
   case $am_aux_dir in
   *\ * | *\	*)
     install_sh="\${SHELL} '$am_aux_dir/install-sh'" ;;
@@ -2839,8 +2896,8 @@ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 # <http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html>
 mkdir_p='$(MKDIR_P)'
 
-# We need awk for the "check" target.  The system "awk" is bad on
-# some platforms.
+# We need awk for the "check" target (and possibly the TAP driver).  The
+# system "awk" is bad on some platforms.
 # Always define AMTAR for backward compatibility.  Yes, it's still used
 # in the wild :-(  We should find a proper way to deprecate it ...
 AMTAR='$${TAR-tar}'
@@ -2897,6 +2954,7 @@ END
     as_fn_error $? "Your 'rm' program is bad, sorry." "$LINENO" 5
   fi
 fi
+
 
 
 ac_config_headers="$ac_config_headers config.h"
@@ -4061,13 +4119,34 @@ else
 fi
 
 
-# Check whether --enable-android was given.
+# Check whether --enable-win was given.
+if test "${enable_win+set}" = set; then :
+  enableval=$enable_win;    case "${enableval}" in
+	    yes)  WIN32=yes;;
+	    no)   WIN32=no;;
+	    *)   as_fn_error $? "bad value ${enableval} for --enable-win" "$LINENO" 5 ;;
+	    esac
+
+else
+  WIN32=no
+
+fi
+
+
+if test "$WIN32" == "yes"
+then
+CFLAGS="${CFLAGS} -DWIN32 "
+fi
+
+if test "$WIN32" != "yes"
+then
+	# Check whether --enable-android was given.
 if test "${enable_android+set}" = set; then :
   enableval=$enable_android;    case "${enableval}" in
-	    yes)  ANDROID=yes;;
-	    no)   ANDROID=no;;
-	    *)   as_fn_error $? "bad value ${enableval} for --enable-android" "$LINENO" 5 ;;
-	    esac
+			yes)  ANDROID=yes;;
+			no)   ANDROID=no;;
+			*)   as_fn_error $? "bad value ${enableval} for --enable-android" "$LINENO" 5 ;;
+			esac
 
 else
   ANDROID=no
@@ -4075,20 +4154,19 @@ else
 fi
 
 
-# Checks for pthread.
-if test "$ANDROID" == "yes"
-then
-CFLAGS="${CFLAGS} -DANDROID "
-fi
+	if test "$ANDROID" == "yes"
+	then
+	CFLAGS="${CFLAGS} -DANDROID "
+	fi
 
-# Check whether --enable-downloader was given.
+	# Check whether --enable-downloader was given.
 if test "${enable_downloader+set}" = set; then :
   enableval=$enable_downloader;    case "${enableval}" in
-	    libcurl)    DOWNLOADER=libcurl;;
-	    wget)       DOWNLOADER=wget;;
-	    no)         DOWNLOADER=no;;
-	    *)          as_fn_error $? "bad value ${enableval} for --enable-downloader" "$LINENO" 5 ;;
-	    esac
+			libcurl)    DOWNLOADER=libcurl;;
+			wget)       DOWNLOADER=wget;;
+			no)         DOWNLOADER=no;;
+			*)          as_fn_error $? "bad value ${enableval} for --enable-downloader" "$LINENO" 5 ;;
+			esac
 
 else
   DOWNLOADER=libcurl
@@ -4096,11 +4174,11 @@ else
 fi
 
 
-if test "$DOWNLOADER" == "libcurl"
-then
+	if test "$DOWNLOADER" == "libcurl"
+	then
 
-# Checks for curl.
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
+	# Checks for curl.
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for curl_global_init in -lcurl" >&5
 $as_echo_n "checking for curl_global_init in -lcurl... " >&6; }
 if ${ac_cv_lib_curl_curl_global_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4149,26 +4227,27 @@ else
 fi
 
 
-CFLAGS="${CFLAGS} -DDOWNLOAD_LIBCURL "
-fi
+	CFLAGS="${CFLAGS} -DDOWNLOAD_LIBCURL "
+	fi
 
-if test "$DOWNLOADER" == "wget"
-then
-CFLAGS="${CFLAGS} -DDOWNLOAD_WGET "
-fi
+	if test "$DOWNLOADER" == "wget"
+	then
+	CFLAGS="${CFLAGS} -DDOWNLOAD_WGET "
+	fi
 
-if test "$DOWNLOADER" == "no"
-then
-CFLAGS="${CFLAGS} -DNODOWNLOAD "
-fi
+	if test "$DOWNLOADER" == "no"
+	then
+	CFLAGS="${CFLAGS} -DNODOWNLOAD "
+	fi
 
-# Check whether --enable-base64decoder was given.
+	# Check whether --enable-base64decoder was given.
 if test "${enable_base64decoder+set}" = set; then :
   enableval=$enable_base64decoder;    case "${enableval}" in
-	    openssl)    BASE64DECODER=openssl;;
-	    uudecode)   BASE64DECODER=uudecode;;
-	    *)          as_fn_error $? "bad value ${enableval} for --enable-base64decoder" "$LINENO" 5 ;;
-	    esac
+			openssl)    BASE64DECODER=openssl;;
+			uudecode)   BASE64DECODER=uudecode;;
+			coreutils)  BASE64DECODER=coreutils;;
+			*)          as_fn_error $? "bad value ${enableval} for --enable-base64decoder" "$LINENO" 5 ;;
+			esac
 
 else
   BASE64DECODER=openssl
@@ -4176,11 +4255,11 @@ else
 fi
 
 
-if test "$BASE64DECODER" == "openssl"
-then
-CFLAGS="${CFLAGS} -DBASE64_DECODER_OPENSSL "
-# Checks for openssl.
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BIO_new in -lcrypto" >&5
+	if test "$BASE64DECODER" == "openssl"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_OPENSSL "
+	# Checks for openssl.
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for BIO_new in -lcrypto" >&5
 $as_echo_n "checking for BIO_new in -lcrypto... " >&6; }
 if ${ac_cv_lib_crypto_BIO_new+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4228,16 +4307,20 @@ else
 
 fi
 
-fi
+	fi
 
-if test "$BASE64DECODER" == "uudecode"
-then
-CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
-fi
+	if test "$BASE64DECODER" == "uudecode"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
+	fi
 
+	if test "$BASE64DECODER" == "coreutils"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_COREUTILS "
+	fi
 
-# Checks for header files.
-ac_ext=c
+	# Checks for header files.
+	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -4648,9 +4731,9 @@ fi
 done
 
 
-if test "$DOWNLOADER" == "libcurl"
-then
-for ac_header in curl/curl.h
+	if test "$DOWNLOADER" == "libcurl"
+	then
+	for ac_header in curl/curl.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "curl/curl.h" "ac_cv_header_curl_curl_h" "
 
@@ -4666,11 +4749,11 @@ fi
 
 done
 
-fi
+	fi
 
-if test "$BASE64DECODER" == "openssl"
-then
-for ac_header in openssl/evp.h openssl/bio.h
+	if test "$BASE64DECODER" == "openssl"
+	then
+	for ac_header in openssl/evp.h openssl/bio.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "
@@ -4687,10 +4770,10 @@ fi
 
 done
 
-fi
+	fi
 
-# Checks for typedefs, structures, and compiler characteristics.
-ac_fn_c_check_type "$LINENO" "pid_t" "ac_cv_type_pid_t" "$ac_includes_default"
+	# Checks for library functions.
+	ac_fn_c_check_type "$LINENO" "pid_t" "ac_cv_type_pid_t" "$ac_includes_default"
 if test "x$ac_cv_type_pid_t" = xyes; then :
 
 else
@@ -4701,41 +4784,6 @@ _ACEOF
 
 fi
 
-ac_fn_c_check_type "$LINENO" "size_t" "ac_cv_type_size_t" "$ac_includes_default"
-if test "x$ac_cv_type_size_t" = xyes; then :
-
-else
-
-cat >>confdefs.h <<_ACEOF
-#define size_t unsigned int
-_ACEOF
-
-fi
-
-ac_fn_c_find_intX_t "$LINENO" "16" "ac_cv_c_int16_t"
-case $ac_cv_c_int16_t in #(
-  no|yes) ;; #(
-  *)
-
-cat >>confdefs.h <<_ACEOF
-#define int16_t $ac_cv_c_int16_t
-_ACEOF
-;;
-esac
-
-ac_fn_c_find_intX_t "$LINENO" "32" "ac_cv_c_int32_t"
-case $ac_cv_c_int32_t in #(
-  no|yes) ;; #(
-  *)
-
-cat >>confdefs.h <<_ACEOF
-#define int32_t $ac_cv_c_int32_t
-_ACEOF
-;;
-esac
-
-
-# Checks for library functions.
 for ac_header in vfork.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "vfork.h" "ac_cv_header_vfork_h" "$ac_includes_default"
@@ -4949,7 +4997,7 @@ $as_echo "#define HAVE_WORKING_FORK 1" >>confdefs.h
 
 fi
 
-for ac_header in stdlib.h
+	for ac_header in stdlib.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "stdlib.h" "ac_cv_header_stdlib_h" "$ac_includes_default"
 if test "x$ac_cv_header_stdlib_h" = xyes; then :
@@ -5016,7 +5064,7 @@ $as_echo "#define malloc rpl_malloc" >>confdefs.h
 fi
 
 
-for ac_header in stdlib.h
+	for ac_header in stdlib.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "stdlib.h" "ac_cv_header_stdlib_h" "$ac_includes_default"
 if test "x$ac_cv_header_stdlib_h" = xyes; then :
@@ -5083,7 +5131,7 @@ $as_echo "#define realloc rpl_realloc" >>confdefs.h
 fi
 
 
-ac_fn_c_check_func "$LINENO" "setenv" "ac_cv_func_setenv"
+	ac_fn_c_check_func "$LINENO" "setenv" "ac_cv_func_setenv"
 if test "x$ac_cv_func_setenv" = xyes; then :
 
 $as_echo "#define HAVE_SETENV /**/" >>confdefs.h
@@ -5093,7 +5141,7 @@ else
 $as_echo "$as_me: WARNING: Relative path is not supported." >&2;}
 fi
 
-ac_fn_c_check_func "$LINENO" "wordexp" "ac_cv_func_wordexp"
+	ac_fn_c_check_func "$LINENO" "wordexp" "ac_cv_func_wordexp"
 if test "x$ac_cv_func_wordexp" = xyes; then :
 
 $as_echo "#define HAVE_WORDEXP /**/" >>confdefs.h
@@ -5104,10 +5152,10 @@ $as_echo "$as_me: WARNING: Relative path is not supported." >&2;}
 fi
 
 
-# Check whether --enable-spinlock was given.
+	# Check whether --enable-spinlock was given.
 if test "${enable_spinlock+set}" = set; then :
   enableval=$enable_spinlock;    case "${enableval}" in
-	    yes)  for ac_func in pthread_spin_init
+			yes)  for ac_func in pthread_spin_init
 do :
   ac_fn_c_check_func "$LINENO" "pthread_spin_init" "ac_cv_func_pthread_spin_init"
 if test "x$ac_cv_func_pthread_spin_init" = xyes; then :
@@ -5118,17 +5166,17 @@ _ACEOF
 fi
 done
  ;;
-	    no)   ;;
-	    *)   as_fn_error $? "bad value ${enableval} for --enable-spinlock" "$LINENO" 5 ;;
-	    esac
+			no)   ;;
+			*)   as_fn_error $? "bad value ${enableval} for --enable-spinlock" "$LINENO" 5 ;;
+			esac
 
 fi
 
 
-# Check whether --enable-rwlock was given.
+	# Check whether --enable-rwlock was given.
 if test "${enable_rwlock+set}" = set; then :
   enableval=$enable_rwlock;    case "${enableval}" in
-	    yes)  for ac_func in pthread_rwlock_init
+			yes)  for ac_func in pthread_rwlock_init
 do :
   ac_fn_c_check_func "$LINENO" "pthread_rwlock_init" "ac_cv_func_pthread_rwlock_init"
 if test "x$ac_cv_func_pthread_rwlock_init" = xyes; then :
@@ -5139,11 +5187,85 @@ _ACEOF
 fi
 done
  ;;
-	    no)   ;;
-	    *)   as_fn_error $? "bad value ${enableval} for --enable-rwlock" "$LINENO" 5 ;;
-	    esac
+			no)   ;;
+			*)   as_fn_error $? "bad value ${enableval} for --enable-rwlock" "$LINENO" 5 ;;
+			esac
 
 fi
+
+
+	ac_fn_c_check_type "$LINENO" "pid_t" "ac_cv_type_pid_t" "$ac_includes_default"
+if test "x$ac_cv_type_pid_t" = xyes; then :
+
+else
+
+cat >>confdefs.h <<_ACEOF
+#define pid_t int
+_ACEOF
+
+fi
+
+fi
+
+# Checks for typedefs, structures, and compiler characteristics.
+ac_fn_c_check_type "$LINENO" "size_t" "ac_cv_type_size_t" "$ac_includes_default"
+if test "x$ac_cv_type_size_t" = xyes; then :
+
+else
+
+cat >>confdefs.h <<_ACEOF
+#define size_t unsigned int
+_ACEOF
+
+fi
+
+ac_fn_c_find_intX_t "$LINENO" "16" "ac_cv_c_int16_t"
+case $ac_cv_c_int16_t in #(
+  no|yes) ;; #(
+  *)
+
+cat >>confdefs.h <<_ACEOF
+#define int16_t $ac_cv_c_int16_t
+_ACEOF
+;;
+esac
+
+ac_fn_c_find_uintX_t "$LINENO" "16" "ac_cv_c_uint16_t"
+case $ac_cv_c_uint16_t in #(
+  no|yes) ;; #(
+  *)
+
+
+cat >>confdefs.h <<_ACEOF
+#define uint16_t $ac_cv_c_uint16_t
+_ACEOF
+;;
+  esac
+
+ac_fn_c_find_intX_t "$LINENO" "32" "ac_cv_c_int32_t"
+case $ac_cv_c_int32_t in #(
+  no|yes) ;; #(
+  *)
+
+cat >>confdefs.h <<_ACEOF
+#define int32_t $ac_cv_c_int32_t
+_ACEOF
+;;
+esac
+
+ac_fn_c_find_uintX_t "$LINENO" "32" "ac_cv_c_uint32_t"
+case $ac_cv_c_uint32_t in #(
+  no|yes) ;; #(
+  *)
+
+$as_echo "#define _UINT32_T 1" >>confdefs.h
+
+
+cat >>confdefs.h <<_ACEOF
+#define uint32_t $ac_cv_c_uint32_t
+_ACEOF
+;;
+  esac
 
 
 # Check whether --enable-debug was given.

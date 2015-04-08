@@ -66,7 +66,7 @@ sa_family_t AddressList_ConvertToAddressFromString(Address_Type *Out, const char
 				PortPos = strchr(PortPos, ':');
 				if( PortPos == NULL )
 				{
-					sscanf(Addr_Port, "[%s]", Addr);
+					sscanf(Addr_Port + 1, "%[^]]", Addr);
 					Port = DefaultPort;
 				} else {
 					int	Port_warpper;

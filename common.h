@@ -117,9 +117,9 @@
 	#include <sys/mman.h>	/* mmap */
 	#include <fcntl.h>
 
-#ifdef HAVE_SYS_SYSCALL_H
-	#include <sys/syscall.h> /* syscall */
-#endif /* HAVE_SYS_SYSCALL_H */
+	#ifdef HAVE_SYS_SYSCALL_H
+		#include <sys/syscall.h> /* syscall */
+	#endif /* HAVE_SYS_SYSCALL_H */
 
 	#include <pwd.h>	/* struct passwd */
 
@@ -275,18 +275,22 @@
 #define __STILL
 
 #ifdef HAVE_STDINT_H
-#include <stdint.h>
+	#include <stdint.h>
 #else
-#if (INT_MAX == 2147483647)
-#define int32_t		int
-#define uint32_t		unsigned int
-#define UINT32_T_MAX	0xFFFFFFFF
-#endif
+	#ifndef __USE_MISC
 
-#if (SHRT_MAX == 32767)
-#define int16_t	short
-#define uint16_t	unsigned short
-#endif
+		#if (INT_MAX == 2147483647)
+			#define int32_t		int
+			#define uint32_t		unsigned int
+			#define UINT32_T_MAX	0xFFFFFFFF
+		#endif
+
+		#if (SHRT_MAX == 32767)
+			#define int16_t	short
+			#define uint16_t	unsigned short
+		#endif
+
+	#endif
 #endif
 
 #ifndef HAVE_IN_PORT_T

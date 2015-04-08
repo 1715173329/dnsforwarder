@@ -165,7 +165,7 @@ void StringList_Catenate(StringList *des, StringList *src)
 	ExtendableBuffer_Add(des, src -> Data, src -> Used);
 }
 
-const char **SplitURLs(StringList *s)
+const char **StringList_ToCharPtrArray(StringList *s)
 {
 	const char **URLs;
 	int NumberOfURLs = 0;

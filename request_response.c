@@ -555,10 +555,11 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 			break;
 
 		default:
+
 #ifdef WIN32
 			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
-			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, (int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec), (int)(1000000 - TimeLimit.tv_usec));
+			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)), CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec)));
 #endif
 			return TCPSocket;
 			break;
@@ -777,9 +778,16 @@ int QueryDNSViaTCP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
-				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
-				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
-				while( TRUE ) SLEEP(100000);
+				{
+					int LastError = GET_LAST_ERROR();
+					ERRORMSG("SOCKET_ERROR Reached, 3.\n");
+					if( FatalErrorDecideding(LastError) != 0 )
+					{
+						ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+						ERRORMSG(" !!!!! Something bad happend, please restart this program. %d\n", LastError);
+						while( TRUE ) SLEEP(100000);
+					}
+				}
 				break;
 
 			case 0:
@@ -805,10 +813,12 @@ int QueryDNSViaTCP(void)
 
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
-					int	RecvState, SendState;
-					uint16_t	TCPLength;
-					sa_family_t	NewFamily;
+					int				RecvState, SendState;
+					sa_family_t		NewFamily;
 					struct sockaddr	*NewAddress;
+					static char		TCPRerequest[2048 - sizeof(ControlHeader) + 2];
+					uint16_t		*TCPLength = TCPRerequest;
+					int				TCPRerequestLength;
 
 					RecvState = recvfrom(TCPQueryIncomeSocket,
 								RequestEntity,
@@ -820,12 +830,15 @@ int QueryDNSViaTCP(void)
 
 					if( RecvState < 1 )
 					{
+						ERRORMSG("RecvState : %d (833).\n", RecvState);
 						break;
 					}
 
 					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, NULL, &NewFamily);
 					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
+
+						/* The server address has changed, rebuilding socket */
 						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
 						{
 							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
@@ -884,19 +897,23 @@ int QueryDNSViaTCP(void)
 						send(TCPQueryOutcomeSocket, 0x47, 1, MSG_NOSIGNAL);
 					}
 */
-					TCPLength = htons(RecvState - sizeof(ControlHeader));
-
-					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, (const char *)&TCPLength, 2);
-					if( SendState < 0 )
+					TCPRerequestLength = RecvState - sizeof(ControlHeader) + 2;
+					if( TCPRerequestLength > sizeof(TCPRerequest) )
 					{
-						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						ERRORMSG("Segment too large (902).\n");
 						break;
 					}
+					*TCPLength = htons(TCPRerequestLength - 2);
+					memcpy(TCPRerequest + 2, RequestEntity + sizeof(ControlHeader), TCPRerequestLength - 2);
 
-					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, RequestEntity + sizeof(ControlHeader), RecvState - sizeof(ControlHeader));
+					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, TCPRerequest, TCPRerequestLength);
 					if( SendState < 0 )
 					{
-						ShowSocketError("Sending to TCP server failed (1)", (-1) * SendState);
+						ShowSocketError("Sending to TCP server failed (912)", (-1) * SendState);
+						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+						CloseTCPConnection(TCPQueryOutcomeSocket);
+						TCPQueryOutcomeSocket = INVALID_SOCKET;
+						AddressList_Advance(TCPProxies);
 						break;
 					}
 
@@ -1109,9 +1126,16 @@ int QueryDNSViaUDP(void)
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
 		{
 			case SOCKET_ERROR:
-				ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
-				ERRORMSG(" !!!!! Something bad happend, please restert this program.\n");
-				while( TRUE ) SLEEP(100000);
+				{
+					int LastError = GET_LAST_ERROR();
+					ERRORMSG("SOCKET_ERROR Reached, 2.\n");
+					if( FatalErrorDecideding(LastError) != 0 )
+					{
+						ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
+						ERRORMSG(" !!!!! Something bad happend, please restart this program. %d\n", LastError);
+						while( TRUE ) SLEEP(100000);
+					}
+				}
 				break;
 
 			case 0:

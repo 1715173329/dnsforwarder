@@ -90,6 +90,11 @@ static int DynamicHosts_Load(void)
 				++ExcludedCount;
 				break;
 
+			case HOSTS_TYPE_CNAME_EXCLUEDE:
+				++CNameCount;
+				++ExcludedCount;
+				break;
+
 			default:
 				break;
 		}
@@ -137,7 +142,7 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 	int			DownloadState;
 	const char	**URLs;
 
-	URLs = SplitURLs(ConfigGetStringList(ConfigInfo, "Hosts"));
+	URLs = StringList_ToCharPtrArray(ConfigGetStringList(ConfigInfo, "Hosts"));
 
 	while(1)
 	{
@@ -164,7 +169,7 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 			if( UpdateInterval < 0 )
 			{
-				return;
+				break;
 			}
 		} else {
 			ERRORMSG("Getting hosts file(s) failed.\n");
@@ -172,6 +177,8 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 		SLEEP(UpdateInterval * 1000);
 	}
+
+	SafeFree(URLs);
 }
 
 static const char *Hosts_FindFromContainer(HostsContainer *Container, StringChunk *SubContainer, const char *Name)
@@ -272,19 +279,23 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName, char *Buffer)
 {
 	int RecordLength;
+	int DataLength;
 
 	switch( Type )
 	{
 		case DNS_TYPE_A:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + 4;
+			DataLength = 4;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		case DNS_TYPE_AAAA:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + 16;
+			DataLength = 16;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		case DNS_TYPE_CNAME:
-			RecordLength = 2 + 2 + 2 + 4 + 2 + strlen(IPOrCName) + 2;
+			DataLength = strlen(IPOrCName) + 2;
+			RecordLength = 2 + 2 + 2 + 4 + 2 + DataLength;
 			break;
 
 		default:
@@ -292,7 +303,7 @@ static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName,
 			break;
 	}
 
-	DNSGenResourceRecord(Buffer + 1, INT_MAX, "", Type, DNS_CLASS_IN, 60, IPOrCName, 4, FALSE);
+	DNSGenResourceRecord(Buffer + 1, INT_MAX, "", Type, DNS_CLASS_IN, 60, IPOrCName, DataLength, FALSE);
 
 	Buffer[0] = 0xC0;
 	Buffer[1] = 0x0C;
@@ -300,7 +311,7 @@ static int Hosts_GenerateSingleRecord(DNSRecordType Type, const char *IPOrCName,
 	return RecordLength;
 }
 
-static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
+static int GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
 {
 	static struct _RequestEntity {
 		ControlHeader	Header;
@@ -327,7 +338,7 @@ static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Ident
 	RequestLength += DNSGenQuestionRecord(NamePos, sizeof(RequestEntity.Entity) - 12, Name, Type, DNS_CLASS_IN);
 	if( RequestLength == sizeof(ControlHeader) + 12 )
 	{
-        return;
+        return -1;
 	}
 
 	RequestEntity.Header.NeededHeader = TRUE;
@@ -338,7 +349,7 @@ static void GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Ident
 	RequestEntity.Header.RequestingDomainHashValue = ELFHash(Name, 0);
 	*(uint16_t *)DNSEntity = Identifier;
 
-	InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_INCOME, Socket, (char *)&RequestEntity, RequestLength);
+	return InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL, Socket, (char *)&RequestEntity, RequestLength);
 }
 
 int DynamicHosts_SocketLoop(void)
@@ -439,6 +450,7 @@ int DynamicHosts_SocketLoop(void)
 					switch( MatchState )
 					{
 						case MATCH_STATE_PERFECT:
+							ERRORMSG("A Bug hit.\n");
 							{
 								BOOL EDNSEnabled = FALSE;
 

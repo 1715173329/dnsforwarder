@@ -36,147 +36,175 @@ AC_CHECK_LIB(m, sqrt, ,
 	AC_MSG_ERROR(No libmath found.)
 	)
 
-AC_ARG_ENABLE([android],
-	[AS_HELP_STRING([--enable-android],
-	    [compile for android (default=no)]
+AC_ARG_ENABLE([win],
+	[AS_HELP_STRING([--enable-win],
+	    [compile for win32 (default=no)]
 	)],
 	[   case "${enableval}" in
-	    yes)  [ANDROID=yes];;
-	    no)   [ANDROID=no];;
-	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-android) ;;
+	    yes)  [WIN32=yes];;
+	    no)   [WIN32=no];;
+	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-win) ;;
 	    esac
 	],
-	[ANDROID=no]
+	[WIN32=no]
 	)
 
-# Checks for pthread.
-if test "$ANDROID" == "yes"
+if test "$WIN32" == "yes"
 then
-CFLAGS="${CFLAGS} -DANDROID "
+CFLAGS="${CFLAGS} -DWIN32 "
 fi
 
-AC_ARG_ENABLE([downloader],
-	[AS_HELP_STRING([--enable-downloader],
-	    [downloader, libcurl, wget, or no (default=libcurl)]
-	)],
-	[   case "${enableval}" in
-	    libcurl)    DOWNLOADER=libcurl;;
-	    wget)       DOWNLOADER=wget;;
-	    no)         DOWNLOADER=no;;
-	    *)          AC_MSG_ERROR(bad value ${enableval} for --enable-downloader) ;;
-	    esac
-	],
-	[DOWNLOADER=libcurl]
-	)
-
-if test "$DOWNLOADER" == "libcurl" 
-then 
-
-# Checks for curl.
-AC_CHECK_LIB(curl, curl_global_init, ,
-	AC_MSG_ERROR(No libcurl found.)
-	)
-
-CFLAGS="${CFLAGS} -DDOWNLOAD_LIBCURL "
-fi
-
-if test "$DOWNLOADER" == "wget" 
+if test "$WIN32" != "yes"
 then
-CFLAGS="${CFLAGS} -DDOWNLOAD_WGET "
-fi
+	AC_ARG_ENABLE([android],
+		[AS_HELP_STRING([--enable-android],
+			[compile for android (default=no)]
+		)],
+		[   case "${enableval}" in
+			yes)  [ANDROID=yes];;
+			no)   [ANDROID=no];;
+			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-android) ;;
+			esac
+		],
+		[ANDROID=no]
+		)
 
-if test "$DOWNLOADER" == "no" 
-then
-CFLAGS="${CFLAGS} -DNODOWNLOAD "
-fi
+	if test "$ANDROID" == "yes"
+	then
+	CFLAGS="${CFLAGS} -DANDROID "
+	fi
 
-AC_ARG_ENABLE([base64decoder],
-	[AS_HELP_STRING([--enable-base64decoder],
-	    [base64decoder, openssl or uudecode (default=openssl)]
-	)],
-	[   case "${enableval}" in
-	    openssl)    BASE64DECODER=openssl;;
-	    uudecode)   BASE64DECODER=uudecode;;
-	    *)          AC_MSG_ERROR(bad value ${enableval} for --enable-base64decoder) ;;
-	    esac
-	],
-	[BASE64DECODER=openssl]
-	)
+	AC_ARG_ENABLE([downloader],
+		[AS_HELP_STRING([--enable-downloader],
+			[downloader, libcurl, wget, or no (default=libcurl)]
+		)],
+		[   case "${enableval}" in
+			libcurl)    DOWNLOADER=libcurl;;
+			wget)       DOWNLOADER=wget;;
+			no)         DOWNLOADER=no;;
+			*)          AC_MSG_ERROR(bad value ${enableval} for --enable-downloader) ;;
+			esac
+		],
+		[DOWNLOADER=libcurl]
+		)
 
-if test "$BASE64DECODER" == "openssl" 
-then 
-CFLAGS="${CFLAGS} -DBASE64_DECODER_OPENSSL "
-# Checks for openssl.
-AC_CHECK_LIB(crypto, BIO_new, ,
-	AC_MSG_ERROR(No openssl found.)
-	)
-fi
+	if test "$DOWNLOADER" == "libcurl" 
+	then 
 
-if test "$BASE64DECODER" == "uudecode" 
-then
-CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
-fi
+	# Checks for curl.
+	AC_CHECK_LIB(curl, curl_global_init, ,
+		AC_MSG_ERROR(No libcurl found.)
+		)
 
+	CFLAGS="${CFLAGS} -DDOWNLOAD_LIBCURL "
+	fi
 
-# Checks for header files.
-AC_CHECK_HEADERS([sys/syscall.h wordexp.h])
+	if test "$DOWNLOADER" == "wget" 
+	then
+	CFLAGS="${CFLAGS} -DDOWNLOAD_WGET "
+	fi
 
-if test "$DOWNLOADER" == "libcurl"
-then
-AC_CHECK_HEADERS([curl/curl.h],
-                 [],
-                 AC_MSG_ERROR(No libcurl headers found.),
-                 []
-                 )
-fi
+	if test "$DOWNLOADER" == "no" 
+	then
+	CFLAGS="${CFLAGS} -DNODOWNLOAD "
+	fi
 
-if test "$BASE64DECODER" == "openssl" 
-then 
-AC_CHECK_HEADERS([openssl/evp.h openssl/bio.h],
-                 [],
-                 AC_MSG_ERROR(No openssl headers found.),
-                 []
-                 )
+	AC_ARG_ENABLE([base64decoder],
+		[AS_HELP_STRING([--enable-base64decoder],
+			[base64decoder, openssl or coreutils or uudecode (default=openssl)]
+		)],
+		[   case "${enableval}" in
+			openssl)    BASE64DECODER=openssl;;
+			uudecode)   BASE64DECODER=uudecode;;
+			coreutils)  BASE64DECODER=coreutils;;
+			*)          AC_MSG_ERROR(bad value ${enableval} for --enable-base64decoder) ;;
+			esac
+		],
+		[BASE64DECODER=openssl]
+		)
+
+	if test "$BASE64DECODER" == "openssl" 
+	then 
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_OPENSSL "
+	# Checks for openssl.
+	AC_CHECK_LIB(crypto, BIO_new, ,
+		AC_MSG_ERROR(No openssl found.)
+		)
+	fi
+
+	if test "$BASE64DECODER" == "uudecode" 
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
+	fi
+
+	if test "$BASE64DECODER" == "coreutils"
+	then
+	CFLAGS="${CFLAGS} -DBASE64_DECODER_COREUTILS "
+	fi
+
+	# Checks for header files.
+	AC_CHECK_HEADERS([sys/syscall.h wordexp.h])
+
+	if test "$DOWNLOADER" == "libcurl"
+	then
+	AC_CHECK_HEADERS([curl/curl.h],
+					 [],
+					 AC_MSG_ERROR(No libcurl headers found.),
+					 []
+					 )
+	fi
+
+	if test "$BASE64DECODER" == "openssl" 
+	then 
+	AC_CHECK_HEADERS([openssl/evp.h openssl/bio.h],
+					 [],
+					 AC_MSG_ERROR(No openssl headers found.),
+					 []
+					 )
+	fi
+
+	# Checks for library functions.
+	AC_FUNC_FORK
+	AC_FUNC_MALLOC
+	AC_FUNC_REALLOC
+	AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
+	AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
+
+	AC_ARG_ENABLE([spinlock],
+		[AS_HELP_STRING([--enable-spinlock],
+			[spinlock will be used (default=yes)]
+		)],
+		[   case "${enableval}" in
+			yes)  AC_CHECK_FUNCS([pthread_spin_init]) ;;
+			no)   [];;
+			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-spinlock) ;;
+			esac
+		],
+		[]
+		)
+		
+	AC_ARG_ENABLE([rwlock],
+		[AS_HELP_STRING([--enable-rwlock],
+			[rwlock will be used (default=yes)]
+		)],
+		[   case "${enableval}" in
+			yes)  AC_CHECK_FUNCS([pthread_rwlock_init]) ;;
+			no)   [];;
+			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-rwlock) ;;
+			esac
+		],
+		[]
+		)
+		
+	AC_TYPE_PID_T
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_INT16_T
+AC_TYPE_UINT16_T
 AC_TYPE_INT32_T
-
-# Checks for library functions.
-AC_FUNC_FORK
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
-AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
-AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
-
-AC_ARG_ENABLE([spinlock],
-	[AS_HELP_STRING([--enable-spinlock],
-	    [spinlock will be used (default=yes)]
-	)],
-	[   case "${enableval}" in
-	    yes)  AC_CHECK_FUNCS([pthread_spin_init]) ;;
-	    no)   [];;
-	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-spinlock) ;;
-	    esac
-	],
-	[]
-	)
-	
-AC_ARG_ENABLE([rwlock],
-	[AS_HELP_STRING([--enable-rwlock],
-	    [rwlock will be used (default=yes)]
-	)],
-	[   case "${enableval}" in
-	    yes)  AC_CHECK_FUNCS([pthread_rwlock_init]) ;;
-	    no)   [];;
-	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-rwlock) ;;
-	    esac
-	],
-	[]
-	)
+AC_TYPE_UINT32_T
 
 AC_ARG_ENABLE([debug],
 	[AS_HELP_STRING([--enable-debug],

@@ -42,6 +42,27 @@ int InternalInterface_Init(int PrimaryProtocal, const char *WorkingAddress, int 
 
     MAIN_WORKING_ADDRESS = WorkingAddress;
 	MAIN_WORKING_PORT = Port;
+
+
+	if( MAIN_FAMILY == AF_INET )
+	{
+		if( strncmp("0.0.0.0", MAIN_WORKING_ADDRESS, 1) == 0 )
+		{
+			AddressList_ConvertToAddressFromString(&(Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Address), "127.0.0.1", MAIN_WORKING_PORT);
+		} else {
+			AddressList_ConvertToAddressFromString(&(Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Address), MAIN_WORKING_ADDRESS, MAIN_WORKING_PORT);
+		}
+	} else {
+		if( memcmp(&(LocalWorkingAddress.Addr.Addr6.sin6_addr), "\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0\x0", 16) == 0 )
+		{
+			AddressList_ConvertToAddressFromString(&(Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Address), "[::1]", MAIN_WORKING_PORT);
+		} else {
+			AddressList_ConvertToAddressFromString(&(Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Address), MAIN_WORKING_ADDRESS, MAIN_WORKING_PORT);
+		}
+	}
+
+	Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Socket = 0;
+
 	return 0;
 }
 
@@ -174,6 +195,7 @@ sa_family_t InternalInterface_GetAddress(InternalInterfaceType Type, struct sock
 {
 	if( Interfaces[Type].Socket == INVALID_SOCKET )
 	{
+		ERRORMSG("A bug Hitted. InternalInterface_GetAddress()\n");
 		return AF_UNSPEC;
 	}
 
