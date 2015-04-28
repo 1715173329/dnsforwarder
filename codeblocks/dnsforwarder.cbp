@@ -11,7 +11,7 @@
 				<Option object_output="/tmp/obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-f &quot;/root/.dnsforwarder/config&quot;' />
+				<Option parameters='-f &quot;sdfgggggggggggggggggg&quot;' />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>

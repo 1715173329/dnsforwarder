@@ -190,7 +190,7 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 		ConfigCloseFile(&ConfigInfo);
 		return 0;
 	} else {
-		ERRORMSG("WARNING: Cannot load configuration file : %s, use default options. Use `-f' to specify another configure file.\n", ConfigFile);
+		ERRORMSG("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
 		return 0;
 	}
 }

@@ -13,8 +13,10 @@
 static AddressChunk	Addresses;
 static BOOL			ParallelQuery;
 
-static sa_family_t	ParallelMainFamily;
-static struct sockaddr **Addresses_Array;
+static sa_family_t	UDPParallelMainFamily = AF_UNSPEC;
+static struct sockaddr **UDPAddresses_Array = NULL;
+static sa_family_t	*TCPParallelFamilies = NULL;
+static struct sockaddr **TCPAddresses_Array = NULL;
 
 static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 {
@@ -79,6 +81,8 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 		Itr = StringList_GetNext(udpaddrs, Itr);
 	}
 
+	TCPAddresses_Array = AddressList_GetPtrList(AddressChunk_GetTCPPart(&Addresses), &TCPParallelFamilies);
+
 	ParallelQuery = ConfigGetBoolean(ConfigInfo, "ParallelQuery");
 	if( ParallelQuery == TRUE )
 	{
@@ -90,23 +94,9 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 			ERRORMSG("No UDP server specified, cannot use parallel query.\n")
 			ParallelQuery = FALSE;
 		} else {
-			AddressChunk_GetOneUDPBySubscript(&Addresses, &ParallelMainFamily, 0);
+			AddressChunk_GetOneUDPBySubscript(&Addresses, &UDPParallelMainFamily, 0);
 
-			Addresses_Array = AddressList_GetPtrListOfFamily(AddressChunk_GetUDPPart(&Addresses), ParallelMainFamily);
-/*
-			Array_Init(&Addresses_Array, AddrLen, NumberOfAddr, FALSE, NULL);
-
-			while( NumberOfAddr != 0 )
-			{
-				OneAddr = AddressChunk_GetOneUDPBySubscript(&Addresses, &SubFamily, NumberOfAddr - 1);
-				if( OneAddr != NULL && SubFamily == ParallelMainFamily )
-				{
-					Array_PushBack(&Addresses_Array, OneAddr, NULL);
-				}
-
-				--NumberOfAddr;
-			}
-*/
+			UDPAddresses_Array = AddressList_GetPtrListOfFamily(AddressChunk_GetUDPPart(&Addresses), UDPParallelMainFamily);
 		}
 	}
 
@@ -337,15 +327,16 @@ ItrEnd:
 	}
 }
 
-static void SendBack(SOCKET Socket,
-					 ControlHeader *Header,
-					 QueryContext *Context,
-					 int Length,
-					 char Protocal,
-					 StatisticType Type,
-					 BOOL NeededBlock
-					 )
+static int SendBack(SOCKET Socket,
+					ControlHeader *Header,
+					QueryContext *Context,
+					int Length,
+					char Protocal,
+					StatisticType Type,
+					BOOL NeededBlock
+					)
 {
+	int		Ret = 1;
 	char	*RequestEntity = (char *)(Header + 1);
 	int32_t	QueryContextNumber;
 	QueryContextEntry	*ThisContext;
@@ -371,22 +362,22 @@ static void SendBack(SOCKET Socket,
 		{
 			if( ThisContext -> NeededHeader == TRUE )
 			{
-				sendto(Socket,
-						(const char *)Header,
-						Length,
-						0,
-						(const struct sockaddr *)&(ThisContext -> Context.BackAddress.Addr),
-						GetAddressLength(ThisContext -> Context.BackAddress.family)
-						);
+				Ret = sendto(Socket,
+							(const char *)Header,
+							Length,
+							0,
+							(const struct sockaddr *)&(ThisContext -> Context.BackAddress.Addr),
+							GetAddressLength(ThisContext -> Context.BackAddress.family)
+							);
 
 			} else {
-				sendto(Socket,
-						RequestEntity,
-						Length - sizeof(ControlHeader),
-						0,
-						(const struct sockaddr *)&(ThisContext -> Context.BackAddress.Addr),
-						GetAddressLength(ThisContext -> Context.BackAddress.family)
-						);
+				Ret = sendto(Socket,
+							RequestEntity,
+							Length - sizeof(ControlHeader),
+							0,
+							(const struct sockaddr *)&(ThisContext -> Context.BackAddress.Addr),
+							GetAddressLength(ThisContext -> Context.BackAddress.family)
+							);
 			}
 
 			InternalInterface_QueryContextRemoveByNumber(Context, QueryContextNumber);
@@ -396,6 +387,8 @@ static void SendBack(SOCKET Socket,
 	} else {
 		/* ShowNormalMassage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */
 	}
+
+	return Ret;
 }
 
 static AddressList *TCPProxies = NULL;
@@ -473,14 +466,23 @@ static BOOL SocketIsWritable(SOCKET sock, int Timeout)
 	}
 }
 
-static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Family, const char *Type)
+static SOCKET ConnectToTCPServer(struct sockaddr    **ServerAddressesList,
+                                sa_family_t         *FamiliesList,
+                                const char          *Type
+                                )
 {
 #   define  CONNECT_TIMEOUT 5
 
-	SOCKET TCPSocket;
+#   define  NUMBER_OF_SOCKETS 5
+	SOCKET	TCPSockets[NUMBER_OF_SOCKETS];
+	int		Itr;
+	BOOL	State = FALSE;
+	int		MaxFd = -1;
+
 #ifdef WIN32
 	clock_t TimeStart;
 #endif
+
 	fd_set rfd;
 	struct timeval TimeLimit = {CONNECT_TIMEOUT, 0};
 
@@ -490,6 +492,51 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 	TimeStart = clock();
 #endif
 
+    for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr)
+    {
+		TCPSockets[Itr] = INVALID_SOCKET;
+    }
+    for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr)
+    {
+		if( ServerAddressesList[Itr] == NULL )
+		{
+			break;
+		}
+
+        TCPSockets[Itr] = socket(FamiliesList[Itr], SOCK_STREAM, IPPROTO_TCP);
+        if( TCPSockets[Itr] == INVALID_SOCKET )
+        {
+			continue;
+        }
+
+        SetSocketNonBlock(TCPSockets[Itr], TRUE);
+
+		if( connect(TCPSockets[Itr], ServerAddressesList[Itr], GetAddressLength(FamiliesList[Itr])) != 0 )
+		{
+			if( GET_LAST_ERROR() != CONNECT_FUNCTION_BLOCKED )
+			{
+				CLOSE_SOCKET(TCPSockets[Itr]);
+				continue;
+			}
+		}
+
+		if( TCPSockets[Itr] > MaxFd )
+		{
+			MaxFd = TCPSockets[Itr];
+		}
+
+		FD_ZERO(&rfd);
+		FD_SET(TCPSockets[Itr], &rfd);
+
+		State |= TRUE;
+    }
+
+    if( State == FALSE )
+    {
+		ERRORMSG("Cannot connect to %s.\n", Type);
+		return INVALID_SOCKET;
+    }
+/*
 	TCPSocket = socket(Family, SOCK_STREAM, IPPROTO_TCP);
 	if( TCPSocket == INVALID_SOCKET )
 	{
@@ -511,24 +558,42 @@ static SOCKET ConnectToTCPServer(struct sockaddr *ServerAddress, sa_family_t Fam
 
 	FD_ZERO(&rfd);
 	FD_SET(TCPSocket, &rfd);
-
-	switch(select(TCPSocket + 1, NULL, &rfd, NULL, &TimeLimit))
+*/
+	switch(select(MaxFd + 1, NULL, &rfd, NULL, &TimeLimit))
 	{
 		case 0:
 		case SOCKET_ERROR:
-			CLOSE_SOCKET(TCPSocket);
+		{
+			for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr )
+			{
+				CloseTCPConnection(TCPSockets[Itr]);
+			}
+
 			INFO("Connecting to %s timed out.\n", Type);
 			return INVALID_SOCKET;
+		}
 			break;
 
 		default:
+		{
+			SOCKET Ret;
 
 #ifdef WIN32
 			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
 #else
 			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)), CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec)));
 #endif
-			return TCPSocket;
+			for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr )
+			{
+				if( TCPSockets[Itr] != INVALID_SOCKET && FD_ISSET(TCPSockets[Itr], &rfd) )
+				{
+					Ret = TCPSockets[Itr];
+				} else {
+					CloseTCPConnection(TCPSockets[Itr]);
+				}
+			}
+			return Ret;
+		}
 			break;
 	}
 
@@ -724,7 +789,7 @@ int QueryDNSViaTCP(void)
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
 	sa_family_t		LastFamily = MAIN_FAMILY;
-	struct sockaddr	*LastAddress = NULL;
+	struct sockaddr	*LastAddress[2] = {NULL, NULL};
 
 	TCPQueryIncomeSocket = InternalInterface_TryOpenLocal(10100, INTERNAL_INTERFACE_TCP_QUERY);
 	TCPQueryOutcomeSocket = INVALID_SOCKET;
@@ -782,7 +847,7 @@ int QueryDNSViaTCP(void)
 				{
 					int				RecvState, SendState;
 					sa_family_t		NewFamily;
-					struct sockaddr	*NewAddress;
+					struct sockaddr	*NewAddress[2] = {NULL, NULL};
 					static char		TCPRerequest[2048 - sizeof(ControlHeader) + 2];
 					uint16_t		*TCPLength = (uint16_t *)TCPRerequest;
 					int				TCPRerequestLength;
@@ -800,11 +865,11 @@ int QueryDNSViaTCP(void)
 						ERRORMSG("RecvState : %d (833).\n", RecvState);
 						break;
 					} else {
-						INFO("<-Recved query %s, %d bytes.\n", Header -> RequestingDomain, RecvState);
+
 					}
 
-					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &NewAddress, &NewFamily);
-					if( NewFamily != LastFamily || NewAddress != LastAddress || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
+					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &(NewAddress[0]), &NewFamily);
+					if( NewFamily != LastFamily || NewAddress[0] != LastAddress[0] || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
 					{
 
 						/* The server address has changed, rebuilding socket */
@@ -816,7 +881,7 @@ int QueryDNSViaTCP(void)
 
 						if( TCPProxies == NULL )
 						{
-							TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, NewFamily, "TCP server");
+							TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, &NewFamily, "TCP server");
 							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
 							{
 								LastFamily = AF_UNSPEC;
@@ -824,12 +889,12 @@ int QueryDNSViaTCP(void)
 								break;
 							}
 						} else {
-							struct sockaddr	*NewProxy;
+							struct sockaddr	*NewProxy[2] = {NULL, NULL};
 							sa_family_t	ProxyFamily;
 							int ret;
 
-							NewProxy = AddressList_GetOne(TCPProxies, &ProxyFamily);
-							TCPQueryOutcomeSocket = ConnectToTCPServer(NewProxy, ProxyFamily, "TCP proxy");
+							NewProxy[0] = AddressList_GetOne(TCPProxies, &ProxyFamily);
+							TCPQueryOutcomeSocket = ConnectToTCPServer(NewProxy, &ProxyFamily, "TCP proxy");
 							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
 							{
 								LastFamily = AF_UNSPEC;
@@ -837,7 +902,7 @@ int QueryDNSViaTCP(void)
 								break;
 							}
 
-							ret = TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress, NewFamily);
+							ret = TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress[0], NewFamily);
 							/* printf("-----------ret : %d\n", ret);*/
 							if( ret != 0 )
 							{
@@ -850,7 +915,7 @@ int QueryDNSViaTCP(void)
 						}
 
 						LastFamily = NewFamily;
-						LastAddress = NewAddress;
+						LastAddress[0] = NewAddress[0];
 						if( TCPQueryOutcomeSocket > MaxFd )
 						{
 							MaxFd = TCPQueryOutcomeSocket;
@@ -885,7 +950,7 @@ int QueryDNSViaTCP(void)
 						AddressList_Advance(TCPProxies);
 						break;
 					} else {
-						INFO("->Sended query %s\n", Header -> RequestingDomain);
+
 					}
 
 				} else {
@@ -932,7 +997,10 @@ int QueryDNSViaTCP(void)
 						break;
 					}
 
-					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', STATISTIC_TYPE_TCP, FALSE);
+					if( SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', STATISTIC_TYPE_TCP, FALSE) <= 0 )
+					{
+						ERRORMSG("TCP sending back error (940).\n");
+					}
 				}
 		}
 	}
@@ -1066,7 +1134,8 @@ int QueryDNSViaUDP(void)
 
 	int		MaxFd;
 
-	sa_family_t		LastFamily = ParallelMainFamily;
+    /* Infos of last used server. */
+	sa_family_t		LastFamily = UDPParallelMainFamily;
 
 	static char		RequestEntity[2048];
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
@@ -1160,8 +1229,9 @@ int QueryDNSViaUDP(void)
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 
 					NewAddress[0] = AddressChunk_GetDedicated(&Addresses, &NewFamily, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
+					/* If ParallelQuery is off or a dedicated server is specified, */
 					if( ParallelQuery == FALSE || NewAddress[0] != NULL )
-					{
+					{   /* then use the only one server */
 						if( NewAddress[0] == NULL )
 						{
 							NewAddress[0] = AddressChunk_GetOne(&Addresses, &NewFamily, DNS_QUARY_PROTOCOL_UDP);
@@ -1199,11 +1269,12 @@ int QueryDNSViaUDP(void)
 										NewFamily
 										);
 					} else {
+                        /* otherwise use those all servers. */
 						SendQueryViaUDP(UDPQueryOutcomeSocket,
 										RequestEntity + sizeof(ControlHeader),
 										State - sizeof(ControlHeader),
-										Addresses_Array,
-										ParallelMainFamily
+										UDPAddresses_Array,
+										UDPParallelMainFamily
 										);
 					}
 				} else {

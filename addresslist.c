@@ -197,7 +197,7 @@ struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t fam
 	return AddrList_Ori;
 }
 
-struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t ***families)
+struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t **families)
 {
 	int Itr;
 
@@ -210,7 +210,7 @@ struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t ***families
 		return NULL;
 	}
 
-	*families = SafeMalloc(sizeof(sa_family_t *) * (NumberOfAddresses + 1));
+	*families = SafeMalloc(sizeof(sa_family_t) * (NumberOfAddresses + 1));
     if( *families == NULL )
     {
 		SafeFree(AddrList);
@@ -220,7 +220,7 @@ struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t ***families
 	Itr = 0;
 	while( Itr != NumberOfAddresses )
 	{
-		AddrList[Itr] = AddressList_GetOneBySubscript(a, (*families)[Itr], Itr);
+		AddrList[Itr] = AddressList_GetOneBySubscript(a, &((*families)[Itr]), Itr);
 
 		++Itr;
 	}
