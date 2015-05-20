@@ -11,6 +11,7 @@ typedef struct _Bst_NodeHead{
 
 typedef struct _Bst {
 	Array	*Nodes;
+	BOOL    PrivateNodes;
 
 	int32_t	Root;
 
@@ -39,6 +40,6 @@ int32_t Bst_Successor_ByNumber(Bst *t, int32_t NodeNumber);
 
 int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber);
 
-void Bst_Reset(Bst *t);
+int Bst_Reset(Bst *t);
 
 #endif // BST_H_INCLUDED

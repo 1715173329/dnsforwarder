@@ -7,6 +7,7 @@
 #include "addresschunk.h"
 #include "ipchunk.h"
 #include "internalsocket.h"
+#include "socketpool.h"
 #include "utils.h"
 #include "common.h"
 
@@ -450,6 +451,11 @@ static BOOL SocketIsWritable(SOCKET sock, int Timeout)
 	struct timeval TimeLimit = {Timeout / 1000, (Timeout % 1000) * 1000};
 	fd_set rfd;
 
+	if( sock == INVALID_SOCKET )
+	{
+		return FALSE;
+	}
+
 	FD_ZERO(&rfd);
 	FD_SET(sock, &rfd);
 
@@ -576,22 +582,23 @@ static SOCKET ConnectToTCPServer(struct sockaddr    **ServerAddressesList,
 
 		default:
 		{
-			SOCKET Ret;
-
-#ifdef WIN32
-			INFO("TCP connection to %s established. Time consumed : %dms\n", Type, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
-#else
-			INFO("TCP connection to %s established. Time consumed : %d.%ds\n", Type, CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)), CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec)));
-#endif
+			SOCKET	Ret = INVALID_SOCKET;
+			int		Number = -1;
 			for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr )
 			{
 				if( TCPSockets[Itr] != INVALID_SOCKET && FD_ISSET(TCPSockets[Itr], &rfd) )
 				{
 					Ret = TCPSockets[Itr];
+					Number = Itr;
 				} else {
 					CloseTCPConnection(TCPSockets[Itr]);
 				}
 			}
+#ifdef WIN32
+			INFO("TCP connection to %s established (No %d). Time consumed : %dms\n", Type, Number, (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC));
+#else
+			INFO("TCP connection to %s established (No %d). Time consumed : %d.%ds\n", Type, Number, CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)), CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec)));
+#endif
 			return Ret;
 		}
 			break;
@@ -772,7 +779,10 @@ int QueryDNSViaTCP(void)
 
 	SOCKET	TCPQueryIncomeSocket;
 	SOCKET	TCPQueryOutcomeSocket;
+	SOCKET	*TCPQueryActiveSocketPtr;
 	SOCKET	SendBackSocket;
+
+	SocketPool	DedicatedSockets;
 
 	int		NumberOfQueryBeforeSwep = 0;
 
@@ -788,13 +798,17 @@ int QueryDNSViaTCP(void)
 	static char		RequestEntity[2048];
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
 
-	sa_family_t		LastFamily = MAIN_FAMILY;
-	struct sockaddr	*LastAddress[2] = {NULL, NULL};
-
 	TCPQueryIncomeSocket = InternalInterface_TryOpenLocal(10100, INTERNAL_INTERFACE_TCP_QUERY);
 	TCPQueryOutcomeSocket = INVALID_SOCKET;
+	TCPQueryActiveSocketPtr = NULL;
 
 	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
+
+	if( SocketPool_Init(&DedicatedSockets) != 0 )
+	{
+		ERRORMSG("Init ds failed (806).\n");
+		return -1;
+	}
 
 	MaxFd = TCPQueryIncomeSocket;
 	FD_ZERO(&ReadSet);
@@ -846,6 +860,7 @@ int QueryDNSViaTCP(void)
 				if( FD_ISSET(TCPQueryIncomeSocket, &ReadySet) )
 				{
 					int				RecvState, SendState;
+					SOCKET			*SendOutSocket;
 					sa_family_t		NewFamily;
 					struct sockaddr	*NewAddress[2] = {NULL, NULL};
 					static char		TCPRerequest[2048 - sizeof(ControlHeader) + 2];
@@ -868,67 +883,112 @@ int QueryDNSViaTCP(void)
 
 					}
 
-					GetAddress((ControlHeader *)RequestEntity, DNS_QUARY_PROTOCOL_TCP, &(NewAddress[0]), &NewFamily);
-					if( NewFamily != LastFamily || NewAddress[0] != LastAddress[0] || TCPSocketIsHealthy(TCPQueryOutcomeSocket) == FALSE )
+					/* Preparing socket */
+					if( TCPProxies == NULL )
 					{
-
-						/* The server address has changed, rebuilding socket */
-						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
+						/* Diretc connection */
+						NewAddress[0] = AddressChunk_GetDedicated(  &Addresses,
+																	&NewFamily,
+																	Header -> RequestingDomain,
+																	&(Header -> RequestingDomainHashValue)
+																	);
+						if( NewAddress[0] != NULL ) /* Dedicated server */
 						{
-							FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
-							CLOSE_SOCKET(TCPQueryOutcomeSocket);
-						}
-
-						if( TCPProxies == NULL )
-						{
-							TCPQueryOutcomeSocket = ConnectToTCPServer(NewAddress, &NewFamily, "TCP server");
-							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
+							SendOutSocket = SocketPool_Fetch(&DedicatedSockets, NewAddress[0]);
+							if( SendOutSocket == NULL )
 							{
-								LastFamily = AF_UNSPEC;
-								AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+								/* Something wrong */
 								break;
 							}
-						} else {
+
+							if( SocketIsWritable(*SendOutSocket, 0) == FALSE )
+							{
+								if( *SendOutSocket != INVALID_SOCKET )
+								{
+									FD_CLR(*SendOutSocket, &ReadSet);
+									CLOSE_SOCKET(*SendOutSocket);
+								}
+
+								*SendOutSocket = ConnectToTCPServer(NewAddress, &NewFamily, "TCP server");
+								TCPQueryActiveSocketPtr = SendOutSocket;
+							}
+						} else { /* General server */
+							if( SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
+							{
+								if( TCPQueryOutcomeSocket != INVALID_SOCKET )
+								{
+									FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+									CLOSE_SOCKET(TCPQueryOutcomeSocket);
+								}
+								TCPQueryOutcomeSocket = ConnectToTCPServer(TCPAddresses_Array, TCPParallelFamilies, "TCP server");
+							}
+							TCPQueryActiveSocketPtr = &TCPQueryOutcomeSocket;
+						}
+
+						if( *TCPQueryActiveSocketPtr == INVALID_SOCKET )
+						{
+							break;
+						}
+
+						if( *TCPQueryActiveSocketPtr > MaxFd )
+						{
+							MaxFd = *TCPQueryActiveSocketPtr;
+						}
+
+						FD_SET(*TCPQueryActiveSocketPtr, &ReadSet);
+					} else {
+						/* Connecting via proxy */
+						if( SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
+						{
 							struct sockaddr	*NewProxy[2] = {NULL, NULL};
 							sa_family_t	ProxyFamily;
 							int ret;
 
+							if( TCPQueryOutcomeSocket != INVALID_SOCKET )
+							{
+								FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+								CLOSE_SOCKET(TCPQueryOutcomeSocket);
+							}
+
+							GetAddress( (ControlHeader *)RequestEntity,
+										DNS_QUARY_PROTOCOL_TCP,
+										&(NewAddress[0]),
+										&NewFamily
+										);
 							NewProxy[0] = AddressList_GetOne(TCPProxies, &ProxyFamily);
 							TCPQueryOutcomeSocket = ConnectToTCPServer(NewProxy, &ProxyFamily, "TCP proxy");
 							if( TCPQueryOutcomeSocket == INVALID_SOCKET )
 							{
-								LastFamily = AF_UNSPEC;
 								AddressList_Advance(TCPProxies);
 								break;
 							}
 
 							ret = TCPProxyPreparation(TCPQueryOutcomeSocket, NewAddress[0], NewFamily);
-							/* printf("-----------ret : %d\n", ret);*/
 							if( ret != 0 )
 							{
-								LastFamily = AF_UNSPEC;
 								CloseTCPConnection(TCPQueryOutcomeSocket);
 								TCPQueryOutcomeSocket = INVALID_SOCKET;
 								AddressList_Advance(TCPProxies);
 								break;
 							}
+
+							if( TCPQueryOutcomeSocket > MaxFd )
+							{
+								MaxFd = TCPQueryOutcomeSocket;
+							}
+
+							FD_SET(TCPQueryOutcomeSocket, &ReadSet);
 						}
 
-						LastFamily = NewFamily;
-						LastAddress[0] = NewAddress[0];
-						if( TCPQueryOutcomeSocket > MaxFd )
-						{
-							MaxFd = TCPQueryOutcomeSocket;
-						}
-
-						FD_SET(TCPQueryOutcomeSocket, &ReadSet);
+						TCPQueryActiveSocketPtr = &TCPQueryOutcomeSocket;
 					}
+					/* Socket preparing done */
 
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 /*
 					if( TCPProxies != NULL )
 					{
-						send(TCPQueryOutcomeSocket, 0x47, 1, MSG_NOSIGNAL);
+						send(TCPQueryActiveSocketPtr, 0x47, 1, MSG_NOSIGNAL);
 					}
 */
 					TCPRerequestLength = RecvState - sizeof(ControlHeader) + 2;
@@ -940,13 +1000,13 @@ int QueryDNSViaTCP(void)
 					*TCPLength = htons(TCPRerequestLength - 2);
 					memcpy(TCPRerequest + 2, RequestEntity + sizeof(ControlHeader), TCPRerequestLength - 2);
 
-					SendState = TCPSend_Wrapper(TCPQueryOutcomeSocket, TCPRerequest, TCPRerequestLength);
+					SendState = TCPSend_Wrapper(*TCPQueryActiveSocketPtr, TCPRerequest, TCPRerequestLength);
 					if( SendState < 0 )
 					{
 						ShowSocketError("Sending to TCP server failed (912)", (-1) * SendState);
-						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
-						CloseTCPConnection(TCPQueryOutcomeSocket);
-						TCPQueryOutcomeSocket = INVALID_SOCKET;
+						FD_CLR(*TCPQueryActiveSocketPtr, &ReadSet);
+						CloseTCPConnection(*TCPQueryActiveSocketPtr);
+						*TCPQueryActiveSocketPtr = INVALID_SOCKET;
 						AddressList_Advance(TCPProxies);
 						break;
 					} else {
@@ -954,20 +1014,35 @@ int QueryDNSViaTCP(void)
 					}
 
 				} else {
-					int	State;
+					int			State;
 					uint16_t	TCPLength;
+					SOCKET		*ActiveSocket;
+
+					if( FD_ISSET(*TCPQueryActiveSocketPtr, &ReadySet) )
+					{
+						ActiveSocket = TCPQueryActiveSocketPtr;
+					} else if( FD_ISSET(TCPQueryOutcomeSocket, &ReadySet) ){
+						ActiveSocket = &TCPQueryOutcomeSocket;
+					} else {
+						ActiveSocket = SocketPool_IsSet(&DedicatedSockets, &ReadySet);
+						if( ActiveSocket == NULL )
+						{
+							ERRORMSG("Something wrong (1025).\n");
+							break;
+						}
+					}
 /*
 					if( TCPProxies != NULL )
 					{
 						char _0x72;
-						recv(TCPQueryOutcomeSocket, _0x72, 1, MSG_NOSIGNAL);
+						recv(TCPQueryActiveSocketPtr, _0x72, 1, MSG_NOSIGNAL);
 					}
 */
-					if( recv(TCPQueryOutcomeSocket, (char *)&TCPLength, 2, MSG_NOSIGNAL) < 2 )
+					if( recv(*ActiveSocket, (char *)&TCPLength, 2, MSG_NOSIGNAL) < 2 )
 					{
-                        CloseTCPConnection(TCPQueryOutcomeSocket);
-                        FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
-
+                        CloseTCPConnection(*ActiveSocket);
+                        FD_CLR(*ActiveSocket, &ReadSet);
+						*ActiveSocket = INVALID_SOCKET;
                         INFO("TCP %s closed the connection.\n", TCPProxies == NULL ? "server" : "proxy");
 						break;
 					}
@@ -976,13 +1051,14 @@ int QueryDNSViaTCP(void)
 
 					if( TCPLength > sizeof(RequestEntity) - sizeof(ControlHeader) )
 					{
-						ClearTCPSocketBuffer(TCPQueryOutcomeSocket, TCPLength);
+						ClearTCPSocketBuffer(*ActiveSocket, TCPLength);
 						AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+						*ActiveSocket = INVALID_SOCKET;
 						INFO("TCP stream is longer than the buffer, discarded.\n");
 						break;
 					}
 
-					State = recv(TCPQueryOutcomeSocket,
+					State = recv(*ActiveSocket,
 								RequestEntity + sizeof(ControlHeader),
 								TCPLength,
 								MSG_NOSIGNAL
@@ -990,9 +1066,10 @@ int QueryDNSViaTCP(void)
 
 					if( State != TCPLength )
 					{
-						CloseTCPConnection(TCPQueryOutcomeSocket);
-						FD_CLR(TCPQueryOutcomeSocket, &ReadSet);
+						CloseTCPConnection(*ActiveSocket);
+						FD_CLR(*ActiveSocket, &ReadSet);
 						AddressChunk_Advance(&Addresses, DNS_QUARY_PROTOCOL_TCP);
+						*ActiveSocket = INVALID_SOCKET;
 						INFO("TCP stream is too short, server may have some failures.\n");
 						break;
 					}

@@ -18,9 +18,11 @@ int Bst_Init(Bst *t, Array *Nodes, int ElementLength, int (*Compare)(const void 
 			return -1;
 		}
 
+		t -> PrivateNodes = TRUE;
 		return Bst_NodesInit(t -> Nodes, ElementLength);
 
 	} else {
+		t -> PrivateNodes = FALSE;
 		t -> Nodes = Nodes;
 
 		return 0;
@@ -243,6 +245,12 @@ int32_t Bst_Successor_ByNumber(Bst *t, int32_t NodeNumber)
 int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber)
 {
 	Bst_NodeHead *Node = Array_GetBySubscript(t -> Nodes, NodeNumber);
+
+	if( t -> PrivateNodes == FALSE )
+	{
+		return -1;
+	}
+
 	printf("\n----------%x-------%s\n", t, __FUNCTION__);
 	printf("CurrentNode : %d, Left : %d, Right : %d\n", NodeNumber, Node -> Left, Node -> Right);
 
@@ -309,9 +317,16 @@ int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber)
 	}
 }
 
-void Bst_Reset(Bst *t)
+int Bst_Reset(Bst *t)
 {
+	if( t -> PrivateNodes == FALSE )
+	{
+		return -1;
+	}
+
 	Array_Clear(t -> Nodes);
 	t -> Root = -1;
 	t -> FreeList = -1;
+
+	return 0;
 }
