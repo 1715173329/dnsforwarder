@@ -7,15 +7,16 @@
 typedef struct _SocketUnit {
 	struct sockaddr	*Address;
 	SOCKET          *Sock;
+	time_t			*Last;
 } SocketUnit;
 
 typedef Bst SocketPool;
 
 int SocketPool_Init(SocketPool *sp);
 
-SOCKET *SocketPool_Add(SocketPool *sp, struct sockaddr *Address);
+SOCKET *SocketPool_Add(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr);
 
-SOCKET *SocketPool_Fetch(SocketPool *sp, struct sockaddr *Address);
+SOCKET *SocketPool_Fetch(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr);
 
-SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs);
+SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr);
 #endif // SOCKETPOOL_H_INCLUDED

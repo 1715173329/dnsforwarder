@@ -779,7 +779,11 @@ int QueryDNSViaTCP(void)
 
 	SOCKET	TCPQueryIncomeSocket;
 	SOCKET	TCPQueryOutcomeSocket;
+	time_t	TCPQueryOutcomeSocketLast;
 	SOCKET	*TCPQueryActiveSocketPtr;
+	time_t	*TCPQueryActiveSocketLastPtr;
+	#define TIME_EXPIRED_SECOND	2
+
 	SOCKET	SendBackSocket;
 
 	SocketPool	DedicatedSockets;
@@ -894,14 +898,14 @@ int QueryDNSViaTCP(void)
 																	);
 						if( NewAddress[0] != NULL ) /* Dedicated server */
 						{
-							SendOutSocket = SocketPool_Fetch(&DedicatedSockets, NewAddress[0]);
+							SendOutSocket = SocketPool_Fetch(&DedicatedSockets, NewAddress[0], &TCPQueryActiveSocketLastPtr);
 							if( SendOutSocket == NULL )
 							{
 								/* Something wrong */
 								break;
 							}
 
-							if( SocketIsWritable(*SendOutSocket, 0) == FALSE )
+							if( (time(NULL) - *TCPQueryActiveSocketLastPtr) > TIME_EXPIRED_SECOND || SocketIsWritable(*SendOutSocket, 0) == FALSE )
 							{
 								if( *SendOutSocket != INVALID_SOCKET )
 								{
@@ -910,10 +914,16 @@ int QueryDNSViaTCP(void)
 								}
 
 								*SendOutSocket = ConnectToTCPServer(NewAddress, &NewFamily, "TCP server");
+								if( *SendOutSocket == INVALID_SOCKET )
+								{
+									break;
+								}
+
 								TCPQueryActiveSocketPtr = SendOutSocket;
+								*TCPQueryActiveSocketLastPtr = time(NULL);
 							}
 						} else { /* General server */
-							if( SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
+							if( (time(NULL) - TCPQueryOutcomeSocketLast) > TIME_EXPIRED_SECOND || SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
 							{
 								if( TCPQueryOutcomeSocket != INVALID_SOCKET )
 								{
@@ -921,8 +931,15 @@ int QueryDNSViaTCP(void)
 									CLOSE_SOCKET(TCPQueryOutcomeSocket);
 								}
 								TCPQueryOutcomeSocket = ConnectToTCPServer(TCPAddresses_Array, TCPParallelFamilies, "TCP server");
+								if( TCPQueryOutcomeSocket == INVALID_SOCKET )
+								{
+									break;
+								}
+								TCPQueryOutcomeSocketLast = time(NULL);
 							}
 							TCPQueryActiveSocketPtr = &TCPQueryOutcomeSocket;
+							TCPQueryActiveSocketLastPtr = &TCPQueryOutcomeSocketLast;
+
 						}
 
 						if( *TCPQueryActiveSocketPtr == INVALID_SOCKET )
@@ -938,7 +955,7 @@ int QueryDNSViaTCP(void)
 						FD_SET(*TCPQueryActiveSocketPtr, &ReadSet);
 					} else {
 						/* Connecting via proxy */
-						if( SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
+						if( (time(NULL) - TCPQueryOutcomeSocketLast) > TIME_EXPIRED_SECOND || SocketIsWritable(TCPQueryOutcomeSocket, 0) == FALSE )
 						{
 							struct sockaddr	*NewProxy[2] = {NULL, NULL};
 							sa_family_t	ProxyFamily;
@@ -978,9 +995,11 @@ int QueryDNSViaTCP(void)
 							}
 
 							FD_SET(TCPQueryOutcomeSocket, &ReadSet);
+							TCPQueryOutcomeSocketLast = time(NULL);
 						}
 
 						TCPQueryActiveSocketPtr = &TCPQueryOutcomeSocket;
+						TCPQueryActiveSocketLastPtr = &TCPQueryOutcomeSocketLast;
 					}
 					/* Socket preparing done */
 
@@ -1023,8 +1042,9 @@ int QueryDNSViaTCP(void)
 						ActiveSocket = TCPQueryActiveSocketPtr;
 					} else if( FD_ISSET(TCPQueryOutcomeSocket, &ReadySet) ){
 						ActiveSocket = &TCPQueryOutcomeSocket;
+						TCPQueryActiveSocketLastPtr = &TCPQueryOutcomeSocketLast;
 					} else {
-						ActiveSocket = SocketPool_IsSet(&DedicatedSockets, &ReadySet);
+						ActiveSocket = SocketPool_IsSet(&DedicatedSockets, &ReadySet, &TCPQueryActiveSocketLastPtr);
 						if( ActiveSocket == NULL )
 						{
 							ERRORMSG("Something wrong (1025).\n");
@@ -1073,6 +1093,7 @@ int QueryDNSViaTCP(void)
 						INFO("TCP stream is too short, server may have some failures.\n");
 						break;
 					}
+					*TCPQueryActiveSocketLastPtr = time(NULL);
 
 					if( SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', STATISTIC_TYPE_TCP, FALSE) <= 0 )
 					{
