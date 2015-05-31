@@ -1,6 +1,7 @@
 #ifndef SOCKETPOOL_H_INCLUDED
 #define SOCKETPOOL_H_INCLUDED
 
+#include <time.h>
 #include "bst.h"
 #include "common.h"
 

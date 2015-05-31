@@ -208,6 +208,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../simpleht.h" />
+		<Unit filename="../socketpool.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../socketpool.h" />
 		<Unit filename="../statichosts.c">
 			<Option compilerVar="CC" />
 		</Unit>
