@@ -20,7 +20,6 @@
 				<Option object_output="./obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-f &quot;/home/ho121/.dnsforwarder&quot;' />
 				<Compiler>
 					<Add option="-O2" />
 				</Compiler>

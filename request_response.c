@@ -502,6 +502,9 @@ static SOCKET ConnectToTCPServer(struct sockaddr    **ServerAddressesList,
     {
 		TCPSockets[Itr] = INVALID_SOCKET;
     }
+
+    FD_ZERO(&rfd);
+
     for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr)
     {
 		if( ServerAddressesList[Itr] == NULL )
@@ -531,7 +534,6 @@ static SOCKET ConnectToTCPServer(struct sockaddr    **ServerAddressesList,
 			MaxFd = TCPSockets[Itr];
 		}
 
-		FD_ZERO(&rfd);
 		FD_SET(TCPSockets[Itr], &rfd);
 
 		State |= TRUE;
