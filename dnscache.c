@@ -8,6 +8,7 @@
 #include "querydnsbase.h"
 #include "rwlock.h"
 #include "cacheht.h"
+#include "cachettlcrtl.h"
 
 #define	CACHE_VERSION		22
 
@@ -25,8 +26,6 @@ static char				*MapStart;
 static ThreadHandle		TTLCountdown_Thread;
 
 static int32_t			CacheSize;
-static int				OverrideTTL;
-static int				TTLMultiple;
 static BOOL				IgnoreTTL;
 
 static int32_t			*CacheCount;
@@ -34,6 +33,8 @@ static int32_t			*CacheCount;
 static volatile int32_t	*CacheEnd; /* Offset */
 
 static CacheHT			*CacheInfo;
+
+static CacheTtlCtrl		*TtlCtrl = NULL;
 
 struct _Header{
 	uint32_t	Ver;
@@ -191,6 +192,11 @@ int DNSCache_Init(ConfigFileInfo *ConfigInfo)
 	const char	*CacheFile = ConfigGetRawString(ConfigInfo, "CacheFile");
 	int			InitCacheInfoState;
 
+	int			OverrideTTL;
+	int			TTLMultiple;
+
+	StringList	*ctc = ConfigGetStringList(ConfigInfo, "CacheControl");
+
 	if( ConfigGetBoolean(ConfigInfo, "UseCache") == FALSE )
 	{
 		return 0;
@@ -199,15 +205,31 @@ int DNSCache_Init(ConfigFileInfo *ConfigInfo)
 	IgnoreTTL = ConfigGetBoolean(ConfigInfo, "IgnoreTTL");
 
 	OverrideTTL = ConfigGetInt32(ConfigInfo, "OverrideTTL");
+	TTLMultiple = ConfigGetInt32(ConfigInfo, "MultipleTTL");
+
+	if( ctc != NULL || OverrideTTL > -1 || TTLMultiple > 1 )
+	{
+		TtlCtrl = malloc(sizeof(CacheTtlCtrl));
+		if( TtlCtrl == NULL || CacheTtlCrtl_Init(TtlCtrl) != 0 )
+		{
+			return -1;
+		}
+	}
+
+	if( ctc != NULL )
+	{
+		CacheTtlCrtl_Add_From_StringList(TtlCtrl, ctc);
+	}
+
 	if( OverrideTTL > -1 )
 	{
-		TTLMultiple = 1;
+		CacheTtlCrtl_Add(TtlCtrl, "*", TTL_STATE_FIXED, 1, OverrideTTL, TRUE);
 	} else {
-		TTLMultiple = ConfigGetInt32(ConfigInfo, "MultipleTTL");
 		if( TTLMultiple < 1 )
 		{
 			ERRORMSG("Invalid `MultipleTTL'.\n");
-			TTLMultiple = 1;
+		} else if( TTLMultiple > 1 ){
+			CacheTtlCrtl_Add(TtlCtrl, "*", TTL_STATE_VARIABLE, TTLMultiple, 0, TRUE);
 		}
 	}
 
@@ -403,19 +425,47 @@ static char *DNSCache_GenerateTextFromRawRecord(const char *DNSBody, const char 
 	}
 }
 
-static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody, time_t CurrentTime)
+static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody, time_t CurrentTime, const CtrlContent *InfectedTtlContent)
 {
 	/* used to store cache data temporarily, no bounds checking here */
 	char			Buffer[512];
+	char			*HostName = Buffer + 1;
 
 	/* Iterator of `Buffer' */
 	char			*BufferItr = Buffer;
+
+	const CtrlContent	*TtlContent;
 
 	/* Assign start byte of the cache */
 	Buffer[0] = CACHE_START;
 
 	/* Assign the name of the cache */
-	DNSGetHostName(DNSBody, RecordBody, Buffer + 1, sizeof(Buffer) -1);
+	DNSGetHostName(DNSBody, RecordBody, HostName, sizeof(Buffer) -1);
+
+	if( InfectedTtlContent != NULL )
+	{
+		switch( InfectedTtlContent -> Infection )
+		{
+			default:
+			case TTL_CTRL_INFECTION_AGGRESSIVLY:
+				TtlContent = InfectedTtlContent;
+				break;
+
+			case TTL_CTRL_INFECTION_PASSIVLY:
+				TtlContent = CacheTtlCrtl_Get(TtlCtrl, HostName);
+				if( TtlContent == NULL )
+				{
+					TtlContent = InfectedTtlContent;
+				}
+				break;
+
+			case TTL_CTRL_INFECTION_NONE:
+				TtlContent = CacheTtlCrtl_Get(TtlCtrl, HostName);
+				break;
+		}
+	} else {
+		TtlContent = CacheTtlCrtl_Get(TtlCtrl, HostName);
+	}
 
 	/* Jump just over the name */
 	BufferItr += strlen(Buffer);
@@ -452,13 +502,33 @@ static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody,
 		/* Node with subscript `Subscript' */
 		Cht_Node	*Node;
 
+		if( TtlContent != NULL )
+		{
+			switch( TtlContent -> State )
+			{
+				case TTL_STATE_NO_CACHE:
+					RecordTTL = 0;
+					break;
+
+				case TTL_STATE_ORIGINAL:
+					RecordTTL = DNSGetTTL(RecordBody);
+					break;
+
+				default:
+					RecordTTL = (TtlContent -> Coefficient) * DNSGetTTL(RecordBody) + (TtlContent -> Increment);
+					break;
+			}
+		} else {
+			RecordTTL = DNSGetTTL(RecordBody);
+		}
+/*
 		if(OverrideTTL < 0)
 		{
 			RecordTTL = DNSGetTTL(RecordBody) * TTLMultiple;
 		} else {
 			RecordTTL = OverrideTTL;
 		}
-
+*/
 		if( RecordTTL == 0 )
 		{
 			return 0;
@@ -490,18 +560,21 @@ static int DNSCache_AddAItemToCache(const char *DNSBody, const char *RecordBody,
 	return 0;
 }
 
-int DNSCache_AddItemsToCache(char *DNSBody, time_t CurrentTime)
+int DNSCache_AddItemsToCache(char *DNSBody, time_t CurrentTime, const char *Domain)
 {
 	int loop;
 	int AnswerCount;
+	const CtrlContent *TtlContent = NULL;
+
 	if(Inited == FALSE) return 0;
-	if(TTLMultiple < 1) return 0;
+
+	TtlContent =  CacheTtlCrtl_Get(TtlCtrl, Domain);
 	AnswerCount = DNSGetAnswerCount(DNSBody);
 	RWLock_WrLock(CacheLock);
 
 	for(loop = 1; loop != AnswerCount + 1; ++loop)
 	{
-		if( DNSCache_AddAItemToCache(DNSBody, DNSGetAnswerRecordPosition(DNSBody, loop), CurrentTime) != 0 )
+		if( DNSCache_AddAItemToCache(DNSBody, DNSGetAnswerRecordPosition(DNSBody, loop), CurrentTime, TtlContent) != 0 )
 		{
 			RWLock_UnWLock(CacheLock);
 			return -1;
@@ -668,7 +741,6 @@ static int DNSCache_GetByQuestion(__in const char *Question, __inout char *Buffe
 	DNSRecordClass	Class;
 
 	if(Inited == FALSE) return -1;
-	if(TTLMultiple < 1) return -2;
 
 	*RecordsLength = 0;
 

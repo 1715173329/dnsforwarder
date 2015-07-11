@@ -119,6 +119,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../cacheht.h" />
+		<Unit filename="../cachettlcrtl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../cachettlcrtl.h" />
 		<Unit filename="../common.h" />
 		<Unit filename="../debug.c">
 			<Option compilerVar="CC" />

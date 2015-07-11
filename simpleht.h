@@ -5,7 +5,7 @@
 
 typedef struct _Sht_NodeHead{
 	int32_t	Next;
-	int			HashValue;
+	int		HashValue;
 } Sht_NodeHead;
 
 typedef struct _SimpleHT {

@@ -31,8 +31,8 @@ int Execute(const char *Cmd)
 
 #ifdef WIN32
 	#include <wincrypt.h>
-		#ifndef CryptStringToBinary
-			BOOL WINAPI CryptStringToBinaryA(const BYTE *,DWORD,DWORD,LPTSTR,DWORD *,DWORD *,DWORD *);
+	#ifndef CryptStringToBinary
+		BOOL WINAPI CryptStringToBinaryA(const BYTE *,DWORD,DWORD,LPTSTR,DWORD *,DWORD *,DWORD *);
 		#define	CryptStringToBinary CryptStringToBinaryA
 	#endif /* CryptStringToBinary */
 

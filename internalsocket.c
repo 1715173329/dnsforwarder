@@ -46,7 +46,7 @@ int InternalInterface_Init(int PrimaryProtocal, const char *WorkingAddress, int 
 
 	if( MAIN_FAMILY == AF_INET )
 	{
-		if( strncmp("0.0.0.0", MAIN_WORKING_ADDRESS, 1) == 0 )
+		if( strncmp("0.0.0.0", MAIN_WORKING_ADDRESS, 7) == 0 )
 		{
 			AddressList_ConvertToAddressFromString(&(Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Address), "127.0.0.1", MAIN_WORKING_PORT);
 		} else {
@@ -61,6 +61,7 @@ int InternalInterface_Init(int PrimaryProtocal, const char *WorkingAddress, int 
 		}
 	}
 
+	/* In actual, we won't use this socket, so it's no harm to be zero. */
 	Interfaces[INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL].Socket = 0;
 
 	return 0;

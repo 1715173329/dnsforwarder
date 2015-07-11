@@ -67,6 +67,12 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     ConfigAddOption(&ConfigInfo, "ExcludedDomain", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "AlwaysTCP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "AlwaysUDP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "ExcludedList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.boolean = FALSE;
@@ -143,6 +149,9 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.INT32 = 1;
     ConfigAddOption(&ConfigInfo, "MultipleTTL", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "CacheControl", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "ReloadCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
@@ -195,35 +204,46 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 	}
 }
 
-static int GetPrimaryProtocol(void)
+static DNSQuaryProtocol GetPrimaryProtocol(const char *FirstSet)
 {
-	const char *PrimaryProtocol_Ori = ConfigGetRawString(&ConfigInfo, "PrimaryServer");
-	char	PrimaryProtocol[8];
+	static DNSQuaryProtocol PrimaryProtocol = DNS_QUARY_PROTOCOL_UNSPECIFIED;
 
-	strncpy(PrimaryProtocol, PrimaryProtocol_Ori, 5);
-
-	StrToLower(PrimaryProtocol);
-
-	if( strncmp(PrimaryProtocol, "tcp", 3) == 0 )
+	if( PrimaryProtocol == DNS_QUARY_PROTOCOL_UNSPECIFIED )
 	{
-		return DNS_QUARY_PROTOCOL_TCP;
-	} else if( strncmp(PrimaryProtocol, "udp", 3) == 0 ) {
-		return DNS_QUARY_PROTOCOL_UDP;
-	} else {
-		ERRORMSG("PrimaryServer `%s' may not a good idea.\n", PrimaryProtocol_Ori);
-		return -1;
+		char	PrimaryProtocol_Str[8];
+
+		strncpy(PrimaryProtocol_Str, FirstSet, 5);
+
+		StrToLower(PrimaryProtocol_Str);
+
+		if( strncmp(PrimaryProtocol_Str, "tcp", 3) == 0 )
+		{
+			PrimaryProtocol =  DNS_QUARY_PROTOCOL_TCP;
+		} else if( strncmp(PrimaryProtocol_Str, "udp", 3) == 0 ) {
+			PrimaryProtocol =  DNS_QUARY_PROTOCOL_UDP;
+		} else {
+			ERRORMSG("PrimaryServer `%s' may not a good idea.\n", FirstSet);
+			PrimaryProtocol = DNS_QUARY_PROTOCOL_UNSPECIFIED;
+		}
 	}
+
+	return PrimaryProtocol;
 }
 
 int QueryDNSInterfaceStart(void)
 {
 	const char	*LocalAddr = ConfigGetRawString(&ConfigInfo, "LocalInterface");
 	int			LocalPort = ConfigGetInt32(&ConfigInfo, "LocalPort");
-	int			PrimaryProtocol = GetPrimaryProtocol();
+	DNSQuaryProtocol PrimaryProtocol = GetPrimaryProtocol(ConfigGetRawString(&ConfigInfo, "PrimaryServer"));
 
 	int			IsZeroZeroZeroZero;
 
 	Debug_Init(&ConfigInfo);
+
+	if( PrimaryProtocol == DNS_QUARY_PROTOCOL_UNSPECIFIED )
+	{
+		return -1;
+	}
 
 	if( ShowMassages == TRUE )
 	{
@@ -231,14 +251,9 @@ int QueryDNSInterfaceStart(void)
 		putchar('\n');
 	}
 
-	if( PrimaryProtocol < 0 )
-	{
-		return -1;
-	}
-
 	srand(time(NULL));
 
-	ExcludedList_Init(&ConfigInfo);
+	ExcludedList_Init(&ConfigInfo, PrimaryProtocol);
 	GfwList_Init(&ConfigInfo, FALSE);
 
 	InitAddress(&ConfigInfo);

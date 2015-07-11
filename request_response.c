@@ -227,38 +227,13 @@ static BOOL DoIPMiscellaneous(const char *RequestEntity, const char *Domain, BOO
 
 		if( Block == TRUE && (const unsigned char)*Answer != 0xC0 )
 		{
-			if( IPMiscellaneous != NULL )
-			{
-				BOOL FindResult;
-
-				switch( DNSGetRecordType(Answer) )
-				{
-					case DNS_TYPE_A:
-						FindResult = IpChunk_Find(IPMiscellaneous, *(uint32_t *)Data, &ActionType, NULL);
-						break;
-
-					case DNS_TYPE_AAAA:
-						FindResult = IpChunk_Find6(IPMiscellaneous, Data, &ActionType, NULL);
-						break;
-
-					default:
-						goto PhaseTwo;
-						break;
-				}
-
-				if( FindResult == TRUE && ActionType == IP_MISCELLANEOUS_TYPE_BLOCK )
-				{
-					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
-				} else {
-					ShowBlockedMessage(Domain, RequestEntity, "False package, discarded. And its IP address is not in `UDPBlock_IP'");
-				}
-			}
+			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
 			return TRUE;
 		}
 
-PhaseTwo:
+/* PhaseTwo: */
 
 		if( IPMiscellaneous != NULL )
 		{
@@ -383,7 +358,7 @@ static int SendBack(SOCKET Socket,
 
 			InternalInterface_QueryContextRemoveByNumber(Context, QueryContextNumber);
 			ShowNormalMassage(ThisContext -> Agent, Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal);
-			DNSCache_AddItemsToCache(RequestEntity, time(NULL));
+			DNSCache_AddItemsToCache(RequestEntity, time(NULL), Header -> RequestingDomain);
 		}
 	} else {
 		/* ShowNormalMassage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */
@@ -505,8 +480,8 @@ static SOCKET ConnectToTCPServer(struct sockaddr    **ServerAddressesList,
 
     FD_ZERO(&rfd);
 
-    for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr)
-    {
+	for( Itr = 0; Itr != NUMBER_OF_SOCKETS; ++Itr)
+	{
 		if( ServerAddressesList[Itr] == NULL )
 		{
 			break;

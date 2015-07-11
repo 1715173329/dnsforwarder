@@ -4,6 +4,7 @@
 #include "debug.h"
 
 typedef enum _DnsQuaryProtocol{
+	DNS_QUARY_PROTOCOL_UNSPECIFIED = -1,
 	DNS_QUARY_PROTOCOL_UDP = 0,
 	DNS_QUARY_PROTOCOL_TCP = 1
 } DNSQuaryProtocol;

@@ -28,7 +28,13 @@ int StringChunk_Add(StringChunk *dl,
 					int LengthOfAdditionalData
 					);
 
-/* NOTICE : Data address always return, not offset. */
+int StringChunk_Add_Domain(StringChunk	*dl,
+							const char	*Domain,
+							const char	*AdditionalData,
+							int			LengthOfAdditionalData /* The length will not be stored. */
+							);
+
+/* NOTICE : Data address returned, not offset. */
 BOOL StringChunk_Match_NoWildCard(StringChunk	*dl,
 								  const char	*Str,
 								  int			*HashValue,
@@ -41,6 +47,10 @@ BOOL StringChunk_Match_OnlyWildCard(StringChunk *dl,
 									);
 
 BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, char **Data);
+
+BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, char **Data);
+
+BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, char **Data);
 
 const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **Data);
 

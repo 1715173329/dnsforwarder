@@ -1,7 +1,6 @@
 #include <string.h>
 #include <time.h>
 #include "excludedlist.h"
-#include "querydnsbase.h"
 #include "utils.h"
 #include "stringchunk.h"
 #include "stringlist.h"
@@ -28,31 +27,7 @@ BOOL IsDisabledType(int Type)
 
 BOOL MatchDomain(StringChunk *List, const char *Domain, int *HashValue)
 {
-	if( List == NULL )
-	{
-		return FALSE;
-	}
-
-	if( StringChunk_Match(List, Domain, HashValue, NULL) == TRUE )
-	{
-		return TRUE;
-	}
-
-	Domain = strchr(Domain + 1, '.');
-
-	while( Domain != NULL )
-	{
-		if( StringChunk_Match_NoWildCard(List, Domain, NULL, NULL) == TRUE ||
-			StringChunk_Match_NoWildCard(List, Domain + 1, NULL, NULL) == TRUE
-			)
-		{
-			return TRUE;
-		}
-
-		Domain = strchr(Domain + 1, '.');
-	}
-
-	return FALSE;
+	return StringChunk_Domain_Match(List, Domain, HashValue, NULL);
 }
 
 BOOL IsDisabledDomain(const char *Domain, int *HashValue){
@@ -102,7 +77,7 @@ static int LoadDomainsFromList(StringChunk *List, const StringList *Domains)
 {
 	const char *Str;
 
-	if( Domains == NULL )
+	if( List == NULL || Domains == NULL )
 	{
 		return 0;
 	}
@@ -110,12 +85,7 @@ static int LoadDomainsFromList(StringChunk *List, const StringList *Domains)
 	Str = StringList_GetNext(Domains, NULL);
 	while( Str != NULL )
 	{
-		if( *Str == '.' )
-		{
-			Str++;
-		}
-
-		if( StringChunk_Add(List, Str, NULL, 0) != 0 )
+		if( StringChunk_Add_Domain(List, Str, NULL, 0) != 0 )
 		{
 			return -2;
 		}
@@ -142,7 +112,7 @@ static int LoadDomainsFromFile(StringChunk *List, const char *File)
 	{
 		if( Status == READ_DONE )
 		{
-			StringChunk_Add(List, Domain, NULL, 0);
+			StringChunk_Add_Domain(List, Domain, NULL, 0);
 		} else {
 			ReadLine_GoToNextLine(fp);
 		}
@@ -169,12 +139,14 @@ static int InitContainer(StringChunk **List)
 	return 0;
 }
 
-int ExcludedList_Init(ConfigFileInfo *ConfigInfo)
+int ExcludedList_Init(ConfigFileInfo *ConfigInfo, DNSQuaryProtocol PrimaryProtocol)
 {
-	StringList *DisabledDomain;
-	StringList *ExcludedDomain;
-	const char *DisabledFile;
-	const char *ExcludedFile;
+	StringList *DisabledDomain = NULL;
+	StringList *ExcludedDomain = NULL;
+	StringList *AlwaysUDP = NULL;
+	StringList *AlwaysTCP = NULL;
+	const char *DisabledFile = NULL;
+	const char *ExcludedFile = NULL;
 
 	DisabledDomain = ConfigGetStringList(ConfigInfo, "DisabledDomain");
 	if( DisabledDomain != NULL && InitContainer(&StaticDisabled) == 0 )
@@ -184,10 +156,23 @@ int ExcludedList_Init(ConfigFileInfo *ConfigInfo)
 	}
 
 	ExcludedDomain = ConfigGetStringList(ConfigInfo, "ExcludedDomain");
-	if( ExcludedDomain != NULL && InitContainer(&StaticExcluded) == 0 )
+	AlwaysUDP = ConfigGetStringList(ConfigInfo, "AlwaysUDP");
+	AlwaysTCP = ConfigGetStringList(ConfigInfo, "AlwaysTCP");
+	if( (ExcludedDomain != NULL || AlwaysUDP != NULL || AlwaysTCP != NULL)
+		&& InitContainer(&StaticExcluded) == 0 )
 	{
 		LoadDomainsFromList(StaticExcluded, ExcludedDomain);
+
+		if( PrimaryProtocol == DNS_QUARY_PROTOCOL_TCP )
+		{
+			LoadDomainsFromList(StaticExcluded, AlwaysUDP);
+		} else {
+			LoadDomainsFromList(StaticExcluded, AlwaysTCP);
+		}
+
 		StringList_Free(ExcludedDomain);
+		StringList_Free(AlwaysUDP);
+		StringList_Free(AlwaysTCP);
 	}
 
 	DisabledFile = ConfigGetRawString(ConfigInfo, "DisabledList");
