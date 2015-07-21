@@ -8,6 +8,8 @@
 
 int InitAddress(ConfigFileInfo *ConfigInfo);
 
+int InitCheckIPs(ConfigFileInfo *ConfigInfo);
+
 BOOL SocketIsStillReadable(SOCKET Sock, int timeout);
 
 void ClearSocketBuffer(SOCKET Sock);

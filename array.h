@@ -23,8 +23,8 @@ typedef struct _Array{
 	 * space (realloc) just before adding new elements. The total allocated
 	 * space is equal to `Allocated' times `DataLength'.
 	 *
-	 *   If `Allocated' is negative, the array grows down (towards low address,
-	 * like stack) and won't allocate new space. One uses this should guarantee
+	 *   If `Allocated' is negative, the array grows down (towarding lower address,
+	 * like stack) and won't allocate new space. One using this should guarantee
 	 * there is enough space to hold all elements.
 	 */
 	int32_t	Allocated;
@@ -51,6 +51,8 @@ int Array_Init(	__in Array *a,
  *  0 on success, a non-zero value otherwise.
  */
 
+#define Array_Init_Static(DataLengrh)	{NULL, (DataLengrh), 0, 0}
+
 #define Array_IsEmpty(a_ptr)	(((a_ptr) -> Used) == 0)
 /* Description:
  *  Check if an Array is empty.
@@ -65,7 +67,7 @@ int Array_Init(	__in Array *a,
  *  a_ptr : Pointer to an Array to be gotten.
  */
 
-void *Array_GetBySubscript(__in Array *a, __in int Subscript);
+void *Array_GetBySubscript(__in const Array *a, __in int Subscript);
 /* Description:
  *  Get an element by its subscript.
  * Parameters:
@@ -121,6 +123,8 @@ void Array_Sort(Array *a, int (*Compare)(const void *, const void *));
  * Parameters:
  *  a_ptr : Pointer to the Array to be cleared.
  */
+
+void Array_Fill(Array *a, int Num, const void *DataSample);
 
 void Array_Free(__in Array *a);
 /* Description:

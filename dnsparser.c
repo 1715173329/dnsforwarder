@@ -130,12 +130,17 @@ const char *DNSJumpOverName(const char *NameStart)
 const char *DNSGetQuestionRecordPosition(const char *DNSBody, int Num)
 {
 	const char *QR = DNSJumpHeader(DNSBody);
+	int QuestionCount = DNSGetQuestionCount(DNSBody);
 
-	if(Num > DNSGetQuestionCount(DNSBody))
-		Num = DNSGetQuestionCount(DNSBody) + 1;
-
-	if(Num < 1)
+	if( Num < 1 )
+	{
 		return NULL;
+	}
+
+	if( Num > QuestionCount )
+	{
+		Num = QuestionCount + 1;
+	}
 
 	for(; Num != 1; --Num)
 		QR = DNSJumpOverName(QR) + 4;
@@ -146,12 +151,17 @@ const char *DNSGetQuestionRecordPosition(const char *DNSBody, int Num)
 const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num)
 {
 	const char *SR = DNSJumpOverQuestionRecords(DNSBody);
+	int AnswerCount = DNSGetAnswerCount(DNSBody);
 
-	if(Num > DNSGetAnswerCount(DNSBody))
-		Num = DNSGetAnswerCount(DNSBody) + 1;
-
-	if(Num < 1)
+	if( Num < 1 )
+	{
 		return NULL;
+	}
+
+	if( Num > AnswerCount )
+	{
+		Num = AnswerCount + 1;
+	}
 
 	for(; Num != 1; --Num)
 		SR = DNSJumpOverName(SR) + 10 + DNSGetResourceDataLength(SR);

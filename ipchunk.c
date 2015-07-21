@@ -73,6 +73,11 @@ BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data)
 	IpElement	Key;
 	int32_t		Result;
 
+	if( ic == NULL )
+	{
+		return FALSE;
+	}
+
 	Key.IpLength = 4;
 	Key.Ip.Ipv4 = Ip;
 	Key.Type = 0;
@@ -114,6 +119,11 @@ BOOL IpChunk_Find6(IpChunk *ic, const char *Ipv6, int *Type, const char **Data)
 {
 	IpElement	Key;
 	int32_t		Result;
+
+	if( ic == NULL )
+	{
+		return FALSE;
+	}
 
 	Key.IpLength = 16;
 	memcpy(Key.Ip.Ipv6, Ipv6, 16);

@@ -191,6 +191,9 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.INT32 = 0;
     ConfigAddOption(&ConfigInfo, "RefusingResponseCode", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "CheckIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
 
 
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) == 0 )
@@ -257,6 +260,8 @@ int QueryDNSInterfaceStart(void)
 	GfwList_Init(&ConfigInfo, FALSE);
 
 	InitAddress(&ConfigInfo);
+
+	InitCheckIPs(&ConfigInfo);
 
 	TCPProxies_Init(ConfigGetStringList(&ConfigInfo, "TCPProxy"));
 

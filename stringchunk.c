@@ -231,6 +231,11 @@ BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, in
 
 BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, char **Data)
 {
+	if( dl == NULL )
+	{
+		return FALSE;
+	}
+
 	return (StringChunk_Domain_Match_NoWildCard(dl, Domain, HashValue, Data) ||
 			StringChunk_Match_OnlyWildCard(dl, Domain, Data) );
 }
