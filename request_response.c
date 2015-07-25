@@ -262,7 +262,7 @@ static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout,
 				sa.sin_port = htons((uint16_t)Port);
 				memcpy(&(sa.sin_addr), *ra, sizeof(sa.sin_addr));
 
-				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 || FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
+				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 && FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
 				{
 					CLOSE_SOCKET(skt);
 					continue;
@@ -277,7 +277,7 @@ static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout,
 				sa.sin6_port = htons((uint16_t)Port);
 				memcpy(&(sa.sin6_addr), *ra, sizeof(sa.sin6_addr));
 
-				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 || FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
+				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 && FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
 				{
 					CLOSE_SOCKET(skt);
 					continue;

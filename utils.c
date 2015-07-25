@@ -945,7 +945,7 @@ int FatalErrorDecideding(int LastError)
 		return 0;
 	}
 #else
-	if( LastError == EINTR || LastError == EAGAIN )
+	if( LastError == EINTR || LastError == EAGAIN || LastError == EINPROGRESS )
 	{
 		return 0;
 	}
