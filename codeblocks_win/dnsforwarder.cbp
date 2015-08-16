@@ -12,7 +12,7 @@
 				<Option object_output="./obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder\codeblocks_win\bin\Release\dnsforwarder.config&quot;' />
+				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder_n\codeblocks_win\bin\Release\dnsforwarder.config&quot;' />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -53,7 +53,7 @@
 				<Option object_output="./obj/Release_x64/" />
 				<Option type="1" />
 				<Option compiler="gnu_gcc_compiler_w64" />
-				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder\codeblocks_win\bin\Release\dnsforwarder.config&quot;' />
+				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder_n\codeblocks_win\bin\Release\dnsforwarder.config&quot;' />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-Os" />

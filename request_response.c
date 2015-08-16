@@ -424,7 +424,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 
 		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
 		{
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
 			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 			return IP_MISCELLANEOUS_BLOCK;
 		}
@@ -437,7 +437,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 		{
 			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
 			return IP_MISCELLANEOUS_BLOCK;
 		}
 
@@ -483,7 +483,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 							if( Block == TRUE )
 							{
 								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in `UDPBlock_IP', discarded");
-								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_POISONED);
+								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
 								return IP_MISCELLANEOUS_BLOCK;
 							}
 							break;
@@ -1059,12 +1059,24 @@ int QueryDNSViaTCP(void)
 			case SOCKET_ERROR:
 				{
 					int LastError = GET_LAST_ERROR();
-					ERRORMSG("SOCKET_ERROR Reached, 3.\n");
+					ERRORMSG("SOCKET_ERROR Reached, 1062.\n");
 					if( FatalErrorDecideding(LastError) != 0 )
 					{
 						ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
-						ERRORMSG(" !!!!! Something bad happend, please restart this program. %d\n", LastError);
-						while( TRUE ) SLEEP(100000);
+						ERRORMSG(" !!!!! Something bad happend, this program will try to recovery after 10 seconds (1066). %d\n", LastError);
+						SLEEP(10000);
+
+						if( TCPQueryOutcomeSocket != INVALID_SOCKET )
+						{
+							CLOSE_SOCKET(TCPQueryOutcomeSocket);
+							TCPQueryOutcomeSocket = INVALID_SOCKET;
+						}
+						TCPQueryActiveSocketPtr = NULL;
+						SocketPool_CloseAll(&DedicatedSockets);
+						MaxFd = TCPQueryIncomeSocket;
+						FD_ZERO(&ReadSet);
+						FD_ZERO(&ReadySet);
+						FD_SET(TCPQueryIncomeSocket, &ReadSet);
 					}
 				}
 				break;
@@ -1495,12 +1507,18 @@ int QueryDNSViaUDP(void)
 			case SOCKET_ERROR:
 				{
 					int LastError = GET_LAST_ERROR();
-					ERRORMSG("SOCKET_ERROR Reached, 2.\n");
+					ERRORMSG("SOCKET_ERROR Reached, 1510.\n");
 					if( FatalErrorDecideding(LastError) != 0 )
 					{
 						ERRORMSG("\n\n\n\n\n\n\n\n\n\n");
-						ERRORMSG(" !!!!! Something bad happend, please restart this program. %d\n", LastError);
-						while( TRUE ) SLEEP(100000);
+						ERRORMSG(" !!!!! Something bad happend, this program will try to recovery after 10 seconds (1514). %d\n", LastError);
+						SLEEP(10000);
+
+						MaxFd = UDPQueryIncomeSocket > UDPQueryOutcomeSocket ? UDPQueryIncomeSocket : UDPQueryOutcomeSocket;
+						FD_ZERO(&ReadSet);
+						FD_ZERO(&ReadySet);
+						FD_SET(UDPQueryIncomeSocket, &ReadSet);
+						FD_SET(UDPQueryOutcomeSocket, &ReadSet);
 					}
 				}
 				break;
@@ -1598,6 +1616,29 @@ int QueryDNSViaUDP(void)
 										);
 					} else {
                         /* otherwise use those all servers. */
+                        if( LastFamily != UDPParallelMainFamily )
+						{
+							if( UDPQueryOutcomeSocket != INVALID_SOCKET )
+							{
+								FD_CLR(UDPQueryOutcomeSocket, &ReadSet);
+								CLOSE_SOCKET(UDPQueryOutcomeSocket);
+							}
+
+							UDPQueryOutcomeSocket = InternalInterface_OpenASocket(UDPParallelMainFamily, NULL);
+							if( UDPQueryOutcomeSocket == INVALID_SOCKET )
+							{
+								LastFamily = AF_UNSPEC;
+								break;
+							}
+
+							LastFamily = UDPParallelMainFamily;
+							if( UDPQueryOutcomeSocket > MaxFd )
+							{
+								MaxFd = UDPQueryOutcomeSocket;
+							}
+							FD_SET(UDPQueryOutcomeSocket, &ReadSet);
+						}
+
 						SendQueryViaUDP(UDPQueryOutcomeSocket,
 										RequestEntity + sizeof(ControlHeader),
 										State - sizeof(ControlHeader),

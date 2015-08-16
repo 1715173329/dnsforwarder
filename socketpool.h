@@ -20,4 +20,6 @@ SOCKET *SocketPool_Add(SocketPool *sp, struct sockaddr *Address, time_t **LastPt
 SOCKET *SocketPool_Fetch(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr);
 
 SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr);
+
+void SocketPool_CloseAll(SocketPool *sp);
 #endif // SOCKETPOOL_H_INCLUDED

@@ -4,6 +4,8 @@
 #include "array.h"
 
 typedef struct _Bst_NodeHead{
+
+	/* -1, root; -2 deleted */
 	int32_t	Parent;
 	int32_t	Left;
 	int32_t	Right;

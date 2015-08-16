@@ -78,3 +78,21 @@ SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr)
 
 	return NULL;
 }
+
+void SocketPool_CloseAll(SocketPool *sp)
+{
+	SOCKET	*sock;
+	int32_t	Start = -1;
+
+	sock = Bst_Enum((Bst *)sp, &Start);
+	while( sock != NULL )
+	{
+		if( *sock != INVALID_SOCKET )
+		{
+			CLOSE_SOCKET(*sock);
+			*sock = INVALID_SOCKET;
+		}
+
+		sock = Bst_Enum((Bst *)sp, &Start);
+	}
+}
