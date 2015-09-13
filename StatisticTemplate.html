@@ -14,12 +14,12 @@
 			<tr>
 				<td><h2><a href="?sort=domain" target="_self">Domain</a></h2></td>
 				<td><h2><a href="?sort=total" target="_self">Total</a></h2></td>
-				<td><h2><a href="?sort=raf" target="_self">Refused&Failed</a></h2></td>
+				<td><h2><a href="?sort=raf" target="_self">Refused&amp;Failed</a></h2></td>
 				<td><h2><a href="?sort=hosts" target="_self">Hosts</a></h2></td>
 				<td><h2><a href="?sort=cache" target="_self">Cache</a></h2></td>
 				<td><h2><a href="?sort=udp" target="_self">UDP</a></h2></td>
 				<td><h2><a href="?sort=tcp" target="_self">TCP</a></h2></td>
-				<td><h2><a href="?sort=spoofed" target="_self">Spoofed?</a></h2></td>
+				<td><h2><a href="?sort=blockedmsg" target="_self">BlockedMsg</a></h2></td>
 			</tr>
 
 			<script type="text/javascript">
@@ -63,9 +63,9 @@
 				{
 					return i2.TCP - i1.TCP;
 				}
-				function InfoSortSpoofed(i1, i2)
+				function InfoSortBlockedMsg(i1, i2)
 				{
-					return i2.Spoofed.localeCompare(i1.Spoofed);
+					return i2.BlockedMsg - i1.BlockedMsg;
 				}
 
 				var SortFunction;
@@ -93,30 +93,30 @@
 					case "tcp":
 						SortFunction = InfoSortTCP;
 						break;
-					case "spoofed":
-						SortFunction = InfoSortSpoofed;
+					case "blockedmsg":
+						SortFunction = InfoSortBlockedMsg;
 						break;
-					
+
 				}
 
 				var InfoArray = [
-					{	Domain	:	"www.google.com",
-						Total	:	2,
-						RaF		:	1,
-						Hosts	:	1,
-						Cache	:	1,
-						UDP		:	1,
-						TCP		:	1,
-						Spoofed	:	"Yes"
+					{	Domain		:	"www.google.com",
+						Total		:	2,
+						RaF			:	1,
+						Hosts		:	1,
+						Cache		:	1,
+						UDP			:	1,
+						TCP			:	1,
+						BlockedMsg	:	1
 					},
-					{	Domain	:	"www.google.com.hk",
-						Total	:	1,
-						RaF		:	2,
-						Hosts	:	2,
-						Cache	:	2,
-						UDP		:	2,
-						TCP		:	2,
-						Spoofed	:	""
+					{	Domain		:	"www.google.com.hk",
+						Total		:	1,
+						RaF			:	2,
+						Hosts		:	2,
+						Cache		:	2,
+						UDP			:	2,
+						TCP			:	2,
+						BlockedMsg	:	5
 					}
 				];
 
@@ -132,7 +132,7 @@
 					document.write("<td>" + InfoArray[i].Cache + "</td>");
 					document.write("<td>" + InfoArray[i].UDP + "</td>");
 					document.write("<td>" + InfoArray[i].TCP + "</td>");
-					document.write("<td>" + InfoArray[i].Spoofed + "</td>");
+					document.write("<td>" + InfoArray[i].BlockedMsg + "</td>");
 					document.write("</tr>");
 				}
 			</script>
@@ -145,17 +145,17 @@
 				<td>%d</td>	<!-- Cache -->
 				<td>%d</td>	<!-- UDP -->
 				<td>%d</td>	<!-- TCP -->
-				<td>%d</td>	<!-- Spoofed? -->
+				<td>%d</td>	<!-- BlockedMsg -->
 			</tr>
 			<tr>
 				<td><h2>Domain</h2></td>
 				<td><h2>Total</h2></td>
-				<td><h2>Refused&Failed</h2></td>
+				<td><h2>Refused&amp;Failed</h2></td>
 				<td><h2>Hosts</h2></td>
 				<td><h2>Cache</h2></td>
 				<td><h2>UDP</h2></td>
 				<td><h2>TCP</h2></td>
-				<td><h2>Spoofed?</h2></td>
+				<td><h2>BlockedMsg</h2></td>
 			</tr>
 		</table>
 		</br>

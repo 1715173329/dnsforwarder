@@ -25,20 +25,15 @@ int TCPProxies_Init(StringList *Proxies);
 
 int QueryDNSViaTCP(void);
 
-void SetUDPAntiPollution(BOOL State);
+void SetUDPFilter(BOOL State);
 
-void SetUDPAppendEDNSOpt(BOOL State);
+void SetAppendEDNSOpt(BOOL State);
 
 int InitBlockedIP(StringList *l);
 
 int InitIPSubstituting(StringList *l);
 
 int QueryDNSViaUDP(void);
-
-int ProbeFakeAddresses(const char	*ServerAddress,
-					   const char	*RequestingDomain,
-					   StringList	*out
-					   );
 
 struct TestServerArguments
 {

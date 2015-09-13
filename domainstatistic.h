@@ -8,7 +8,7 @@ typedef enum _StatisticType{
 	STATISTIC_TYPE_UDP,
 	STATISTIC_TYPE_TCP,
 
-	STATISTIC_TYPE_SPOOFED
+	STATISTIC_TYPE_BLOCKEDMSG
 } StatisticType;
 
 int DomainStatistic_Init(int OutputInterval);

@@ -205,17 +205,17 @@ void ClearTCPSocketBuffer(SOCKET Sock, int Length)
 	SET_LAST_ERROR(OriginErrorCode);
 }
 
-static BOOL UDPAppendEDNSOpt = FALSE;
-static BOOL UDPAntiPollution = FALSE;
+static BOOL AppendEDNSOpt = FALSE;
+static BOOL UDPFilter = FALSE;
 
-void SetUDPAntiPollution(BOOL State)
+void SetUDPFilter(BOOL State)
 {
-	UDPAntiPollution = State;
+	UDPFilter = State;
 }
 
-void SetUDPAppendEDNSOpt(BOOL State)
+void SetAppendEDNSOpt(BOOL State)
 {
-	UDPAppendEDNSOpt = State;
+	AppendEDNSOpt = State;
 }
 
 #define CHECKIPS_ERROR_OR_TIMEOUT	(-1)
@@ -284,7 +284,7 @@ static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout,
 				}
 			}
 
-			if( skt > MaxFd )
+			if( (int)skt > MaxFd )
 			{
 				MaxFd = skt;
 			}
@@ -424,7 +424,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 
 		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
 		{
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
 			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 			return IP_MISCELLANEOUS_BLOCK;
 		}
@@ -437,7 +437,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 		{
 			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
 
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
+			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
 			return IP_MISCELLANEOUS_BLOCK;
 		}
 
@@ -483,7 +483,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 							if( Block == TRUE )
 							{
 								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in `UDPBlock_IP', discarded");
-								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_SPOOFED);
+								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
 								return IP_MISCELLANEOUS_BLOCK;
 							}
 							break;
@@ -1128,6 +1128,15 @@ int QueryDNSViaTCP(void)
 
 					}
 
+					if( AppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
+					{
+						memcpy(RequestEntity + RecvState, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
+
+						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 1);
+
+						RecvState += OPT_PSEUDORECORD_LENGTH;
+					}
+
 					/* Preparing socket */
 					if( TCPProxies == NULL )
 					{
@@ -1563,7 +1572,7 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
-					if( UDPAppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
+					if( AppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
 					{
 						memcpy(RequestEntity + State, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
 
@@ -1662,108 +1671,11 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
-					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'U', STATISTIC_TYPE_UDP, UDPAntiPollution);
+					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'U', STATISTIC_TYPE_UDP, UDPFilter);
 				}
 			break;
 		}
 	}
-}
-
-int ProbeFakeAddresses(const char	*ServerAddress,
-					   const char	*RequestingDomain,
-					   StringList	*out
-					   )
-{
-	char	RequestEntity[384] = {
-		00, 00, /* QueryIdentifier */
-		01, 00, /* Flags */
-		00, 01, /* QuestionCount */
-		00, 00, /* AnswerCount */
-		00, 00, /* NameServerCount */
-		00, 00, /* AdditionalCount */
-		/* Header end */
-	};
-
-	struct sockaddr_in	PeerAddr;
-	SOCKET	Sock;
-
-	int		NumberOfAddresses = 0;
-
-	int		RequestLength;
-
-	int		AddrLen = sizeof(struct sockaddr);
-	char	NewlyReceived[2048];
-
-	if( DNSGenQuestionRecord(RequestEntity + 12, sizeof(RequestEntity) - 12, RequestingDomain, DNS_TYPE_NS, DNS_CLASS_IN) == 0 )
-	{
-		return -1;
-	}
-
-	FILL_ADDR4(PeerAddr, AF_INET, ServerAddress, 53);
-
-	Sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if( Sock == INVALID_SOCKET )
-	{
-		return -1;
-	}
-
-	SetSocketRecvTimeLimit(Sock, 2000);
-
-	RequestLength = 12 + strlen(RequestingDomain) + 2 + 4;
-
-	*(uint16_t *)RequestEntity = rand();
-
-	if( sendto(Sock, RequestEntity, RequestLength, 0, (struct sockaddr *)&PeerAddr, AddrLen) == 0 )
-	{
-		CLOSE_SOCKET(Sock);
-		return -1;
-	}
-
-	while( TRUE )
-	{
-		if( recvfrom(Sock, NewlyReceived, sizeof(NewlyReceived), 0, NULL, NULL) <= 0 )
-		{
-			break;
-		}
-
-		if( *(uint16_t *)RequestEntity != *(uint16_t *)NewlyReceived )
-		{
-			continue;
-		}
-
-		if( ((DNSHeader *)NewlyReceived) -> Flags.ResponseCode != 0 )
-		{
-			continue;
-		}
-
-		if( DNSGetAnswerCount(NewlyReceived) > 0 )
-		{
-			const char *FirstAnswer;
-
-			FirstAnswer = DNSGetAnswerRecordPosition(NewlyReceived, 1);
-
-			if( DNSGetRecordType(FirstAnswer) == DNS_TYPE_A )
-			{
-				NumberOfAddresses += GetHostsByRaw(NewlyReceived, out);
-
-				continue;
-			} else {
-				break;
-			}
-		}
-
-		if( DNSGetNameServerCount(NewlyReceived) == 0 && DNSGetAdditionalCount(NewlyReceived) == 0 )
-		{
-			continue;
-		}
-
-		break;
-	}
-
-	ClearSocketBuffer(Sock);
-
-	CLOSE_SOCKET(Sock);
-	return NumberOfAddresses;
 }
 
 int TestServer(struct TestServerArguments *Args)

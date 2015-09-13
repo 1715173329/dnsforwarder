@@ -55,6 +55,8 @@ int DNSGetHostNameLength(const char *DNSBody, const char *NameStart);
 
 #define DNSGetRecordType(rec_start_ptr)		((rec_start_ptr) == NULL ? DNS_TYPE_UNKNOWN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr)))
 
+#define DNSLabelGetPointer(rec_start_ptr)        ((rec_start_ptr) == NULL ? 0 : (int)((unsigned char *)(rec_start_ptr))[1] + (int)(((unsigned char *)(rec_start_ptr))[0] - 192) * 256)
+
 #define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOEN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
 
 int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody);

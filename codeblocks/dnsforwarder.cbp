@@ -5,6 +5,7 @@
 		<Option title="dnsforwarder" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
+		<Option virtualFolders="Others/;" />
 		<Build>
 			<Target title="Debug">
 				<Option output="/tmp/bin/Debug/dnsforwarder" prefix_auto="1" extension_auto="1" />
@@ -41,6 +42,7 @@
 		<Linker>
 			<Add option="-lcurl -lssl -lcrypto -pthread" />
 		</Linker>
+		<Unit filename="../StatisticTemplate.html" />
 		<Unit filename="../addresschunk.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -74,6 +76,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../debug.h" />
+		<Unit filename="../default.config" />
 		<Unit filename="../dnscache.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -106,10 +109,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../extendablebuffer.h" />
-		<Unit filename="../gfwlist.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../gfwlist.h" />
 		<Unit filename="../hosts.c">
 			<Option compilerVar="CC" />
 		</Unit>

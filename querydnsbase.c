@@ -13,7 +13,6 @@
 #include "hosts.h"
 #include "utils.h"
 #include "excludedlist.h"
-#include "gfwlist.h"
 #include "stringlist.h"
 #include "domainstatistic.h"
 #include "request_response.h"
@@ -206,9 +205,7 @@ static int QueryFromServer(char *Content, int ContentLength, SOCKET ThisSocket)
 	int		Interface;
 
 	/* Determine whether the secondaries are used */
-	if(	IsExcludedDomain(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue)) ||
-		GfwList_Match(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue))
-		 )
+	if(	IsExcludedDomain(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue)))
 	{
 		Interface = INTERNAL_INTERFACE_SECONDARY;
 	} else {

@@ -102,20 +102,20 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_dnsforwarder_OBJECTS = addresschunk.$(OBJEXT) addresslist.$(OBJEXT) \
-	array.$(OBJEXT) bst.$(OBJEXT) cacheht.$(OBJEXT) \
-	debug.$(OBJEXT) dnscache.$(OBJEXT) dnsgenerator.$(OBJEXT) \
-	dnsparser.$(OBJEXT) dnsrelated.$(OBJEXT) \
-	domainstatistic.$(OBJEXT) downloader.$(OBJEXT) \
-	excludedlist.$(OBJEXT) extendablebuffer.$(OBJEXT) \
-	gfwlist.$(OBJEXT) hosts.$(OBJEXT) ipchunk.$(OBJEXT) \
-	main.$(OBJEXT) querydnsbase.$(OBJEXT) \
-	querydnsinterface.$(OBJEXT) querydnslistentcp.$(OBJEXT) \
-	querydnslistenudp.$(OBJEXT) readconfig.$(OBJEXT) \
-	readline.$(OBJEXT) request_response.$(OBJEXT) \
-	simpleht.$(OBJEXT) statichosts.$(OBJEXT) stringchunk.$(OBJEXT) \
-	stringlist.$(OBJEXT) utils.$(OBJEXT) internalsocket.$(OBJEXT) \
-	socketpool.$(OBJEXT) cachettlcrtl.$(OBJEXT) checkip.$(OBJEXT)
+am_dnsforwarder_OBJECTS = addresschunk.$(OBJEXT) dnsrelated.$(OBJEXT) \
+	querydnslistenudp.$(OBJEXT) addresslist.$(OBJEXT) \
+	domainstatistic.$(OBJEXT) readconfig.$(OBJEXT) array.$(OBJEXT) \
+	downloader.$(OBJEXT) readline.$(OBJEXT) bst.$(OBJEXT) \
+	excludedlist.$(OBJEXT) request_response.$(OBJEXT) \
+	cacheht.$(OBJEXT) extendablebuffer.$(OBJEXT) \
+	cachettlcrtl.$(OBJEXT) simpleht.$(OBJEXT) hosts.$(OBJEXT) \
+	checkip.$(OBJEXT) socketpool.$(OBJEXT) \
+	internalsocket.$(OBJEXT) statichosts.$(OBJEXT) \
+	ipchunk.$(OBJEXT) debug.$(OBJEXT) stringchunk.$(OBJEXT) \
+	main.$(OBJEXT) dnscache.$(OBJEXT) querydnsbase.$(OBJEXT) \
+	stringlist.$(OBJEXT) dnsgenerator.$(OBJEXT) \
+	querydnsinterface.$(OBJEXT) utils.$(OBJEXT) \
+	dnsparser.$(OBJEXT) querydnslistentcp.$(OBJEXT)
 dnsforwarder_OBJECTS = $(am_dnsforwarder_OBJECTS)
 dnsforwarder_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -282,7 +282,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dnsforwarder_SOURCES = addresschunk.h dnscache.h gfwlist.h readline.h addresslist.h dnsgenerator.h hosts.h request_response.h array.h dnsparser.h ipchunk.h rwlock.h bst.h dnsrelated.h querydnsbase.h simpleht.h cacheht.h domainstatistic.h querydnsinterface.h statichosts.h common.h downloader.h querydnslistentcp.h stringchunk.h config.h excludedlist.h querydnslistenudp.h stringlist.h debug.h extendablebuffer.h readconfig.h utils.h internalsocket.h addresschunk.c addresslist.c array.c bst.c cacheht.c debug.c dnscache.c dnsgenerator.c dnsparser.c dnsrelated.c domainstatistic.c downloader.c excludedlist.c extendablebuffer.c gfwlist.c hosts.c ipchunk.c main.c querydnsbase.c querydnsinterface.c querydnslistentcp.c querydnslistenudp.c readconfig.c readline.c request_response.c simpleht.c statichosts.c stringchunk.c stringlist.c utils.c internalsocket.c socketpool.c socketpool.h cachettlcrtl.c cachettlcrtl.h checkip.c checkip.h
+dnsforwarder_SOURCES = addresschunk.c dnsparser.h querydnslistentcp.h addresschunk.h dnsrelated.c querydnslistenudp.c addresslist.c dnsrelated.h querydnslistenudp.h addresslist.h domainstatistic.c readconfig.c array.c domainstatistic.h readconfig.h array.h downloader.c readline.c bst.c downloader.h readline.h bst.h excludedlist.c request_response.c cacheht.c excludedlist.h request_response.h cacheht.h extendablebuffer.c rwlock.h cachettlcrtl.c extendablebuffer.h simpleht.c cachettlcrtl.h hosts.c simpleht.h checkip.c hosts.h socketpool.c checkip.h internalsocket.c socketpool.h common.h internalsocket.h statichosts.c config.h ipchunk.c statichosts.h debug.c ipchunk.h stringchunk.c debug.h main.c stringchunk.h dnscache.c querydnsbase.c stringlist.c dnscache.h querydnsbase.h stringlist.h dnsgenerator.c querydnsinterface.c utils.c dnsgenerator.h querydnsinterface.h utils.h dnsparser.c querydnslistentcp.c
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -405,7 +405,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/downloader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/excludedlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extendablebuffer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gfwlist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hosts.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/internalsocket.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipchunk.Po@am__quote@

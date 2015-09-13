@@ -15,7 +15,7 @@ typedef struct _DomainInfo{
 	int		Cache;
 	int		Udp;
 	int		Tcp;
-	int		Spoofed;
+	int		BlockedMsg;
 } DomainInfo;
 
 typedef struct _RankList{
@@ -116,9 +116,9 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 					NewInfo.Tcp = 1;
 					break;
 
-				case STATISTIC_TYPE_SPOOFED:
+				case STATISTIC_TYPE_BLOCKEDMSG:
 					NewInfo.Count = 0;
-					NewInfo.Spoofed = TRUE;
+					NewInfo.BlockedMsg = 1;
 					break;
 
 			}
@@ -154,8 +154,8 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 						++(ExistInfo -> Tcp);
 						break;
 
-					case STATISTIC_TYPE_SPOOFED:
-						ExistInfo -> Spoofed = TRUE;
+					case STATISTIC_TYPE_BLOCKEDMSG:
+						++(ExistInfo -> BlockedMsg);
 						break;
 				}
 			}
@@ -209,12 +209,12 @@ int DomainStatistic_Hold(void)
 							"<tr>"
 								"<td><h2><a href=\"?sort=domain\" target=\"_self\">Domain</a></h2></td>"
 								"<td><h2><a href=\"?sort=total\" target=\"_self\">Total</a></h2></td>"
-								"<td><h2><a href=\"?sort=raf\" target=\"_self\">Refused&Failed</a></h2></td>"
+								"<td><h2><a href=\"?sort=raf\" target=\"_self\">Refused&amp;Failed</a></h2></td>"
 								"<td><h2><a href=\"?sort=hosts\" target=\"_self\">Hosts</a></h2></td>"
 								"<td><h2><a href=\"?sort=cache\" target=\"_self\">Cache</a></h2></td>"
 								"<td><h2><a href=\"?sort=udp\" target=\"_self\">UDP</a></h2></td>"
 								"<td><h2><a href=\"?sort=tcp\" target=\"_self\">TCP</a></h2></td>"
-								"<td><h2><a href=\"?sort=spoofed\" target=\"_self\">Spoofed?</a></h2></td>"
+								"<td><h2><a href=\"?sort=blockedmsg\" target=\"_self\">BlockedMsg</a></h2></td>"
 							"</tr>"
 							"<script type=\"text/javascript\">"
 								"function GetParameter(name)"
@@ -257,9 +257,9 @@ int DomainStatistic_Hold(void)
 								"{"
 									"return i2.TCP - i1.TCP;"
 								"}"
-								"function InfoSortSpoofed(i1, i2)"
+								"function InfoSortBlockedMsg(i1, i2)"
 								"{"
-									"return i2.Spoofed.localeCompare(i1.Spoofed);"
+									"return i2.BlockedMsg- i1.BlockedMsg;"
 								"}"
 
 								"var SortFunction;"
@@ -287,8 +287,8 @@ int DomainStatistic_Hold(void)
 									"case \"tcp\":"
 										"SortFunction = InfoSortTCP;"
 										"break;"
-									"case \"spoofed\":"
-										"SortFunction = InfoSortSpoofed;"
+									"case \"blockedmsg\":"
+										"SortFunction = InfoSortBlockedMsg;"
 										"break;"
 								"}"
 								"var InfoArray = [",
@@ -317,7 +317,7 @@ int DomainStatistic_Hold(void)
 				Sum.Cache += Info -> Cache;
 				Sum.Udp += Info -> Udp;
 				Sum.Tcp += Info -> Tcp;
-				Sum.Spoofed += Info -> Spoofed;
+				Sum.BlockedMsg += Info -> BlockedMsg;
 
 				fprintf(MainFile,
 						"{"
@@ -328,7 +328,7 @@ int DomainStatistic_Hold(void)
 							"Cache:%d,"
 							"UDP:%d,"
 							"TCP:%d,"
-							"Spoofed:\"%s\""
+							"BlockedMsg:\"%d\""
 						"},",
 						Str,
 						Info -> Count,
@@ -337,7 +337,7 @@ int DomainStatistic_Hold(void)
 						Info -> Cache,
 						Info -> Udp,
 						Info -> Tcp,
-						Info -> Spoofed != FALSE ? "Yes" : ""
+						Info -> BlockedMsg
 						 );
 			}
 
@@ -361,7 +361,7 @@ int DomainStatistic_Hold(void)
 						"document.write(\"<td>\" + InfoArray[i].Cache + \"</td>\");"
 						"document.write(\"<td>\" + InfoArray[i].UDP + \"</td>\");"
 						"document.write(\"<td>\" + InfoArray[i].TCP + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].Spoofed + \"</td>\");"
+						"document.write(\"<td>\" + InfoArray[i].BlockedMsg + \"</td>\");"
 						"document.write(\"</tr>\");"
 					"}"
 				"</script>"
@@ -385,18 +385,18 @@ int DomainStatistic_Hold(void)
 				Sum.Cache,
 				Sum.Udp,
 				Sum.Tcp,
-				Sum.Spoofed
+				Sum.BlockedMsg
 				);
 
 		fprintf(MainFile,		"<tr>"
 									"<td><h2>Domain</h2></td>"
 									"<td><h2>Total</h2></td>"
-									"<td><h2>Refused&Failed</h2></td>"
+									"<td><h2>Refused&amp;Failed</h2></td>"
 									"<td><h2>Hosts</h2></td>"
 									"<td><h2>Cache</h2></td>"
 									"<td><h2>UDP</h2></td>"
 									"<td><h2>TCP</h2></td>"
-									"<td><h2>Spoofed?</h2></td>"
+									"<td><h2>BlockedMsg</h2></td>"
 								"</tr>"
 							"</table>"
 				);

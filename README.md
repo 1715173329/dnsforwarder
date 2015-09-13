@@ -10,7 +10,6 @@ Dependencies :
 
     pthread;
     libcurl (optional);
-    openssl (optional).
 
   For Windows:
   None.

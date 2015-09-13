@@ -87,7 +87,7 @@ int Array_PushBack(__in Array *a, __in_opt const void *Data, __in_opt void *Boun
 }
 
 
-void *Array_SetToSubscript(Array *a, int Subscript, void *Data)
+void *Array_SetToSubscript(Array *a, int Subscript, const void *Data)
 {
 	if( a -> Allocated >= 0 )
 	{

@@ -22,14 +22,14 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.21"
+#define VERSION__ "5.0.22"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
 
-int DaemonInit()
+int DaemonInit(void)
 {
 #ifdef WIN32
 	char		*CmdLine = GetCommandLine();
@@ -123,74 +123,6 @@ int DaemonInit()
 #endif /* WIN32 */
 }
 
-void Probe(int Threshold)
-{
-	static const char *Servers[] = {
-		"8.8.8.8",
-		"208.67.220.220",
-		"199.85.126.10",
-		"4.2.2.1",
-		"8.26.56.26",
-	};
-
-	static const char *Domains[] = {
-		"www.youtube.com",
-		"www.googlevideo.com",
-		"twitter.com",
-		"www.facebook.com"
-	};
-
-	int	Pass = 0;
-
-	StringList	l;
-
-	StringChunk	s;
-
-	StringList_Init(&l, NULL, ',');
-	StringChunk_Init(&s, NULL);
-
-	while( Threshold > 0 )
-	{
-		printf("; Pass %d:\n", Pass + 1);
-
-		if( ProbeFakeAddresses(Servers[Pass % (sizeof(Servers) / sizeof(const char *))], Domains[Pass % (sizeof(Domains) / sizeof(const char *))], &l) > 0 )
-		{
-			const char *Itr = NULL;
-			int NumberOfNew = 0;
-
-			Itr = StringList_GetNext(&l, NULL);
-
-			while( Itr != NULL )
-			{
-				if( StringChunk_Match_NoWildCard(&s, Itr, NULL, NULL) == FALSE )
-				{
-					StringChunk_Add(&s, Itr, NULL, 0);
-					printf("%s\n", Itr);
-					++NumberOfNew;
-				}
-
-				Itr = StringList_GetNext(&l, Itr);
-			}
-
-			if( NumberOfNew == 0 )
-			{
-				--Threshold;
-			} else {
-				Threshold += 2;
-			}
-		} else {
-			--Threshold;
-		}
-
-		StringList_Clear(&l);
-
-		++Pass;
-	}
-
-	StringList_Free(&l);
-	StringChunk_Free(&s, TRUE);
-}
-
 void Test(const char *ServerAddress)
 {
 	ThreadHandle	t;
@@ -261,14 +193,13 @@ int ArgParse(int argc, char *argv_ori[])
     	if(strcmp("-h", *argv) == 0)
 		{
 			printf("DNSforwarder by several people. Version "VERSION__" . License : GPL v3.\n Time of compilation : %s %s.\n\n", __DATE__, __TIME__);
-			printf("http://micasmica.blogspot.com/2011/08/dns.html\nhttps://github.com/holmium/dnsforwarder\n\n");
+			printf("https://github.com/holmium/dnsforwarder\n\n");
 			printf("Usage : %s [args].\n", strrchr(argv_ori[0], PATH_SLASH_CH) == NULL ? argv_ori[0] : strrchr(argv_ori[0], PATH_SLASH_CH) + 1);
 			printf(" [args] is case sensitivity and can be zero or more (in any order) of:\n"
 				  "  -f <FILE>  Use configuration <FILE> instead of the default one.\n"
 				  "  -q         Quiet mode. Do not print any information.\n"
 				  "  -e         Show only error messages.\n"
 				  "  -d         Daemon mode. Running at background.\n"
-				  "  -P         Try to probe all the fake IP addresses held in false DNS responses.\n"
 #ifndef WIN32
 				  "\n"
 				  "  -p         Prepare needed environment.\n"
@@ -308,21 +239,6 @@ int ArgParse(int argc, char *argv_ori[])
         {
             ConfigFile = *(++argv);
             ++argv;
-            continue;
-        }
-
-        if( strcmp("-P", *argv) == 0 )
-        {
-			ShowMassages = FALSE;
-			ErrorMessages = FALSE;
-#ifdef WIN32
-			SetConsoleTitle("dnsforwarder - probing");
-#endif
-			Probe(100);
-
-			exit(0);
-
-			++argv;
             continue;
         }
 
@@ -395,10 +311,10 @@ int main(int argc, char *argv[])
 
 	}
 
-    PRINTM("DNSforwarder by several people. Version "VERSION__" . License : GPL v3.\nTime of compilation : %s %s.\n\n", __DATE__, __TIME__);
+    PRINTM("DNSforwarder mainly by holmium. Version "VERSION__" . License : GPL v3.\nTime of compilation : %s %s.\n\n", __DATE__, __TIME__);
 
 #ifndef WIN32
-    PRINTM("Please run `dnsforwarder -p' if something wrong.\n\n")
+    PRINTM("Please run `dnsforwarder -p' if something goes wrong.\n\n")
 #endif
 
     PRINTM("Configure File : %s\n\n", ConfigFile);

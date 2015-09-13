@@ -30,14 +30,16 @@ int Execute(const char *Cmd)
 #include "dnsgenerator.h"
 
 #ifdef WIN32
+	#ifdef MASKED
 	#include <wincrypt.h>
 	#ifndef CryptStringToBinary
 		BOOL WINAPI CryptStringToBinaryA(const BYTE *,DWORD,DWORD,LPTSTR,DWORD *,DWORD *,DWORD *);
 		#define	CryptStringToBinary CryptStringToBinaryA
 	#endif /* CryptStringToBinary */
-
+	#endif /* MASKED */
 #else /* WIN32 */
 
+	#ifdef MASKED
 	#ifdef BASE64_DECODER_OPENSSL
 		#include <openssl/bio.h>
 		#include <openssl/evp.h>
@@ -46,12 +48,14 @@ int Execute(const char *Cmd)
 	#endif /* BASE64_DECODER_UUDECODE */
 	#ifdef BASE64_DECODER_COREUTILS
 	#endif /* BASE64_DECODER_COREUTILS */
+	#endif /* MASKED */
 
 	#ifdef HAVE_WORDEXP
 		#include <wordexp.h>
 	#endif
 
 #endif /* WIN32 */
+
 
 int SafeRealloc(void **Memory_ptr, size_t NewBytes)
 {
@@ -154,7 +158,7 @@ char *GetCurDateAndTime(char *Buffer, int BufferLength)
 
 	return Buffer;
 }
-
+#ifdef MASKED
 int	Base64Decode(const char *File)
 {
 #ifdef WIN32
@@ -423,7 +427,7 @@ int	Base64Decode(const char *File)
 #endif /* BASE64_DECODER_COREUTILS */
 #endif /* WIN32 */
 }
-
+#endif /* MASKED */
 int IPv6AddressToNum(const char *asc, void *Buffer)
 {
 	int16_t	*buf_s	=	(int16_t *)Buffer;

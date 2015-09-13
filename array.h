@@ -98,7 +98,7 @@ int Array_PushBack(__in Array *a, __in_opt const void *Data, __in_opt void *Boun
  *  The subscript of the newly added element. Or a negative value on failure.
  */
 
-void *Array_SetToSubscript(__in Array *a, __in int Subscript, __in void *Data);
+void *Array_SetToSubscript(__in Array *a, __in int Subscript, __in const void *Data);
 /* Description:
  *  Set data of a element which has the subscript.
  *    There are two cases.

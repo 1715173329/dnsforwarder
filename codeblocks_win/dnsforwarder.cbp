@@ -164,10 +164,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../extendablebuffer.h" />
-		<Unit filename="../gfwlist.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../gfwlist.h" />
 		<Unit filename="../hosts.c">
 			<Option compilerVar="CC" />
 		</Unit>

@@ -118,7 +118,7 @@ const char *DNSJumpOverName(const char *NameStart)
 		if((*(const unsigned char *)NameStart) == 0)
 			return NameStart + 1;
 
-		if((*(const unsigned char *)NameStart) == 192 /* 0x1100 0000 */)
+		if((*(const unsigned char *)NameStart) >= 192 /* 0x1100 0000 */)
 			return NameStart + 2;
 
 		++NameStart;
@@ -172,7 +172,7 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num)
 int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength)
 {
 	int AllLabelLen = 0;
-	int flag = 0;
+	int flag = 0; /* Redirection flag */
 	unsigned char LabelLen;
 
 	--BufferLength;
@@ -187,13 +187,12 @@ int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int
 		LabelLen = GET_8_BIT_U_INT(NameStart);
 
 		if(LabelLen == 0) break;
-		if(LabelLen > 192) return -1;
 
 		if(flag == 0) ++AllLabelLen;
 
-		if(LabelLen == 192 /* 0x1100 0000 */ /* 49152  0x1100 0000 0000 0000 */ )
+		if(LabelLen >= 192 /* 0x1100 0000 */ /* 49152  0x1100 0000 0000 0000 */ )
 		{
-			NameStart = DNSBody + GET_8_BIT_U_INT(NameStart + 1);
+			NameStart = DNSBody + DNSLabelGetPointer(NameStart);
 			if(flag == 0)
 			{
 				++AllLabelLen;
@@ -231,10 +230,9 @@ int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, c
 	{
 		LabelLen = GET_8_BIT_U_INT(NameStart);
 		if(LabelLen == 0) break;
-		if(LabelLen > 192) return -1;
-		if(LabelLen == 192)
+		if(LabelLen >= 192)
 		{
-			NameStart = DNSBody + GET_8_BIT_U_INT(NameStart + 1);
+			NameStart = DNSBody + DNSLabelGetPointer(NameStart);
 		} else {
 			NameLen += LabelLen + 1;
 			NameStart += LabelLen + 1;
