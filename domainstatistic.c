@@ -34,16 +34,70 @@ static FILE				*MainFile = NULL;
 static char				InitTime_Str[32];
 static time_t			InitTime_Num;
 
+static const char		*PreOutput = NULL; /* malloced */
+static const char		*PostOutput = NULL;
+
 volatile static BOOL	SkipStatistic = FALSE;
 
-
-int DomainStatistic_Init(int OutputInterval)
+static int GetPreAndPost(ConfigFileInfo *ConfigInfo)
 {
+	const char	*TemplateFile = ConfigGetRawString(ConfigInfo, "DomainStatisticTempletFile");
+	const char	*InsertionPosString = ConfigGetRawString(ConfigInfo, "StatisticInsertionPosition");
+	char	*ip = NULL;
+	int	FileSize;
+	char	*FileContent = NULL;
+	if( TemplateFile == NULL )
+	{
+		return -1;
+	}
+
+	FileSize = GetFileSizePortable(TemplateFile);
+	if( FileSize <= 0 )
+	{
+		return -1;
+	}
+
+	FileContent = SafeMalloc(FileSize + 1);
+	if( FileContent == NULL )
+	{
+		return -1;
+	}
+
+	memset(FileContent, 0, FileSize + 1);
+
+	if( GetTextFileContent(TemplateFile, FileContent) != 0 )
+	{
+		SafeFree(FileContent);
+		return -1;
+	}
+
+	ip = strstr(FileContent, InsertionPosString);
+	if( ip == NULL )
+	{
+		SafeFree(FileContent);
+		return -1;
+	}
+
+	PreOutput = FileContent;
+	PostOutput = ip + strlen(InsertionPosString);
+	*ip = '\0';
+
+	return 0;
+}
+
+int DomainStatistic_Init(ConfigFileInfo *ConfigInfo)
+{
+	int OutputInterval = ConfigGetInt32(ConfigInfo, "StatisticUpdateInterval");
 	char FilePath[1024];
 
 	if( OutputInterval < 1 )
 	{
 		return 1;
+	}
+
+	if( GetPreAndPost(ConfigInfo) != 0 )
+	{
+		return 2;
 	}
 
 	GetFileDirectory(FilePath);
@@ -54,7 +108,7 @@ int DomainStatistic_Init(int OutputInterval)
 
 	if( MainFile == NULL )
 	{
-		return 2;
+		return 3;
 	}
 
 	EFFECTIVE_LOCK_INIT(StatisticLock);

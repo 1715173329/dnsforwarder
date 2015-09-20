@@ -93,9 +93,17 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "DomainStatistic", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.INT32 = 60;
-    ConfigAddOption(&ConfigInfo, "StatisticUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+	GetFileDirectory(TmpStr);
+	strcat(TmpStr, PATH_SLASH_STR);
+	strcat(TmpStr, "StatisticTemplate.html");
+    TmpTypeDescriptor.str = TmpStr;
+    ConfigAddOption(&ConfigInfo, "DomainStatisticTempletFile", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
 
+	TmpTypeDescriptor.str = "<!-- INSERT HERE -->";
+	ConfigAddOption(&ConfigInfo, "StatisticInsertionPosition", STRATEGY_DEFAULT, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+	TmpTypeDescriptor.INT32 = 60;
+	ConfigAddOption(&ConfigInfo, "StatisticUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, "Hosts File");
@@ -251,7 +259,7 @@ int QueryDNSInterfaceStart(void)
 
 	if( ConfigGetBoolean(&ConfigInfo, "DomainStatistic") == TRUE )
 	{
-		DomainStatistic_Init(ConfigGetInt32(&ConfigInfo, "StatisticUpdateInterval"));
+		DomainStatistic_Init(&ConfigInfo);
 	}
 
 	if( QueryDNSListenUDPInit(&ConfigInfo) != 0 )

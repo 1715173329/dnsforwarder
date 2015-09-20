@@ -1,6 +1,8 @@
 #ifndef DOMAINSTATISTIC_H_INCLUDED
 #define DOMAINSTATISTIC_H_INCLUDED
 
+#include "readconfig.h"
+
 typedef enum _StatisticType{
 	STATISTIC_TYPE_REFUSED = 0,
 	STATISTIC_TYPE_HOSTS,
@@ -11,7 +13,7 @@ typedef enum _StatisticType{
 	STATISTIC_TYPE_BLOCKEDMSG
 } StatisticType;
 
-int DomainStatistic_Init(int OutputInterval);
+int DomainStatistic_Init(ConfigFileInfo *ConfigInfo);
 
 int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type);
 

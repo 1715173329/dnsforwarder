@@ -87,6 +87,8 @@ int	GetConfigDirectory(char *out);
 
 BOOL FileIsReadable(const char *File);
 
+int GetFileSizePortable(const char *File);
+
 BOOL IsPrime(int n);
 
 int FindNextPrime(int Current);

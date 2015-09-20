@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -584,6 +585,45 @@ BOOL FileIsReadable(const char *File)
 		fclose(fp);
 		return TRUE;
 	}
+}
+
+int GetFileSizePortable(const char *File)
+{
+	int s = 0;
+	FILE *fp = fopen(File, "rb");
+
+	if( fp == NULL )
+	{
+		return 0;
+	}
+
+	if( fseek(fp, 0, SEEK_END) == 0 )
+	{
+		s = ftell(fp);
+	}
+
+	fclose(fp);
+	return s;
+}
+
+int GetTextFileContent(const char *File, char *Content)
+{
+	FILE *fp = fopen(File, "rb");
+	int	c = 0;
+
+	if( fp == NULL )
+	{
+		return -1;
+	}
+
+	while( (c = fgetc(fp)) != EOF )
+	{
+		*Content++ = c;
+	}
+
+	fclose(fp);
+
+	return 0;
 }
 
 BOOL IsPrime(int n)
