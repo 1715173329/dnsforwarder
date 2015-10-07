@@ -22,7 +22,7 @@ codeblocks_win/bin/*/*.bat
 codeblocks_win/bin/*/*.bak
 codeblocks_win/bin/*/*.log
 codeblocks_win/bin/*/*.config
-codeblocks_win/bin/*/statistic.html
+codeblocks_win/bin/*/*.html
 test/
 
 .deps/

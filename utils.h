@@ -89,6 +89,8 @@ BOOL FileIsReadable(const char *File);
 
 int GetFileSizePortable(const char *File);
 
+int GetTextFileContent(const char *File, char *Content);
+
 BOOL IsPrime(int n);
 
 int FindNextPrime(int Current);

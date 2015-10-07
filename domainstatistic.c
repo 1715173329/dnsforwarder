@@ -31,8 +31,7 @@ static int				Interval = 0;
 
 static FILE				*MainFile = NULL;
 
-static char				InitTime_Str[32];
-static time_t			InitTime_Num;
+static unsigned long int	InitTime_Num;
 
 static const char		*PreOutput = NULL; /* malloced */
 static const char		*PostOutput = NULL;
@@ -116,7 +115,6 @@ int DomainStatistic_Init(ConfigFileInfo *ConfigInfo)
 
 	Interval = OutputInterval * 1000;
 
-	GetCurDateAndTime(InitTime_Str, sizeof(InitTime_Str));
 	InitTime_Num = time(NULL);
 	SkipStatistic = FALSE;
 
@@ -228,12 +226,14 @@ int DomainStatistic_Hold(void)
 	int32_t Enum_Start;
 
 	DomainInfo *Info;
-
 	DomainInfo Sum;
-	int	DomainCount;
 
-	char GenerateTime_Str[32];
-	time_t GenerateTime_Num;
+	unsigned long int GenerateTime_Num;
+
+	if( MainFile == NULL )
+	{
+		return 0;
+	}
 
 	while(TRUE)
 	{
@@ -243,115 +243,18 @@ int DomainStatistic_Hold(void)
 
 		memset(&Sum, 0, sizeof(DomainInfo));
 
-		GetCurDateAndTime(GenerateTime_Str, sizeof(GenerateTime_Str));
 		GenerateTime_Num = time(NULL);
 
+		fprintf(MainFile, "%s", PreOutput);
 		fprintf(MainFile,
-				"<!DOCTYPE html>"
-				"<html>"
-					"<head>"
-						"<title>Domain Statistic</title>"
-						"<base target=\"_blank\" />"
-					"</head>"
-					"<body>"
-						"Program startup time : %s</br>"
-						"Last statistic : %s</br>"
-						"Elapsed time : %ds</br>"
-						"</br>"
-						"Detials:</br>"
-						"<table border=\"1\">"
-							"<tr>"
-								"<td><h2><a href=\"?sort=domain\" target=\"_self\">Domain</a></h2></td>"
-								"<td><h2><a href=\"?sort=total\" target=\"_self\">Total</a></h2></td>"
-								"<td><h2><a href=\"?sort=raf\" target=\"_self\">Refused&amp;Failed</a></h2></td>"
-								"<td><h2><a href=\"?sort=hosts\" target=\"_self\">Hosts</a></h2></td>"
-								"<td><h2><a href=\"?sort=cache\" target=\"_self\">Cache</a></h2></td>"
-								"<td><h2><a href=\"?sort=udp\" target=\"_self\">UDP</a></h2></td>"
-								"<td><h2><a href=\"?sort=tcp\" target=\"_self\">TCP</a></h2></td>"
-								"<td><h2><a href=\"?sort=blockedmsg\" target=\"_self\">BlockedMsg</a></h2></td>"
-							"</tr>"
-							"<script type=\"text/javascript\">"
-								"function GetParameter(name)"
-								"{"
-									"var Pattern = new RegExp(\"[\\?&]\" + name + \"=[a-z0-9]+\");"
-									"var PatternE = Pattern.exec(window.location.href);"
+				"<script type=\"text/javascript\">"
+				"	var StartUpTime = %lu;"
+				"	var LastStatistic = %lu;"
+				"	var InfoArray = [",
+				InitTime_Num,
+				GenerateTime_Num
+				);
 
-									"if( PatternE != null )"
-									"{"
-										"return PatternE.toString().split(\"=\")[1];"
-									"} else {"
-										"return \"total\";"
-									"}"
-								"}"
-								"function InfoSortDomain(i1, i2)"
-								"{"
-									"return i1.Domain.localeCompare(i2.Domain);"
-								"}"
-								"function InfoSortTotal(i1, i2)"
-								"{"
-									"return i2.Total - i1.Total;"
-								"}"
-								"function InfoSortRaF(i1, i2)"
-								"{"
-									"return i2.RaF - i1.RaF;"
-								"}"
-								"function InfoSortHosts(i1, i2)"
-								"{"
-									"return i2.Hosts - i1.Hosts;"
-								"}"
-								"function InfoSortCache(i1, i2)"
-								"{"
-									"return i2.Cache - i1.Cache;"
-								"}"
-								"function InfoSortUDP(i1, i2)"
-								"{"
-									"return i2.UDP - i1.UDP;"
-								"}"
-								"function InfoSortTCP(i1, i2)"
-								"{"
-									"return i2.TCP - i1.TCP;"
-								"}"
-								"function InfoSortBlockedMsg(i1, i2)"
-								"{"
-									"return i2.BlockedMsg- i1.BlockedMsg;"
-								"}"
-
-								"var SortFunction;"
-
-								"switch( GetParameter(\"sort\") )"
-								"{"
-									"case \"domain\":"
-										"SortFunction = InfoSortDomain;"
-										"break;"
-									"case \"total\":"
-										"SortFunction = InfoSortTotal;"
-										"break;"
-									"case \"raf\":"
-										"SortFunction = InfoSortRaF;"
-										"break;"
-									"case \"hosts\":"
-										"SortFunction = InfoSortHosts;"
-										"break;"
-									"case \"cache\":"
-										"SortFunction = InfoSortCache;"
-										"break;"
-									"case \"udp\":"
-										"SortFunction = InfoSortUDP;"
-										"break;"
-									"case \"tcp\":"
-										"SortFunction = InfoSortTCP;"
-										"break;"
-									"case \"blockedmsg\":"
-										"SortFunction = InfoSortBlockedMsg;"
-										"break;"
-								"}"
-								"var InfoArray = [",
-			InitTime_Str,
-			GenerateTime_Str,
-			(int)(GenerateTime_Num - InitTime_Num)
-			);
-
-		DomainCount = 0;
 		Enum_Start = 0;
 
 		EFFECTIVE_LOCK_GET(StatisticLock);
@@ -361,8 +264,6 @@ int DomainStatistic_Hold(void)
 		Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
 		while( Str != NULL )
 		{
-			++DomainCount;
-
 			if( Info != NULL )
 			{
 				Sum.Count += Info -> Count;
@@ -382,7 +283,7 @@ int DomainStatistic_Hold(void)
 							"Cache:%d,"
 							"UDP:%d,"
 							"TCP:%d,"
-							"BlockedMsg:\"%d\""
+							"BlockedMsg:%d"
 						"},",
 						Str,
 						Info -> Count,
@@ -402,37 +303,18 @@ int DomainStatistic_Hold(void)
 		SkipStatistic = FALSE;
 		EFFECTIVE_LOCK_RELEASE(StatisticLock);
 
-		fprintf(MainFile,
-					"];"
-					"InfoArray.sort(SortFunction);"
-					"for( var i = 0; i < InfoArray.length; ++i )"
-					"{"
-						"document.write(\"<tr>\");"
-						"document.write(\"<td><a href=http://\" + InfoArray[i].Domain + \">\" + InfoArray[i].Domain + \"</a></td>\");"
-						"document.write(\"<td>\" + InfoArray[i].Total + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].RaF + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].Hosts + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].Cache + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].UDP + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].TCP + \"</td>\");"
-						"document.write(\"<td>\" + InfoArray[i].BlockedMsg + \"</td>\");"
-						"document.write(\"</tr>\");"
-					"}"
-				"</script>"
-		);
+		fprintf(MainFile, "];");
 
 		fprintf(MainFile,
-				"<tr>"
-					"<td>Sum : %d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-					"<td>%d</td>"
-				"</tr>",
-				DomainCount,
+				"var Sum = { Total		:	%d,"
+							"RaF		:	%d,"
+							"Hosts		:	%d,"
+							"Cache		:	%d,"
+							"UDP		:	%d,"
+							"TCP		:	%d,"
+							"BlockedMsg	:	%d"
+							"};"
+				"</script>",
 				Sum.Count,
 				Sum.Refused,
 				Sum.Hosts,
@@ -442,26 +324,7 @@ int DomainStatistic_Hold(void)
 				Sum.BlockedMsg
 				);
 
-		fprintf(MainFile,		"<tr>"
-									"<td><h2>Domain</h2></td>"
-									"<td><h2>Total</h2></td>"
-									"<td><h2>Refused&amp;Failed</h2></td>"
-									"<td><h2>Hosts</h2></td>"
-									"<td><h2>Cache</h2></td>"
-									"<td><h2>UDP</h2></td>"
-									"<td><h2>TCP</h2></td>"
-									"<td><h2>BlockedMsg</h2></td>"
-								"</tr>"
-							"</table>"
-				);
-		fprintf(MainFile, "</br>Requests per minute : %.1f", (double)Sum.Count / (double)(GenerateTime_Num - InitTime_Num) * 60.0);
-
-		if( Sum.Udp + Sum.Tcp + Sum.Cache != 0 )
-		{
-			fprintf(MainFile, "</br>Cache utilization : %.1f%%", ((double)Sum.Cache / (double)(Sum.Udp + Sum.Tcp + Sum.Cache)) * 100);
-		}
-
-		fprintf(MainFile, "</br></body></html>");
+		fprintf(MainFile, "%s", PostOutput);
 
 		fflush(MainFile);
 	}

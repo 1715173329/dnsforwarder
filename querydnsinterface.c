@@ -312,15 +312,15 @@ void QueryDNSInterfaceWait(void)
 	if( ConfigGetBoolean(&ConfigInfo, "DomainStatistic") == TRUE )
 	{
 		DomainStatistic_Hold();
-	} else {
-		while(TRUE)
-		{
+	}
+
+	while(TRUE)
+	{
 #ifdef WIN32
-			SuspendThread(CurrentThread);
+		SuspendThread(CurrentThread);
 #else /* WIN32 */
-			pause();
+		pause();
 #endif /* WIN32 */
-		}
 	}
 
 #ifdef WIN32
