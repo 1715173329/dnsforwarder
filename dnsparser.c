@@ -113,18 +113,7 @@ BOOL DNSIsLabeledName(char *DNSBody, char *Start)
 
 const char *DNSJumpOverName(const char *NameStart)
 {
-	while(1)
-	{
-		if((*(const unsigned char *)NameStart) == 0)
-			return NameStart + 1;
-
-		if((*(const unsigned char *)NameStart) >= 192 /* 0x1100 0000 */)
-			return NameStart + 2;
-
-		++NameStart;
-	}
-
-	return NULL;
+	return NameStart + DNSGetHostName(NULL, NameStart, NULL, 0);
 }
 
 const char *DNSGetQuestionRecordPosition(const char *DNSBody, int Num)
@@ -181,31 +170,63 @@ int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int
 	{
 		if( LabelCount >= 192 )
 		{
-			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 			LabelsLength += 2;
 			Redirected = TRUE;
+			if( buffer == NULL )
+			{
+				break;
+			}
+			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 		} else {
-			memcpy(BufferItr, NameItr + 1, LabelCount);
+			if( buffer != NULL )
+			{
+				if( BufferItr + LabelCount + 1 - buffer <= BufferLength )
+				{
+					memcpy(BufferItr, NameItr + 1, LabelCount);
+				} else {
+					if( BufferItr == buffer )
+					{
+						if( BufferLength > 0 )
+						{
+							*BufferItr = '\0';
+						}
+					} else {
+						*(BufferItr - 1) = '\0';
+					}
+					return -1;
+				}
+			}
+
 			if( Redirected == FALSE )
 			{
 				LabelsLength += (LabelCount + 1);
 			}
 			NameItr += (1 + LabelCount);
-			BufferItr += LabelCount;
-			*BufferItr = '.';
-			++BufferItr;
+			if( buffer != NULL )
+			{
+				BufferItr += LabelCount;
+				*BufferItr = '.';
+				++BufferItr;
+			}
 		}
 
 		LabelCount = GET_8_BIT_U_INT(NameItr);
 	}
 
-	if( LabelsLength == 0 )
+	if( buffer != NULL )
 	{
-		*BufferItr = '\0';
-	} else {
-		*(BufferItr - 1) = '\0';
+		if( BufferItr == buffer )
+		{
+			if( BufferLength > 0 )
+			{
+				*BufferItr = '\0';
+			} else {
+				return -1;
+			}
+		} else {
+			*(BufferItr - 1) = '\0';
+		}
 	}
-
 
 	if( Redirected == FALSE )
 	{
