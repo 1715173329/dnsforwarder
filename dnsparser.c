@@ -169,80 +169,76 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num)
 	return SR;
 }
 
+/* Labels length returned */
 int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength)
 {
-	int AllLabelLen = 0;
-	int flag = 0; /* Redirection flag */
-	unsigned char LabelLen;
-
-	--BufferLength;
-
-	if( BufferLength < 1 )
+	char *BufferItr = buffer;
+	const char *NameItr = NameStart;
+	int LabelsLength = 0;
+	BOOL Redirected = FALSE;
+	int LabelCount = GET_8_BIT_U_INT(NameItr); /* The amount of characters of the next label */
+	while( LabelCount != 0 )
 	{
-		return 0;
-	}
-
-	while( AllLabelLen < BufferLength )
-	{
-		LabelLen = GET_8_BIT_U_INT(NameStart);
-
-		if(LabelLen == 0) break;
-
-		if(flag == 0) ++AllLabelLen;
-
-		if(LabelLen >= 192 /* 0x1100 0000 */ /* 49152  0x1100 0000 0000 0000 */ )
+		if( LabelCount >= 192 )
 		{
-			NameStart = DNSBody + DNSLabelGetPointer(NameStart);
-			if(flag == 0)
-			{
-				++AllLabelLen;
-				flag = 1;
-			}
-			continue;
+			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
+			LabelsLength += 2;
+			Redirected = TRUE;
 		} else {
-			for(++NameStart; LabelLen != 0; --LabelLen, ++NameStart)
+			memcpy(BufferItr, NameItr + 1, LabelCount);
+			if( Redirected == FALSE )
 			{
-				*buffer++ = *NameStart;
-
-				if(flag == 0)
-					++AllLabelLen;
+				LabelsLength += (LabelCount + 1);
 			}
-			*buffer++ = '.';
-			continue;
+			NameItr += (1 + LabelCount);
+			BufferItr += LabelCount;
+			*BufferItr = '.';
+			++BufferItr;
 		}
+
+		LabelCount = GET_8_BIT_U_INT(NameItr);
 	}
 
-	if(AllLabelLen == 0)
-		*buffer = '\0';
-	else
-		*(buffer - 1) = '\0';
+	if( LabelsLength == 0 )
+	{
+		*BufferItr = '\0';
+	} else {
+		*(BufferItr - 1) = '\0';
+	}
 
-	return AllLabelLen;
+
+	if( Redirected == FALSE )
+	{
+		++LabelsLength;
+	}
+
+	return LabelsLength;
 }
-
 
 int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, const char *NameStart)
 {
-	int NameLen = 0;
-	unsigned char LabelLen;
-
-	while(TRUE)
+	const char *NameItr = NameStart;
+	int NameLength = 0;
+	int LabelCount = GET_8_BIT_U_INT(NameItr); /* The amount of characters of the next label */
+	while( LabelCount != 0 )
 	{
-		LabelLen = GET_8_BIT_U_INT(NameStart);
-		if(LabelLen == 0) break;
-		if(LabelLen >= 192)
+		if( LabelCount >= 192 )
 		{
-			NameStart = DNSBody + DNSLabelGetPointer(NameStart);
+			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 		} else {
-			NameLen += LabelLen + 1;
-			NameStart += LabelLen + 1;
+			NameLength += (LabelCount + 1);
+			NameItr += (1 + LabelCount);
 		}
+
+		LabelCount = GET_8_BIT_U_INT(NameItr);
 	}
 
-	if(NameLen == 0)
+	if( NameLength == 0 )
+	{
 		return 1;
-	else
-		return NameLen;
+	} else {
+		return NameLength;
+	}
 }
 
 DNSDataInfo DNSParseData(const char *DNSBody,
@@ -305,10 +301,10 @@ DNSDataInfo DNSParseData(const char *DNSBody,
 	switch(Descriptor -> element)
 	{
 		case DNS_LABELED_NAME:
-			if(BufferLength < DNSGetHostNameLength(DNSBody, PendingData))
+			Result.DataLength = DNSGetHostNameLength(DNSBody, PendingData);
+			if( BufferLength < Result.DataLength )
 				break;
 
-			Result.DataLength = DNSGetHostNameLength(DNSBody, PendingData);
 			DNSGetHostName(DNSBody, PendingData, (char *)Buffer, INT_MAX);
 			Result.DataType = DNS_DATA_TYPE_STRING;
 			break;
@@ -697,164 +693,3 @@ void DNSExpandCName(const char *DNSBody)
 
 	}while( Itr <= AnswerCount );
 }
-
-#ifdef AAAAAAAAAAAA
-
-void DNSParser(char *dns_over_tcp, char *buffer){
-	char *dnsovertcp	=	dns_over_tcp;
-	char InnerBuffer[128]		=	{0};
-	unsigned short qc, ac;
-
-	buffer += sprintf(buffer, "TCPLength:%hu\n", DNSGetTCPLength(DNSGetDNSBody(dnsovertcp)));
-
-	buffer += sprintf(buffer, "QueryIdentifier:%hu\n", DNSGetQueryIdentifier(DNSGetDNSBody(dnsovertcp)));
-
-	buffer += sprintf(buffer, "Flags:%x\n", DNSGetFlags(DNSGetDNSBody(dnsovertcp)));
-
-	qc = DNSGetQuestionCount(DNSGetDNSBody(dnsovertcp));
-	buffer += sprintf(buffer, "QuestionCount:%hu\n", qc);
-
-	ac = DNSGetAnswerCount(DNSGetDNSBody(dnsovertcp));
-	buffer += sprintf(buffer, "AnswerCount:%hu\n", ac);
-
-	buffer += sprintf(buffer, "NameServerCount:%hu\n", DNSGetNameServerCount(DNSGetDNSBody(dnsovertcp)));
-
-	buffer += sprintf(buffer, "AdditionalCount:%hu\n", DNSGetAdditionalCount(DNSGetDNSBody(dnsovertcp)));
-
-	dnsovertcp = DNSJumpHeader(DNSGetDNSBody(dns_over_tcp));
-
-	for(; qc != 0; --qc){
-		DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-		buffer += sprintf(buffer, "QuestionName:%s\n", InnerBuffer);
-
-		buffer += sprintf(buffer, "QuestionType:%hu\n", DNSGetRecordType(dnsovertcp));
-
-		buffer += sprintf(buffer, "QuestionClass:%hu\n", DNSGetRecordClass(dnsovertcp));
-	}
-
-	dnsovertcp = DNSJumpOverQuestionRecords(DNSGetDNSBody(dns_over_tcp));
-
-	while(ac != 0){
-		unsigned short rt, dl;
-		dnsovertcp = DNSGetAnswerRecordPosition(DNSGetDNSBody(dns_over_tcp), DNSGetAnswerCount(DNSGetDNSBody(dns_over_tcp)) - ac + 1);
-
-		DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-		buffer += sprintf(buffer, "ResourceName:%s\n", InnerBuffer);
-
-		rt = DNSGetRecordType(dnsovertcp);
-		buffer += sprintf(buffer, "ResourceType:%hu\n", rt);
-
-		buffer += sprintf(buffer, "ResourceClass:%hu\n", DNSGetRecordClass(dnsovertcp));
-
-		buffer += sprintf(buffer, "TimeToLive:%u\n", (unsigned int)DNSGetTTL(dnsovertcp));
-
-		dl = DNSGetResourceDataLength(dnsovertcp);
-		buffer += sprintf(buffer, "ResourceDataLength:%hu\n", dl);
-
-		dnsovertcp = DNSGetResourceDataPos(dnsovertcp);
-		switch(rt){
-			case DNS_TYPE_A: /* A, IPv4 address */
-				buffer += sprintf(buffer, "IPv4Addres:%d.%d.%d.%d\n", GET_8_BIT_U_INT(dnsovertcp), GET_8_BIT_U_INT(dnsovertcp + 1), GET_8_BIT_U_INT(dnsovertcp + 2), GET_8_BIT_U_INT(dnsovertcp + 3));
-				break;
-			case DNS_TYPE_AAAA: /* AAAA, IPv6 address */
-				buffer += sprintf(buffer, "IPv6Addres:%x:%x:%x:%x:%x:%x:%x:%x\n",
-					GET_16_BIT_U_INT(dnsovertcp), GET_16_BIT_U_INT(dnsovertcp + 2), GET_16_BIT_U_INT(dnsovertcp + 4), GET_16_BIT_U_INT(dnsovertcp + 6),
-					GET_16_BIT_U_INT(dnsovertcp + 8), GET_16_BIT_U_INT(dnsovertcp + 10), GET_16_BIT_U_INT(dnsovertcp + 12), GET_16_BIT_U_INT(dnsovertcp + 14)
-					);
-				break;
-			case DNS_TYPE_CNAME: /* CNAME */
-				DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-				buffer += sprintf(buffer, "CName:%s\n", InnerBuffer);
-				break;
-			default:
-				break;
-		}
-		dnsovertcp = DNSGetAnswerRecordPosition(DNSGetDNSBody(dns_over_tcp), DNSGetAnswerCount(dns_over_tcp) - ac + 1);
-		--ac;
-	}
-}
-
-void DNSParser(const char *dns_over_tcp, char *buffer){
-	char *orig = buffer;
-	char *dnsovertcp = dns_over_tcp;
-	char InnerBuffer[128];
-	unsigned short qc, ac;
-
-	buffer += sprintf(buffer, "TCPLength:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "QueryIdentifier:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "Flags:%x\n", GET_16_BIT_U_INT(dnsovertcp));
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "QuestionCount:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-	qc = GET_16_BIT_U_INT(dnsovertcp);
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "AnswerCount:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-	ac = GET_16_BIT_U_INT(dnsovertcp);
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "NameServerCount:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-	buffer += sprintf(buffer, "AdditionalCount:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-	dnsovertcp += 2; /* sizeof(unsigned short) */
-
-	for(; qc != 0; --qc){
-		dnsovertcp += DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-		buffer += sprintf(buffer, "QuestionName:%s\n", InnerBuffer);
-
-		buffer += sprintf(buffer, "QuestionType:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-		dnsovertcp += 2; /* sizeof(unsigned short) */
-		buffer += sprintf(buffer, "QuestionClass:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-		dnsovertcp += 2; /* sizeof(unsigned short) */
-	}
-
-	for(; ac != 0; --ac){
-		unsigned short rt, dl;
-		dnsovertcp += DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-		buffer += sprintf(buffer, "ResourceName:%s\n", InnerBuffer);
-
-
-		buffer += sprintf(buffer, "ResourceType:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-		rt = GET_16_BIT_U_INT(dnsovertcp);
-
-		dnsovertcp += 2; /* sizeof(unsigned short) */
-		buffer += sprintf(buffer, "ResourceClass:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-
-		dnsovertcp += 2; /* sizeof(unsigned short) */
-		buffer += sprintf(buffer, "TimeToLive:%u\n", GET_32_BIT_U_INT(dnsovertcp));
-
-		dnsovertcp += 4; /* sizeof(unsigned int) */
-		buffer += sprintf(buffer, "ResourceDataLength:%hu\n", GET_16_BIT_U_INT(dnsovertcp));
-		dl = GET_16_BIT_U_INT(dnsovertcp);
-
-		dnsovertcp += 2; /* sizeof(unsigned short) */
-		switch(rt){
-			case DNS_TYPE_A: /* A, IPv4 address */
-				buffer += sprintf(buffer, "IPv4Addres:%d.%d.%d.%d\n", GET_8_BIT_U_INT(dnsovertcp), GET_8_BIT_U_INT(dnsovertcp + 1), GET_8_BIT_U_INT(dnsovertcp + 2), GET_8_BIT_U_INT(dnsovertcp + 3));
-				break;
-			case DNS_TYPE_AAAA: /* AAAA, IPv6 address */
-				buffer += sprintf(buffer, "IPv6Addres:%x:%x:%x:%x:%x:%x:%x:%x \n",
-					GET_16_BIT_U_INT(dnsovertcp), GET_16_BIT_U_INT(dnsovertcp + 2), GET_16_BIT_U_INT(dnsovertcp + 4), GET_16_BIT_U_INT(dnsovertcp + 6),
-					GET_16_BIT_U_INT(dnsovertcp + 8), GET_16_BIT_U_INT(dnsovertcp + 10), GET_16_BIT_U_INT(dnsovertcp + 12), GET_16_BIT_U_INT(dnsovertcp + 14)
-					);
-				break;
-			case DNS_TYPE_CNAME: /* CNAME */
-				DNSGetHostName(dns_over_tcp + 2, dnsovertcp, InnerBuffer);
-				buffer += sprintf(buffer, "CName:%s\n", InnerBuffer);
-				break;
-			default:
-				break;
-		}
-		dnsovertcp += dl;
-	}
-}
-
-#endif
