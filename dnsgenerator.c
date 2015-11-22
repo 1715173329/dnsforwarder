@@ -66,10 +66,6 @@ int DNSCompress(__inout char *DNSBody, __in int DNSBodyLength)
 
 	NameEnd = (char *)DNSJumpOverName(CurName);
 	DNSLabelMakePointer(CurName, LastName - DNSBody);
-	/*
-	*(unsigned char *)CurName = 0xC0;
-	*(unsigned char *)(CurName + 1) = (unsigned char)(LastName - DNSBody);
-	*/
 	DNSBodyLength -= (NameEnd - CurName) - 2;
 	memmove(CurName + 2, NameEnd, DNSEnd - NameEnd);
 	DNSEnd -= (NameEnd - CurName) - 2;
@@ -90,10 +86,6 @@ int DNSCompress(__inout char *DNSBody, __in int DNSBodyLength)
 
 		NameEnd = (char *)DNSJumpOverName(CurName);
 		DNSLabelMakePointer(CurName, LastData - DNSBody);
-		/*
-		*(unsigned char *)CurName = 0xC0;
-		*(unsigned char *)(CurName + 1) = (unsigned char)(LastData - DNSBody);
-		*/
 		DNSBodyLength -= (NameEnd - CurName) - 2;
 		memmove(CurName + 2, NameEnd, DNSEnd - NameEnd);
 		DNSEnd -= (NameEnd - CurName) - 2;

@@ -24,7 +24,7 @@ void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain,
 
 void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const char *Package, int PackageLength, char ProtocolCharacter);
 
-void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const char *Message);
+void ShowBlockedMessage(const char *RequestingDomain, const char *Package, int PackageLength, const char *Message);
 
 void ShowFatalMessage(const char *Message, int ErrorCode);
 
@@ -33,8 +33,6 @@ void ShowFatalMessage(const char *Message, int ErrorCode);
 #define QUERY_RESULT_ERROR		(-2)
 
 int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket);
-
-int GetHostsByRaw(const char *RawPackage, StringList *out);
 
 int GetHostsByName(const char *Name, const char *Agent, StringList *out);
 

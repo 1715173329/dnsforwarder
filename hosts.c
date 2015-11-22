@@ -536,6 +536,7 @@ int DynamicHosts_SocketLoop(void)
 					static char		NewlyGeneratedRocord[2048];
 					ControlHeader	*NewHeader = (ControlHeader *)NewlyGeneratedRocord;
 
+					int 	TrimedLength;
 					int		RestLength;
 
 					int NewGeneratedLength = sizeof(ControlHeader);
@@ -563,14 +564,16 @@ int DynamicHosts_SocketLoop(void)
 
 					DNSSetNameServerCount(DNSResult, 0);
 
+					TrimedLength = DNSJumpOverAnswerRecords(DNSResult) - DNSResult;
+
 					AnswersPos = DNSJumpOverQuestionRecords(DNSResult);
 
-					if( DNSExpandCName_MoreSpaceNeeded(DNSResult) > sizeof(RequestEntity) - State )
+					if( DNSExpandCName_MoreSpaceNeeded(DNSResult, TrimedLength) > sizeof(RequestEntity) - State )
 					{
 						break;
 					}
 
-					DNSExpandCName(DNSResult);
+					DNSExpandCName(DNSResult, TrimedLength);
 
 					EntryNumber = InternalInterface_QueryContextFind(&Context,
 																	*(uint16_t *)DNSResult,

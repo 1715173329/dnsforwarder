@@ -128,7 +128,7 @@ void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const ch
 		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
 
 		InfoBuffer[0] = '\0';
-		GetAllAnswers(Package, InfoBuffer, sizeof(InfoBuffer));
+		GetAllAnswers(Package, PackageLength, InfoBuffer, sizeof(InfoBuffer));
 
 		Type = (DNSRecordType)DNSGetRecordType(DNSJumpHeader(Package));
 	}
@@ -157,7 +157,7 @@ void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const ch
 			  );
 }
 
-void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const char *Message)
+void ShowBlockedMessage(const char *RequestingDomain, const char *Package, int PackageLength, const char *Message)
 {
 	char DateAndTime[32];
 	char InfoBuffer[1024];
@@ -167,7 +167,7 @@ void ShowBlockedMessage(const char *RequestingDomain, const char *Package, const
 		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
 
 		InfoBuffer[0] = '\0';
-		GetAllAnswers(Package, InfoBuffer, sizeof(InfoBuffer));
+		GetAllAnswers(Package, PackageLength, InfoBuffer, sizeof(InfoBuffer));
 	}
 
 	if( ShowMassages == TRUE )
@@ -323,37 +323,6 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 	} else {
 		return QUERY_RESULT_SUCCESS;
 	}
-}
-
-int GetHostsByRaw(const char *RawPackage, StringList *out)
-{
-	int AnswerCount = DNSGetAnswerCount(RawPackage);
-
-	int loop;
-	const char *AnswerRecordPosition;
-	const char *DataPos;
-
-	int IpAddressCount = 0;
-
-	char Data[] = "               ";
-
-	for( loop = 1; loop <= AnswerCount; ++loop )
-	{
-		AnswerRecordPosition = DNSGetAnswerRecordPosition(RawPackage, loop);
-
-		if( DNSGetRecordType(AnswerRecordPosition) == DNS_TYPE_A )
-		{
-			DataPos = DNSGetResourceDataPos(AnswerRecordPosition);
-
-			DNSParseData(RawPackage, DataPos, 1, Data, sizeof(Data), DNS_RECORD_A, NUM_OF_DNS_RECORD_A, 1);
-
-			StringList_Add(out, Data, ',');
-
-			++IpAddressCount;
-		}
-	}
-
-	return IpAddressCount;
 }
 
 int GetMaximumMessageSize(SOCKET sock)

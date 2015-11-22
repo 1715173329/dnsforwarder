@@ -54,18 +54,23 @@ int QueryDNSListenTCPInit(ConfigFileInfo *ConfigInfo)
 static int Query(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket)
 {
 	int State;
-	uint16_t TCPLength = htons(ContentLength - sizeof(ControlHeader));
-
-	ControlHeader	*Header = (ControlHeader *)Content;
-
 	char *RequestEntity = Content + sizeof(ControlHeader);
+	ControlHeader	*Header = (ControlHeader *)Content;
+	int RequestLength = ContentLength - sizeof(ControlHeader);
+	uint16_t TCPLength = htons(RequestLength);
 
 	Header -> RequestingDomain[0] = '\0';
-	DNSGetHostName(RequestEntity,
-				   DNSJumpHeader(RequestEntity),
-				   Header -> RequestingDomain,
-				   sizeof(Header -> RequestingDomain)
-				   );
+
+	if( DNSGetHostName(RequestEntity,
+						RequestLength,
+						DNSJumpHeader(RequestEntity),
+						Header -> RequestingDomain,
+						sizeof(Header -> RequestingDomain)
+						)
+		< 0 )
+	{
+		return -1;
+	}
 
 	StrToLower(Header -> RequestingDomain);
 
@@ -88,7 +93,7 @@ static int Query(char *Content, int ContentLength, int BufferLength, SOCKET This
 			((DNSHeader *)(RequestEntity)) -> Flags.RecursionAvailable = 1;
 			((DNSHeader *)(RequestEntity)) -> Flags.ResponseCode = RefusingResponseCode;
 			send(ThisSocket, (const char *)&TCPLength, 2, 0);
-			send(ThisSocket, RequestEntity, ContentLength - sizeof(ControlHeader), 0);
+			send(ThisSocket, RequestEntity, RequestLength, 0);
 			return -1;
 			break;
 

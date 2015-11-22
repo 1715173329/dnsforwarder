@@ -387,7 +387,7 @@ static IpChunk	*IPMiscellaneous = NULL;
 #define	IP_MISCELLANEOUS_BLOCK	(-1)
 #define	IP_MISCELLANEOUS_NOTHING	(0)
 /* Something else means the package's length has changed to the value. */
-static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block, BOOL EDNSEnabled, const CheckingMeta *CheckM)
+static int DoIPMiscellaneous(char *RequestEntity, int RequestLength, const char *Domain, BOOL Block, BOOL EDNSEnabled, const CheckingMeta *CheckM)
 {
 	static	Array	IpsOfThisAnswer	=	Array_Init_Static(sizeof(void *));
 	int		AnswerCount;
@@ -425,7 +425,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
 		{
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
-			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
+			ShowBlockedMessage(Domain, RequestEntity, RequestLength, "False package, discarded");
 			return IP_MISCELLANEOUS_BLOCK;
 		}
 
@@ -433,9 +433,9 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 
 		Data = (char *)DNSGetResourceDataPos(Answer);
 
-		if( Block == TRUE && (const unsigned char)*Answer != 0xC0 )
+		if( Block == TRUE && DNSIsLabelPointerStart(GET_8_BIT_U_INT(Answer)) )
 		{
-			ShowBlockedMessage(Domain, RequestEntity, "False package, discarded");
+			ShowBlockedMessage(Domain, RequestEntity, RequestLength, "False package, discarded");
 
 			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
 			return IP_MISCELLANEOUS_BLOCK;
@@ -482,7 +482,7 @@ static int DoIPMiscellaneous(char *RequestEntity, const char *Domain, BOOL Block
 						case IP_MISCELLANEOUS_TYPE_BLOCK:
 							if( Block == TRUE )
 							{
-								ShowBlockedMessage(Domain, RequestEntity, "One of the IPs is in `UDPBlock_IP', discarded");
+								ShowBlockedMessage(Domain, RequestEntity, RequestLength, "One of the IPs is in `UDPBlock_IP', discarded");
 								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
 								return IP_MISCELLANEOUS_BLOCK;
 							}
@@ -551,7 +551,7 @@ ItrEnd:
 static int SendBack(SOCKET Socket,
 					ControlHeader *Header,
 					QueryContext *Context,
-					int Length,
+					int Length, /* Length of Response, including ControlHeader */
 					char Protocal,
 					StatisticType Type,
 					BOOL NeededBlock
@@ -562,11 +562,16 @@ static int SendBack(SOCKET Socket,
 	int32_t	QueryContextNumber;
 	QueryContextEntry	*ThisContext;
 
-	DNSGetHostName(RequestEntity,
-				   DNSJumpHeader(RequestEntity),
-				   Header -> RequestingDomain,
-				   sizeof(Header -> RequestingDomain)
-				   );
+	if( DNSGetHostName(RequestEntity,
+						Length - sizeof(ControlHeader),
+						DNSJumpHeader(RequestEntity),
+						Header -> RequestingDomain,
+						sizeof(Header -> RequestingDomain)
+						)
+		< 0 )
+	{
+		return -1;
+	}
 
 	StrToLower(Header -> RequestingDomain);
 
@@ -580,7 +585,7 @@ static int SendBack(SOCKET Socket,
 
 		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), Type);
 
-		MiscellaneousRet = DoIPMiscellaneous(RequestEntity, Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled, CheckIP_Find(CheckIPFor, Header -> RequestingDomain));
+		MiscellaneousRet = DoIPMiscellaneous(RequestEntity, Length - sizeof(ControlHeader), Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled, CheckIP_Find(CheckIPFor, Header -> RequestingDomain));
 		if( MiscellaneousRet != IP_MISCELLANEOUS_BLOCK )
 		{
 			if( MiscellaneousRet != IP_MISCELLANEOUS_NOTHING )
@@ -610,7 +615,7 @@ static int SendBack(SOCKET Socket,
 
 			InternalInterface_QueryContextRemoveByNumber(Context, QueryContextNumber);
 			ShowNormalMassage(ThisContext -> Agent, Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal);
-			DNSCache_AddItemsToCache(RequestEntity, time(NULL), Header -> RequestingDomain);
+			DNSCache_AddItemsToCache(RequestEntity, Length - sizeof(ControlHeader),time(NULL), Header -> RequestingDomain);
 		}
 	} else {
 		/* ShowNormalMassage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */

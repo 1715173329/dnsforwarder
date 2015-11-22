@@ -49,19 +49,21 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num);
 /* Common */
 const char *DNSJumpOverName(const char *NameStart);
 
-int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength);
+int DNSGetHostName(const char *DNSBody, int DNSBodyLength, const char *NameStart, char *buffer, int BufferLength);
 
-int DNSGetHostNameLength(const char *DNSBody, const char *NameStart);
+int DNSGetHostNameLength(const char *DNSBody, int DNSBodyLength, const char *NameStart);
 
 #define DNSGetRecordType(rec_start_ptr)		((rec_start_ptr) == NULL ? DNS_TYPE_UNKNOWN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr)))
 
-#define DNSLabelGetPointer(rec_start_ptr)        ((rec_start_ptr) == NULL ? 0 : (int)((unsigned char *)(rec_start_ptr))[1] + (int)(((unsigned char *)(rec_start_ptr))[0] - 192) * 256)
+#define DNSIsLabelPointerStart(num)			(((num) & 0xC0) == 0xC0)
+
+#define DNSLabelGetPointer(rec_start_ptr)	((rec_start_ptr) == NULL ? 0 : (int)((unsigned char *)(rec_start_ptr))[1] + (int)(((unsigned char *)(rec_start_ptr))[0] - 192) * 256)
 
 #define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOEN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
 
-int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody);
+int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody, int DNSBodyLength);
 
-void DNSExpandCName(const char *DNSBody);
+void DNSExpandCName(const char *DNSBody, int DNSBodyLength);
 
 typedef enum _RecordElement{
 	DNS_UNKNOWN  = 0,
@@ -225,6 +227,7 @@ typedef struct _DNSDataInfo{
 }DNSDataInfo;
 
 DNSDataInfo DNSParseData(const char *DNSBody,
+						int DNSBodyLength,
 						const char *DataBody,
 						int DataLength,
 						void *Buffer,
@@ -234,9 +237,9 @@ DNSDataInfo DNSParseData(const char *DNSBody,
 						int Num);
 
 /* Convert a DNS message to text */
-char *GetAnswer(const char *DNSBody, const char *DataBody, int DataLength, char *Buffer, DNSRecordType ResourceType);
+char *GetAnswer(const char *DNSBody, int DNSBodyLength, const char *DataBody, int DataLength, char *Buffer, DNSRecordType ResourceType);
 
-char *GetAllAnswers(const char *DNSBody, char *Buffer, size_t BufferLength);
+char *GetAllAnswers(const char *DNSBody, int DNSBodyLength, char *Buffer, size_t BufferLength);
 
 void DNSCopyLable(const char *DNSBody, char *here, const char *src);
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <string.h>
+#include <limits.h>
 #include "dnsparser.h"
 #include "dnsgenerator.h"
 #include "utils.h"
@@ -113,7 +114,7 @@ BOOL DNSIsLabeledName(char *DNSBody, char *Start)
 
 const char *DNSJumpOverName(const char *NameStart)
 {
-	return NameStart + DNSGetHostName(NULL, NameStart, NULL, 0);
+	return NameStart + DNSGetHostName(NULL, INT_MAX, NameStart, NULL, 0);
 }
 
 const char *DNSGetQuestionRecordPosition(const char *DNSBody, int Num)
@@ -159,7 +160,7 @@ const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num)
 }
 
 /* Labels length returned */
-int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int BufferLength)
+int DNSGetHostName(const char *DNSBody, int DNSBodyLength, const char *NameStart, char *buffer, int BufferLength)
 {
 	char *BufferItr = buffer;
 	const char *NameItr = NameStart;
@@ -168,16 +169,27 @@ int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int
 	int LabelCount = GET_8_BIT_U_INT(NameItr); /* The amount of characters of the next label */
 	while( LabelCount != 0 )
 	{
-		if( LabelCount >= 192 )
+		if( DNSIsLabelPointerStart(LabelCount) )
 		{
+			int LabelPointer = 0;
 			LabelsLength += 2;
 			Redirected = TRUE;
 			if( buffer == NULL )
 			{
 				break;
 			}
+			LabelPointer = DNSLabelGetPointer(NameItr);
+			if( LabelPointer > DNSBodyLength )
+			{
+				return -1;
+			}
 			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 		} else {
+			if( NameItr + LabelCount > DNSBody + DNSBodyLength )
+			{
+				return -1;
+			}
+
 			if( buffer != NULL )
 			{
 				if( BufferItr + LabelCount + 1 - buffer <= BufferLength )
@@ -236,17 +248,25 @@ int DNSGetHostName(const char *DNSBody, const char *NameStart, char *buffer, int
 	return LabelsLength;
 }
 
-int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, const char *NameStart)
+int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, int DNSBodyLength, const char *NameStart)
 {
 	const char *NameItr = NameStart;
 	int NameLength = 0;
 	int LabelCount = GET_8_BIT_U_INT(NameItr); /* The amount of characters of the next label */
 	while( LabelCount != 0 )
 	{
-		if( LabelCount >= 192 )
+		if( DNSIsLabelPointerStart(LabelCount) )
 		{
+			if( DNSLabelGetPointer(NameItr) > DNSBodyLength )
+			{
+				return INT_MAX; /* Error detected */
+			}
 			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 		} else {
+			if( NameItr + LabelCount > DNSBody + DNSBodyLength )
+			{
+				return INT_MAX; /* Error detected */
+			}
 			NameLength += (LabelCount + 1);
 			NameItr += (1 + LabelCount);
 		}
@@ -263,6 +283,7 @@ int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, c
 }
 
 DNSDataInfo DNSParseData(const char *DNSBody,
+						int DNSBodyLength,
 						const char *DataBody,
 						int DataLength,
 						void *Buffer,
@@ -322,11 +343,11 @@ DNSDataInfo DNSParseData(const char *DNSBody,
 	switch(Descriptor -> element)
 	{
 		case DNS_LABELED_NAME:
-			Result.DataLength = DNSGetHostNameLength(DNSBody, PendingData);
+			Result.DataLength = DNSGetHostNameLength(DNSBody, DNSBodyLength, PendingData);
 			if( BufferLength < Result.DataLength )
 				break;
 
-			DNSGetHostName(DNSBody, PendingData, (char *)Buffer, INT_MAX);
+			DNSGetHostName(DNSBody, INT_MAX, PendingData, (char *)Buffer, INT_MAX);
 			Result.DataType = DNS_DATA_TYPE_STRING;
 			break;
 
@@ -460,7 +481,7 @@ DNSDataInfo DNSParseData(const char *DNSBody,
 	return Result;
 }
 
-char *GetAnswer(const char *DNSBody, const char *DataBody, int DataLength, char *Buffer, DNSRecordType ResourceType)
+char *GetAnswer(const char *DNSBody, int DNSBodyLength, const char *DataBody, int DataLength, char *Buffer, DNSRecordType ResourceType)
 {
 	int loop2;
 
@@ -490,6 +511,7 @@ char *GetAnswer(const char *DNSBody, const char *DataBody, int DataLength, char 
 		for(loop2 = 0; loop2 != DCount; ++loop2)
 		{
 			Data = DNSParseData(DNSBody,
+								DNSBodyLength,
 								DataBody,
 								DataLength,
 								InnerBuffer,
@@ -550,7 +572,7 @@ char *GetAnswer(const char *DNSBody, const char *DataBody, int DataLength, char 
 	return Buffer;
 }
 
-char *GetAllAnswers(const char *DNSBody, char *Buffer, size_t BufferLength)
+char *GetAllAnswers(const char *DNSBody, int DNSBodyLength, char *Buffer, size_t BufferLength)
 {
 	int		AnswerCount;
 	const char	*Itr;
@@ -582,7 +604,7 @@ char *GetAllAnswers(const char *DNSBody, char *Buffer, size_t BufferLength)
 
 		ResourceType = (DNSRecordType)DNSGetRecordType(Itr);
 
-		RecordLength = GetAnswer(DNSBody, DNSGetResourceDataPos(Itr), DNSGetResourceDataLength(Itr), TempBuffer, ResourceType) - TempBuffer;
+		RecordLength = GetAnswer(DNSBody, DNSBodyLength, DNSGetResourceDataPos(Itr), DNSGetResourceDataLength(Itr), TempBuffer, ResourceType) - TempBuffer;
 
 		if( RecordLength < BufferLength )
 		{
@@ -611,10 +633,9 @@ void DNSCopyLable(const char *DNSBody, char *here, const char *src)
 {
 	while( 1 )
 	{
-		if( (unsigned char)(*src) == 0xC0 )
+		if( DNSIsLabelPointerStart(GET_8_BIT_U_INT(src)) )
 		{
-			src = DNSBody + *(src + 1);
-
+			src = DNSBody + DNSLabelGetPointer(src);
 		} else {
 			*here = *src;
 
@@ -629,7 +650,7 @@ void DNSCopyLable(const char *DNSBody, char *here, const char *src)
 	}
 }
 
-int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody)
+int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody, int DNSBodyLength)
 {
 	int				AnswerCount	=	DNSGetAnswerCount(DNSBody);
 	int				Itr	=	1;
@@ -655,7 +676,11 @@ int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody)
 		{
 			ResourceLength = DNSGetResourceDataLength(Answer);
 			Resource = DNSGetResourceDataPos(Answer);
-			NameLength = DNSGetHostNameLength(DNSBody, Resource);
+			NameLength = DNSGetHostNameLength(DNSBody, DNSBodyLength, Resource);
+			if( NameLength == INT_MAX )
+			{
+				return INT_MAX;
+			}
 
 			MoreSpaceNeeded += (NameLength + 1) - ResourceLength;
 		}
@@ -668,7 +693,7 @@ int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody)
 }
 
 /* You should meke sure there is no additional record and nameserver record */
-void DNSExpandCName(const char *DNSBody)
+void DNSExpandCName(const char *DNSBody, int DNSBodyLength)
 {
 	int				AnswerCount	=	DNSGetAnswerCount(DNSBody);
 	int				Itr	=	1;
@@ -697,7 +722,11 @@ void DNSExpandCName(const char *DNSBody)
 		{
 			ResourceLength = DNSGetResourceDataLength(Answer);
 			Resource = (char *)DNSGetResourceDataPos(Answer);
-			NameLength = DNSGetHostNameLength(DNSBody, Resource);
+			NameLength = DNSGetHostNameLength(DNSBody, DNSBodyLength, Resource);
+			if( NameLength == INT_MAX )
+			{
+				return;
+			}
 
 			NameEnd = Resource + ResourceLength;
 
