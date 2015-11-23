@@ -433,7 +433,7 @@ static int DoIPMiscellaneous(char *RequestEntity, int RequestLength, const char 
 
 		Data = (char *)DNSGetResourceDataPos(Answer);
 
-		if( Block == TRUE && DNSIsLabelPointerStart(GET_8_BIT_U_INT(Answer)) )
+		if( Block == TRUE && (!DNSIsLabelPointerStart(GET_8_BIT_U_INT(Answer))) )
 		{
 			ShowBlockedMessage(Domain, RequestEntity, RequestLength, "False package, discarded");
 
