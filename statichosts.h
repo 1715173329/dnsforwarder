@@ -18,6 +18,7 @@ typedef struct _HostsContainer{
 	StringChunk	Ipv6Hosts;
 	StringChunk	CNameHosts;
 	StringChunk	ExcludedDomains;
+	StringChunk	GoodIpLists;
 /*	StringChunk	ExcludedIPs;*/
 
 	ExtendableBuffer	IPs;
@@ -39,6 +40,8 @@ typedef enum _HostsRecordType{
 	HOSTS_TYPE_EXCLUEDE = 1 << 4,
 
 	HOSTS_TYPE_CNAME_EXCLUEDE = 1 << 5,
+
+	HOSTS_TYPE_GOOD_IP_LIST = 1 << 6,
 
 } HostsRecordType;
 

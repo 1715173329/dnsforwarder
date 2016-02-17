@@ -240,6 +240,7 @@ BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValu
 			StringChunk_Match_OnlyWildCard(dl, Domain, Data) );
 }
 
+/* Start by 0 */
 const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **Data)
 {
 	EntryForString *Result;

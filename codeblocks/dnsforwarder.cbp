@@ -22,7 +22,8 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-O2" />
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -109,6 +110,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../extendablebuffer.h" />
+		<Unit filename="../goodiplist.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../goodiplist.h" />
 		<Unit filename="../hosts.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -121,6 +126,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../ipchunk.h" />
+		<Unit filename="../linkedqueue.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../linkedqueue.h" />
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>

@@ -10,6 +10,7 @@
 #include "excludedlist.h"
 #include "utils.h"
 #include "domainstatistic.h"
+#include "goodiplist.h"
 #include "debug.h"
 
 static ConfigFileInfo	ConfigInfo;
@@ -159,11 +160,12 @@ int QueryDNSInterfaceInit(char *ConfigFile)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "CacheControl", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.boolean = FALSE;
+	TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "ReloadCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "OverwriteCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+	TmpTypeDescriptor.boolean = FALSE;
+	ConfigAddOption(&ConfigInfo, "OverwriteCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+
 
 
     TmpTypeDescriptor.str = NULL;
@@ -180,6 +182,12 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "CheckIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "GoodIPList", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "GoodIPListAddIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) == 0 )
 	{
@@ -255,6 +263,7 @@ int QueryDNSInterfaceStart(void)
 		return -1;
 	}
 
+	GoodIpList_Init(&ConfigInfo);
 	DynamicHosts_Init(&ConfigInfo);
 
 	if( ConfigGetBoolean(&ConfigInfo, "DomainStatistic") == TRUE )

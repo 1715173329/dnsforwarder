@@ -64,7 +64,13 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 		return HOSTS_TYPE_UNKNOWN;
 	}
 
-	/* A hosts IPOrCName started with "@@ " is excluded */
+	/* Good IP List */
+	if( *IPOrCName == '<' && IPOrCName[strlen(IPOrCName) - 1] == '>' )
+	{
+		return HOSTS_TYPE_GOOD_IP_LIST;
+	}
+
+	/* A host IPOrCName started with "@@ " is excluded */
 	if( *IPOrCName == '@' && *(IPOrCName + 1) == '@' )
 	{
 		return HOSTS_TYPE_EXCLUEDE;
@@ -218,6 +224,43 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
 	return 0;
 }
 
+
+static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *ListName, const char *Domain)
+{
+	OffsetOfHosts	r;
+
+	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
+	{
+		ERRORMSG("Hosts is too long : %s %s\n", ListName, Domain);
+		return -1;
+	}
+
+	if( StringChunk_Match_NoWildCard(&(Container -> GoodIpLists), Domain, NULL, NULL) == TRUE )
+	{
+		INFO("Good IP list domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		return -1;
+	}
+
+	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_GOOD_IP_LIST, ListName, strlen(ListName) + 1);
+
+	if( r.Offset < 0 )
+	{
+		char Trimed[128];
+		sscanf(ListName, "<%127[^>]", Trimed);
+		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), Trimed, strlen(Trimed) + 1);
+
+		if( r.Offset < 0 )
+		{
+			return -1;
+		}
+
+	}
+
+	StringChunk_Add(&(Container -> GoodIpLists), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+
+	return 0;
+}
+
 static int Hosts_AddExcludedContainer(HostsContainer *Container, const char *Domain)
 {
 	if( StringChunk_Match_NoWildCard(&(Container -> ExcludedDomains), Domain, NULL, NULL) == TRUE )
@@ -279,12 +322,20 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			break;
 
 		case HOSTS_TYPE_EXCLUEDE:
-
 			if( Hosts_AddExcludedContainer(Container, Domain) != 0 )
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
 				return HOSTS_TYPE_EXCLUEDE;
+			}
+			break;
+
+		case HOSTS_TYPE_GOOD_IP_LIST:
+			if( Hosts_AddGoodIpListContainer(Container, IPOrCName, Domain) != 0 )
+			{
+				return HOSTS_TYPE_UNKNOWN;
+			} else {
+				return HOSTS_TYPE_GOOD_IP_LIST;
 			}
 			break;
 
@@ -318,7 +369,11 @@ int Hosts_InitContainer(HostsContainer	*Container)
 	{
 		return -4;
 	}
-	if( ExtendableBuffer_Init(&(Container ->IPs), 0, -1) != 0 )
+	if( StringChunk_Init(&(Container -> GoodIpLists), &(Container -> Domains)) != 0 )
+	{
+		return -5;
+	}
+	if( ExtendableBuffer_Init(&(Container -> IPs), 0, -1) != 0 )
 	{
 		return -6;
 	}
@@ -350,7 +405,7 @@ HostsRecordType Hosts_LoadFromMetaLine(HostsContainer *Container, char *MetaLine
 
 int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 {
-	int		IPv4Count = 0, IPv6Count = 0, CNameCount = 0, ExcludedCount = 0;
+	int		IPv4Count = 0, IPv6Count = 0, CNameCount = 0, ExcludedCount = 0, GoodIpListCount = 0;
 
 	StringList *AppendHosts = ConfigGetStringList(ConfigInfo, "AppendHosts");
 	const char *Itr;
@@ -394,10 +449,14 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 					++ExcludedCount;
 					break;
 
-			case HOSTS_TYPE_CNAME_EXCLUEDE:
-				++CNameCount;
-				++ExcludedCount;
-				break;
+                case HOSTS_TYPE_CNAME_EXCLUEDE:
+                    ++CNameCount;
+                    ++ExcludedCount;
+                    break;
+
+                case HOSTS_TYPE_GOOD_IP_LIST:
+                    ++GoodIpListCount;
+                    break;
 
 				default:
 					break;
@@ -407,12 +466,13 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 		Itr = StringList_GetNext(AppendHosts, Itr);
 	}
 
-	INFO("Loading Appendhosts completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded.\n",
+	INFO("Loading Appendhosts completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded, %d items point to GoodIPLists.\n",
 		IPv4Count,
 		IPv6Count,
 		CNameCount,
-		ExcludedCount);
-
+		ExcludedCount,
+		GoodIpListCount
+		);
 
 	return 0;
 }

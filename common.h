@@ -323,6 +323,7 @@
 #endif /* __inout_opt */
 
 #define LENGTH_OF_IPV6_ADDRESS_ASCII	40
+#define LENGTH_OF_IPV4_ADDRESS_ASCII	16
 
 typedef union _CompatibleAddr{
 	struct sockaddr_in	Addr4;

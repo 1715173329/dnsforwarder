@@ -67,6 +67,10 @@ int Array_Init(	__in Array *a,
  *  a_ptr : Pointer to an Array to be gotten.
  */
 
+#define Array_GetDataLength(a_ptr)	((a_ptr) -> DataLength)
+
+#define Array_GetRawArray(a_ptr)	((a_ptr) -> Data)
+
 void *Array_GetBySubscript(__in const Array *a, __in int Subscript);
 /* Description:
  *  Get an element by its subscript.

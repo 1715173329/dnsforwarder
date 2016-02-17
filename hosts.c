@@ -9,6 +9,7 @@
 #include "downloader.h"
 #include "readline.h"
 #include "internalsocket.h"
+#include "goodiplist.h"
 #include "rwlock.h"
 
 static BOOL			StaticHostsInited = FALSE;
@@ -208,6 +209,18 @@ static const char *Hosts_FindCName(HostsContainer *Container, const char *Name)
 	return Hosts_FindFromContainer(Container, &(Container -> CNameHosts), Name);
 }
 
+static const char *Hosts_FindGoodIPList(HostsContainer *Container, const char *Name)
+{
+	const char *Result = Hosts_FindFromContainer(Container, &(Container -> GoodIpLists), Name);
+
+	if( Result == NULL )
+	{
+		return NULL;
+	}
+
+	return GoodIpList_Get(Result);
+}
+
 static BOOL Hosts_IsExcludedDomain(HostsContainer *Container, const char *Name)
 {
 	return StringChunk_Match((StringChunk *)&(Container -> ExcludedDomains), Name, NULL, NULL);
@@ -231,14 +244,18 @@ static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordTyp
 			*Result = Hosts_FindIPv4(Container, Name);
 			if( *Result == NULL )
 			{
-				break;
+				*Result = Hosts_FindGoodIPList(Container, Name);
+				if( *Result == NULL )
+				{
+					break;
+				}
 			}
 
 			return MATCH_STATE_PERFECT;
 			break;
 
 		case DNS_TYPE_AAAA:
-			if( DisableIpv6WhenIpv4Exists == TRUE && Hosts_FindIPv4(Container, Name) != NULL )
+			if( DisableIpv6WhenIpv4Exists == TRUE && (Hosts_FindIPv4(Container, Name) != NULL || Hosts_FindGoodIPList(Container, Name) != NULL) )
 			{
 				return MATCH_STATE_DISABLE_IPV6;
 			}
