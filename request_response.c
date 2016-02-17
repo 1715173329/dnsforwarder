@@ -313,8 +313,6 @@ static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout,
 					CLOSE_SOCKET(*rs);
 				}
 			}
-			INFO("Oops! Cannot find any useable IP of %s.\n", Domain);
-			return CHECKIPS_ERROR_OR_TIMEOUT;
 			break;
 
 		default:
@@ -338,6 +336,12 @@ static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout,
 				}
 			}
 			break;
+	}
+
+	if( FinallyI < 0 )
+	{
+		INFO("Oops! Cannot find any useable IP of %s.\n", Domain);
+		return CHECKIPS_ERROR_OR_TIMEOUT;
 	}
 
 /* Now Finally got. */
