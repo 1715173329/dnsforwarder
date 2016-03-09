@@ -28,7 +28,7 @@ Macros needed to be declared while compiling :
     WIN32
     WIN64
 
-Consider donation?
+**Consider** donation?
 Bitcoin address : 1KwWqEkxcMXprwn8aTtV4qhqt1ZkBYqzra
 
 Thanks!
