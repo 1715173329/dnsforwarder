@@ -170,6 +170,11 @@ const char *SimpleHT_Find(SimpleHT *ht, const char *Key, int KeyLength, int *Has
 	Sht_Slot *TheSlot;
 	Sht_NodeHead *Node;
 
+	if( NumberOfSlots <= 0 )
+	{
+		return NULL;
+	}
+
 	if( Start != NULL )
 	{
 		Node = Array_GetBySubscript(&(ht -> Nodes), (((Sht_NodeHead *)Start) - 1) -> Next);

@@ -272,6 +272,11 @@ int DNSGetHostNameLength /* including terminated-zero */ (const char *DNSBody, i
 		}
 
 		LabelCount = GET_8_BIT_U_INT(NameItr);
+
+		if( NameLength > DNSBodyLength )
+        {
+            return INT_MAX; /* Error detected */
+        }
 	}
 
 	if( NameLength == 0 )

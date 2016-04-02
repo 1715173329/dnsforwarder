@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.29"
+#define VERSION__ "5.0.30"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 
@@ -184,10 +184,11 @@ void PrepareEnvironment(void)
 }
 #endif
 
-int ArgParse(int argc, char *argv_ori[])
+int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 {
 	char **argv = argv_ori;
 	++argv;
+	*Contexts = NULL;
     while(*argv != NULL)
     {
     	if(strcmp("-h", *argv) == 0)
@@ -269,6 +270,13 @@ int ArgParse(int argc, char *argv_ori[])
 		}
 #endif
 
+		if( strcmp("-CONTEXT", *argv) == 0 )
+		{
+			*Contexts = *(++argv);
+			++argv;
+			continue;
+		}
+
 		PRINTM("Unrecognisable arg `%s'. Try `-h'.\n", *argv);
         ++argv;
     }
@@ -281,6 +289,7 @@ int main(int argc, char *argv[])
 #ifdef WIN32
     WSADATA wdata;
 #endif
+	const char *Contexts = NULL;
 
 #ifndef NODOWNLOAD
 #ifdef WIN32
@@ -297,7 +306,7 @@ int main(int argc, char *argv[])
 	SetConsoleTitle("dnsforwarder");
 #endif /* WIN32 */
 
-	ArgParse(argc, argv);
+	ArgParse(argc, argv, &Contexts);
 
 	if( ConfigFile == NULL )
 	{
@@ -330,7 +339,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if( QueryDNSInterfaceInit(ConfigFile) != 0 )
+	if( QueryDNSInterfaceInit(ConfigFile, Contexts) != 0 )
 		goto JustEnd;
 
 	putchar('\n');

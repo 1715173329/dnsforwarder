@@ -15,6 +15,8 @@
  * A valid option can be followed a comment which will be ignored too:
  *  <Option> <value> # I'm a comment.
  *
+ * {A context   #Context begin
+ * }A context   #Context end
  */
 
 /* Set the max length of a key name */
@@ -81,13 +83,16 @@ typedef struct _ConfigFileInfo
 	/* Static, once inited, never changed. */
 	FILE	*fp;
 
+	/* Config COntexts */
+	StringChunk Contexts;
+
 	/* An array of all the options. */
 	StringChunk	Options;
 } ConfigFileInfo;
 
 char *GetKeyNameAndValue(char *Line, const char *Delimiters);
 
-int ConfigInitInfo(ConfigFileInfo *Info);
+int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts);
 
 int ConfigOpenFile(ConfigFileInfo *Info, const char *File);
 

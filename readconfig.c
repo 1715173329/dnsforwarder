@@ -5,10 +5,38 @@
 #include "utils.h"
 #include "readline.h"
 
-int ConfigInitInfo(ConfigFileInfo *Info)
+int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
 {
+    StringList  l;
+    const char  *Itr;
 	Info -> fp = NULL;
-	return StringChunk_Init(&(Info -> Options), NULL);
+
+	if( StringChunk_Init(&(Info -> Contexts), NULL) != 0 )
+    {
+        return -1;
+    }
+
+    if( StringList_Init(&l, Contexts, ',') < 0 )
+    {
+    	StringChunk_Free(&(Info -> Contexts), TRUE);
+        return -2;
+    }
+
+    Itr = StringList_GetNext(&l, NULL);
+    while( Itr != NULL )
+    {
+        StringChunk_Add(&(Info -> Contexts), Itr, NULL, 0);
+        Itr = StringList_GetNext(&l, Itr);
+    }
+
+    if( StringChunk_Init(&(Info -> Options), NULL) != 0 )
+    {
+        StringChunk_Free(&(Info -> Contexts), TRUE);
+        StringList_Free(&l);
+        return -3;
+    }
+
+	return 0;
 }
 
 int ConfigOpenFile(ConfigFileInfo *Info, const char *File)
@@ -332,10 +360,37 @@ int ConfigRead(ConfigFileInfo *Info)
 	char			*KeyName;
 	ConfigOption	*Option;
 
+	char            Context_SkipReadinng[2048] = {'\0'};
+
 	while(TRUE){
 		ReadStatus = ReadLine(Info -> fp, Buffer, sizeof(Buffer));
 		if( ReadStatus == READ_FAILED_OR_END )
 			return NumOfRead;
+
+		if( Context_SkipReadinng[0] != '\0' )
+		{
+			if( strcmp(Context_SkipReadinng, Buffer) != 0 )
+			{
+
+			} else {
+				Context_SkipReadinng[0] = '\0';
+			}
+
+			continue;
+		}
+
+        /* If it is a context begin or end */
+        if( Buffer[0] == '{' && StringChunk_Match_NoWildCard(&(Info -> Contexts), Buffer + 1, NULL, NULL) == TRUE )
+		{
+			Context_SkipReadinng[0] = '}';
+			strncpy(Context_SkipReadinng + 1, Buffer + 1, sizeof(Context_SkipReadinng) - 1);
+			continue;
+		}
+
+		if( Buffer[0] == '}' )
+		{
+			continue;
+		}
 
 		ValuePos = GetKeyNameAndValue(Buffer, " \t=");
 		if( ValuePos == NULL )

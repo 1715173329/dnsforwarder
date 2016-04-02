@@ -6,6 +6,7 @@
 
 typedef ExtendableBuffer StringList;
 
+/* Number of strings returned. */
 int StringList_Init(__in StringList *s, __in const char *ori, __in char Delimiter);
 
 const char *StringList_GetNext(__in const StringList *s, __in const char *Current);

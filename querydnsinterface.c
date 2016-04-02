@@ -15,7 +15,7 @@
 
 static ConfigFileInfo	ConfigInfo;
 
-int QueryDNSInterfaceInit(char *ConfigFile)
+int QueryDNSInterfaceInit(char *ConfigFile, const char *Contexts)
 {
 	VType	TmpTypeDescriptor;
 	char	TmpStr[1024];
@@ -25,7 +25,7 @@ int QueryDNSInterfaceInit(char *ConfigFile)
 
 	SetProgramEnvironment("PROGRAMDIRECTORY", TmpStr);
 
-	ConfigInitInfo(&ConfigInfo);
+	ConfigInitInfo(&ConfigInfo, Contexts);
 
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "LogOn", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
@@ -218,7 +218,7 @@ static DNSQuaryProtocol GetPrimaryProtocol(const char *FirstSet)
 		} else if( strncmp(PrimaryProtocol_Str, "udp", 3) == 0 ) {
 			PrimaryProtocol =  DNS_QUARY_PROTOCOL_UDP;
 		} else {
-			ERRORMSG("PrimaryServer `%s' may not a good idea.\n", FirstSet);
+			ERRORMSG("PrimaryServer `%s' may not be a good idea.\n", FirstSet);
 			PrimaryProtocol = DNS_QUARY_PROTOCOL_UNSPECIFIED;
 		}
 	}
