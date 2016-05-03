@@ -390,7 +390,7 @@ static IpChunk	*IPMiscellaneous = NULL;
 
 #define	IP_MISCELLANEOUS_BLOCK	(-1)
 #define	IP_MISCELLANEOUS_NOTHING	(0)
-/* Something else means the package's length has changed to the value. */
+/* Something else means the package's length has changed to the retuened value. */
 static int DoIPMiscellaneous(char *RequestEntity, int RequestLength, const char *Domain, BOOL Block, BOOL EDNSEnabled, const CheckingMeta *CheckM)
 {
 	static	Array	IpsOfThisAnswer	=	Array_Init_Static(sizeof(void *));

@@ -769,6 +769,7 @@ static int DNSCache_GetByQuestion(__in const char *Question, __in int QuestionLe
 
 			if( BufferLength < SingleLength )
 			{
+			    RWLock_UnRLock(CacheLock);
 				return RecordsCount;
 			}
 
