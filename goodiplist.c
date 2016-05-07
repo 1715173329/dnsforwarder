@@ -100,7 +100,7 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 	static const SOCKET	InvalidSocket	=	INVALID_SOCKET;
 
 	fd_set	rfd;
-	struct timeval	Time	=	{1, 0};
+	struct timeval	Time	=	{5, 0};
 	int	MaxFd	=	-1;
 
 	struct sockaddr_in *Fastest = NULL;
