@@ -82,6 +82,7 @@ static int AddToLists(ConfigFileInfo *ConfigInfo)
 		if( StringChunk_Match_NoWildCard(GoodIpList, n, NULL, (char **)&m) == FALSE)
 		{
 			ERRORMSG("List is not found : %s\n", Itr);
+			Itr = StringList_GetNext(l, Itr);
 			continue;
 		}
 
