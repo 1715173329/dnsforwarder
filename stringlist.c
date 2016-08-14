@@ -157,7 +157,7 @@ static const char **StringList_ToCharPtrArray(StringList *s)
         return NULL;
     }
 
-    ret = SafeMalloc(StringList_Count(s) * sizeof(const char *));
+    ret = SafeMalloc((StringList_Count(s) + 1) * sizeof(const char *));
     if( ret == NULL )
     {
         return NULL;
@@ -171,6 +171,8 @@ static const char **StringList_ToCharPtrArray(StringList *s)
 
         ci = i.Next(&i);
     }
+
+    ret[Index] = NULL;
 
     return ret;
 }

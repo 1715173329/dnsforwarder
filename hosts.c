@@ -149,7 +149,6 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 	while(1)
 	{
-
 		if( URLs[1] == NULL )
 		{
 			INFO("Getting hosts from %s ...\n", URLs[0]);

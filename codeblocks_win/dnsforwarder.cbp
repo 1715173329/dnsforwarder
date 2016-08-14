@@ -14,8 +14,12 @@
 				<Option compiler="gcc" />
 				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder_n\codeblocks_win\bin\Release\dnsforwarder.config&quot; -CONTEXT a' />
 				<Compiler>
+					<Add option="-pg" />
 					<Add option="-g" />
 				</Compiler>
+				<Linker>
+					<Add option="-pg -lgmon" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option platforms="Windows;" />
