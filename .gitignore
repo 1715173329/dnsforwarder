@@ -28,6 +28,8 @@ test/*/obj/*
 test/*/*.depend
 test/*/*.layout
 
+*/gmon.out
+
 .deps/
 autom4te.cache/
 config.h

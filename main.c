@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.35"
+#define VERSION__ "5.0.36"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 

@@ -634,7 +634,13 @@ static int SendBack(SOCKET Socket,
 
 		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), Type);
 
-		MiscellaneousRet = DoIPMiscellaneous(RequestEntity, Length - sizeof(ControlHeader), Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled, CheckIPFor -> Find(CheckIPFor, Header -> RequestingDomain));
+		MiscellaneousRet = DoIPMiscellaneous(RequestEntity,
+											 Length - sizeof(ControlHeader),
+											 Header -> RequestingDomain,
+											 NeededBlock,
+											 ThisContext -> EDNSEnabled,
+											 CheckIPFor == NULL ? NULL : CheckIPFor->Find(CheckIPFor, Header->RequestingDomain)
+											 );
 		if( MiscellaneousRet != IP_MISCELLANEOUS_BLOCK )
 		{
 			if( MiscellaneousRet != IP_MISCELLANEOUS_NOTHING )
