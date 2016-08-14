@@ -2,7 +2,6 @@
 #define _DNS_CACHE_
 
 #include "dnsrelated.h"
-#include "extendablebuffer.h"
 #include "readconfig.h"
 
 int DNSCache_Init(ConfigFileInfo *ConfigInfo);

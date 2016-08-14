@@ -12,13 +12,15 @@ typedef struct _CheckingMeta {
 	int Strategy;
 } CheckingMeta;
 
-typedef StringChunk	CheckIP;
+typedef struct _CheckIP CheckIP;
+
+struct _CheckIP{
+    StringChunk	Chunk;
+
+    int (*Add)(CheckIP *self, const char *Domain, int Port, int Timeout, int Strategy);
+    int (*AddFromString)(CheckIP *self, const char *Rule);
+    const CheckingMeta * (*Find)(CheckIP *self, const char *Domain);
+};
 
 int CheckIP_Init(CheckIP *c);
-
-int CheckIP_Add(CheckIP *c, const char *Domain, int Port, int Timeout, int Strategy);
-
-int CheckIP_Add_From_String(CheckIP *c, const char *Rule);
-
-const CheckingMeta *CheckIP_Find(CheckIP *c, const char *Domain);
 #endif /* CHECKIP_H_INCLUDED */

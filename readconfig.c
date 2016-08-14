@@ -8,6 +8,8 @@
 int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
 {
     StringList  l;
+	StringListIterator  sli;
+
     const char  *Itr;
 	Info -> fp = NULL;
 
@@ -16,24 +18,32 @@ int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
         return -1;
     }
 
-    if( StringList_Init(&l, Contexts, ',') < 0 )
+    if( StringList_Init(&l, Contexts, ",") < 0 )
     {
     	StringChunk_Free(&(Info -> Contexts), TRUE);
         return -2;
     }
 
-    Itr = StringList_GetNext(&l, NULL);
+	if( StringListIterator_Init(&sli, &l) != 0 )
+    {
+        StringChunk_Free(&(Info -> Contexts), TRUE);
+        l.Free(&l);
+        return -3;
+    }
+
+    Itr = sli.Next(&sli);
     while( Itr != NULL )
     {
         StringChunk_Add(&(Info -> Contexts), Itr, NULL, 0);
-        Itr = StringList_GetNext(&l, Itr);
+        Itr = sli.Next(&sli);
     }
+
+    l.Free(&l);
 
     if( StringChunk_Init(&(Info -> Options), NULL) != 0 )
     {
         StringChunk_Free(&(Info -> Contexts), TRUE);
-        StringList_Free(&l);
-        return -3;
+        return -4;
     }
 
 	return 0;
@@ -76,7 +86,7 @@ int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strat
 		case TYPE_PATH:
 			New.Strategy = STRATEGY_REPLACE;
 		case TYPE_STRING:
-			if( StringList_Init(&(New.Holder.str), Initial.str, ',') < 0 )
+			if( StringList_Init(&(New.Holder.str), Initial.str, ",") < 0 )
 			{
 				return 2;
 			}
@@ -290,9 +300,11 @@ static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadSt
 
 		case STRATEGY_DEFAULT:
 		case STRATEGY_REPLACE:
-			StringList_Clear(&(Option -> Holder.str));
-			Option -> Status = STATUS_SPECIAL_VALUE;
-			if( StringList_Add(&(Option -> Holder.str), Value, ',') < 0 )
+			Option->Holder.str.Clear(&(Option->Holder.str));
+			Option->Status = STATUS_SPECIAL_VALUE;
+			if( Option->Holder.str.Add(&(Option->Holder.str), Value, ",")
+                == NULL
+                )
 			{
 				return;
 			}
@@ -300,7 +312,9 @@ static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadSt
 			break;
 
 		case STRATEGY_APPEND:
-			if( StringList_Add(&(Option -> Holder.str), Value, ',') < 0 )
+			if( Option->Holder.str.Add(&(Option->Holder.str), Value, ",")
+                == NULL
+                )
 			{
 				return;
 			}
@@ -323,7 +337,7 @@ static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadSt
 			TrimStrings(Value);
 		}
 
-		StringList_AppendLast(&(Option -> Holder.str), Buffer, ',');
+		Option->Holder.str.AppendLast(&(Option->Holder.str), Buffer, ",");
 	}
 }
 
@@ -444,15 +458,17 @@ const char *ConfigGetRawString(ConfigFileInfo *Info, char *KeyName)
 
 	if( Option != NULL )
 	{
-		if( Option -> Holder.str.Used == 0 )
-		{
-			return NULL;
-		} else {
-			return Option -> Holder.str.Data;
-		}
-	}
+		StringListIterator  sli;
 
-	return NULL;
+        if( StringListIterator_Init(&sli, &(Option->Holder.str)) != 0 )
+        {
+            return NULL;
+        }
+
+        return sli.Next(&sli);
+	} else {
+	    return NULL;
+	}
 }
 
 StringList *ConfigGetStringList(ConfigFileInfo *Info, char *KeyName)
@@ -461,11 +477,11 @@ StringList *ConfigGetStringList(ConfigFileInfo *Info, char *KeyName)
 
 	if( Option != NULL )
 	{
-		if( Option -> Holder.str.Used == 0 )
+		if( Option->Holder.str.Count(&(Option->Holder.str)) == 0 )
 		{
 			return NULL;
 		} else {
-			return &(Option -> Holder.str);
+			return &(Option->Holder.str);
 		}
 	} else {
 		return NULL;
@@ -478,7 +494,7 @@ int32_t ConfigGetNumberOfStrings(ConfigFileInfo *Info, char *KeyName)
 
 	if( Option != NULL )
 	{
-		return StringList_Count(&(Option -> Holder.str));
+		return Option->Holder.str.Count(&(Option->Holder.str));
 	} else {
 		return 0;
 	}
@@ -526,8 +542,8 @@ void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 				break;
 
 			case TYPE_STRING:
-				StringList_Clear(&(Option -> Holder.str));
-				StringList_Add(&(Option -> Holder.str), Value.str, ',');
+				Option->Holder.str.Clear(&(Option->Holder.str));
+				Option->Holder.str.Add(&(Option->Holder.str), Value.str, ",");
 				break;
 
 			default:
@@ -561,12 +577,21 @@ void ConfigDisplay(ConfigFileInfo *Info)
 
 				case TYPE_STRING:
 					{
-						const char *Str = StringList_GetNext(&(Option -> Holder.str), NULL);
+					    StringListIterator  sli;
+					    const char *Str;
 
+                        if( StringListIterator_Init(&sli, &(Option->Holder.str))
+                           != 0
+                           )
+                        {
+                            break;
+                        }
+
+                        Str = sli.Next(&sli);
 						while( Str != NULL )
 						{
 							printf("%s:%s\n", Option -> Caption, Str);
-							Str = StringList_GetNext(&(Option -> Holder.str), Str);
+							Str = sli.Next(&sli);
 						}
 					}
 					break;

@@ -2,33 +2,42 @@
 #define STRINGLIST_H_INCLUDED
 
 #include "common.h"
-#include "extendablebuffer.h"
+#include "stablebuffer.h"
 
-typedef ExtendableBuffer StringList;
+/* This class is not thread safe. */
+
+typedef struct _StringList StringList;
+
+struct _StringList{
+    StableBuffer    Buffer;
+
+    int (*Count)(StringList *s);
+    void *(*Add)(StringList *s, const char *str, const char *Delimiters);
+    int (*AppendLast)(StringList *s, const char *str, const char *Delimiters);
+    const char **(*ToCharPtrArray)(StringList *s);
+    void (*Clear)(StringList *s);
+    void (*Free)(StringList *s);
+};
 
 /* Number of strings returned. */
-int StringList_Init(__in StringList *s, __in const char *ori, __in char Delimiter);
+int StringList_Init(__in StringList *s,
+                    __in const char *ori,
+                    __in const char *Delimiters
+                    );
 
-const char *StringList_GetNext(__in const StringList *s, __in const char *Current);
+/**
+ Iterator
+*/
+typedef struct _StringListIterator StringListIterator;
 
-const char *StringList_Get(__in StringList *s, __in int Subscript);
+struct _StringListIterator{
+    StableBufferIterator    BufferIterator;
+    char                    *CurrentPosition;
 
-int StringList_Count(StringList *s);
+    const char *(*Next)(StringListIterator *i);
+    void (*Reset)(StringListIterator *i);
+};
 
-int32_t StringList_Add(StringList *s, const char *str, char Delimiter);
-
-int32_t StringList_AppendLast(StringList *s, const char *str, char Delimiter);
-
-void StringList_Catenate(StringList *des, StringList *src);
-
-#define	StringList_GetByOffset(s_ptr, offset)	((const char *)((s_ptr) -> Data + (offset)))
-
-#define StringList_Clear(s_ptr)	(ExtendableBuffer_Reset(s_ptr))
-
-const char *StringList_Find(StringList *s, const char *str);
-
-#define StringList_Free(s_ptr)	(ExtendableBuffer_Free((ExtendableBuffer *)(s_ptr)))
-
-const char **StringList_ToCharPtrArray(StringList *s);
+int StringListIterator_Init(StringListIterator *i, StringList *l);
 
 #endif // STRINGLIST_H_INCLUDED

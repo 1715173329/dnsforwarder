@@ -1,5 +1,4 @@
 #include "request_response.h"
-#include "extendablebuffer.h"
 #include "domainstatistic.h"
 #include "dnsparser.h"
 #include "dnsgenerator.h"
@@ -24,14 +23,26 @@ static CheckIP *CheckIPFor = NULL;
 
 static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 {
-	const StringList	*DedicatedServer	=	ConfigGetStringList(ConfigInfo, "DedicatedServer");
+	StringList    *DedicatedServer
+                  = ConfigGetStringList(ConfigInfo, "DedicatedServer");
+    StringListIterator  sli;
 
 	const char	*Itr	=	NULL;
 
 	char Domain[256];
 	char Server[64];
 
-	Itr = StringList_GetNext(DedicatedServer, NULL);
+	if( DedicatedServer == NULL )
+    {
+        return 0;
+    }
+
+	if( StringListIterator_Init(&sli, DedicatedServer) != 0 )
+    {
+        return -1;
+    }
+
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		if( sscanf(Itr, "%s %s", Domain, Server) < 2 )
@@ -41,10 +52,10 @@ static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 		}
 		INFO("Add a dedicated Server %s for %s\n", Server, Domain);
 		AddressChunk_AddADedicatedAddress_FromString(&Addresses, Domain, Server);
-		Itr = StringList_GetNext(DedicatedServer, Itr);
+		Itr = sli.Next(&sli);
 	}
 
-	StringList_Free(DedicatedServer);
+	DedicatedServer->Free(DedicatedServer);
 
 	return 0;
 }
@@ -52,24 +63,38 @@ static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 int InitCheckIPs(ConfigFileInfo *ConfigInfo)
 {
 	StringList	*ci	=	ConfigGetStringList(ConfigInfo, "CheckIP");
+	StringListIterator  sli;
+
 	const char	*Itr	=	NULL;
+
+	if( ci == NULL )
+    {
+        return 0;
+    }
+
+	if( StringListIterator_Init(&sli, ci) != 0 )
+    {
+        return -1;
+    }
 
 	CheckIPFor = SafeMalloc(sizeof(CheckIP));
 	if( CheckIPFor == NULL )
 	{
-		return -1;
+		return -2;
 	}
 
 	if( CheckIP_Init(CheckIPFor) != 0 )
 	{
-		return -2;
+	    SafeFree(CheckIPFor);
+	    CheckIPFor = NULL;
+		return -3;
 	}
 
-	Itr = StringList_GetNext(ci, NULL);
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
-		CheckIP_Add_From_String(CheckIPFor, Itr);
-		Itr = StringList_GetNext(ci, Itr);
+	    CheckIPFor->AddFromString(CheckIPFor, Itr);
+		Itr = sli.Next(&sli);
 	}
 
 	return 0;
@@ -80,36 +105,56 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 	StringList	*tcpaddrs	=	ConfigGetStringList(ConfigInfo, "TCPServer");
 	StringList	*udpaddrs	=	ConfigGetStringList(ConfigInfo, "UDPServer");
 
-	const char	*Itr	=	NULL;
-
 	if( AddressChunk_Init(&Addresses) != 0 )
 	{
 		return -1;
 	}
 
-	Itr = StringList_GetNext(tcpaddrs, NULL);
-	while( Itr != NULL )
-	{
-		if( AddressChunk_AddATCPAddress_FromString(&Addresses, Itr) != 0 )
-		{
-			INFO("Bad address : %s\n", Itr);
-		} else {
-		}
+	if( tcpaddrs != NULL )
+    {
+        const char  *Itr = NULL;
+        StringListIterator  sli;
 
-		Itr = StringList_GetNext(tcpaddrs, Itr);
-	}
+        if( StringListIterator_Init(&sli, tcpaddrs) != 0 )
+        {
+            return -1;
+        }
 
-	Itr = StringList_GetNext(udpaddrs, NULL);
-	while( Itr != NULL )
-	{
-		if( AddressChunk_AddAUDPAddress_FromString(&Addresses, Itr) != 0 )
-		{
-			INFO("Bad address : %s\n", Itr);
-		} else {
-		}
+        Itr = sli.Next(&sli);
+        while( Itr != NULL )
+        {
+            if( AddressChunk_AddATCPAddress_FromString(&Addresses, Itr) != 0 )
+            {
+                INFO("Bad address : %s\n", Itr);
+            } else {
+            }
 
-		Itr = StringList_GetNext(udpaddrs, Itr);
-	}
+            Itr = sli.Next(&sli);
+        }
+    }
+
+	if( udpaddrs != NULL )
+    {
+        const char  *Itr = NULL;
+        StringListIterator  sli;
+
+        if( StringListIterator_Init(&sli, udpaddrs) != 0 )
+        {
+            return -1;
+        }
+
+        Itr = sli.Next(&sli);
+        while( Itr != NULL )
+        {
+            if( AddressChunk_AddAUDPAddress_FromString(&Addresses, Itr) != 0 )
+            {
+                INFO("Bad address : %s\n", Itr);
+            } else {
+            }
+
+            Itr = sli.Next(&sli);
+        }
+    }
 
 	TCPAddresses_Array = AddressList_GetPtrList(AddressChunk_GetTCPPart(&Addresses), &TCPParallelFamilies);
 
@@ -118,7 +163,7 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 	{
 		int NumberOfAddr;
 
-		NumberOfAddr = StringList_Count(udpaddrs);
+		NumberOfAddr = udpaddrs == NULL ? 0 : udpaddrs->Count(udpaddrs);
 		if( NumberOfAddr <= 0 )
 		{
 			ERRORMSG("No UDP server specified, cannot use parallel query.\n")
@@ -130,8 +175,8 @@ int InitAddress(ConfigFileInfo *ConfigInfo)
 		}
 	}
 
-	StringList_Free(tcpaddrs);
-	StringList_Free(udpaddrs);
+	if( tcpaddrs != NULL ) {tcpaddrs->Free(tcpaddrs);}
+	if( udpaddrs != NULL ) {udpaddrs->Free(udpaddrs);}
 
 	return LoadDedicatedServer(ConfigInfo);
 }
@@ -589,7 +634,7 @@ static int SendBack(SOCKET Socket,
 
 		DomainStatistic_Add(Header -> RequestingDomain, &(Header -> RequestingDomainHashValue), Type);
 
-		MiscellaneousRet = DoIPMiscellaneous(RequestEntity, Length - sizeof(ControlHeader), Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled, CheckIP_Find(CheckIPFor, Header -> RequestingDomain));
+		MiscellaneousRet = DoIPMiscellaneous(RequestEntity, Length - sizeof(ControlHeader), Header -> RequestingDomain, NeededBlock, ThisContext -> EDNSEnabled, CheckIPFor -> Find(CheckIPFor, Header -> RequestingDomain));
 		if( MiscellaneousRet != IP_MISCELLANEOUS_BLOCK )
 		{
 			if( MiscellaneousRet != IP_MISCELLANEOUS_NOTHING )
@@ -633,6 +678,7 @@ static AddressList *TCPProxies = NULL;
 int TCPProxies_Init(StringList *Proxies)
 {
 	const char *Itr = NULL;
+	StringListIterator  sli;
 
 	if( Proxies == NULL )
 	{
@@ -653,7 +699,12 @@ int TCPProxies_Init(StringList *Proxies)
 		}
 	}
 
-	Itr = StringList_GetNext(Proxies, NULL);
+	if( StringListIterator_Init(&sli, Proxies) != 0 )
+    {
+        return -3;
+    }
+
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		if( AddressList_Add_From_String(TCPProxies, Itr, 1080) != 0 )
@@ -661,7 +712,7 @@ int TCPProxies_Init(StringList *Proxies)
 			INFO("Bad address : %s\n", Itr);
 		}
 
-		Itr = StringList_GetNext(Proxies, Itr);
+		Itr = sli.Next(&sli);
 	}
 
 	return 0;
@@ -1367,6 +1418,8 @@ int QueryDNSViaTCP(void)
 int InitBlockedIP(StringList *l)
 {
 	const char	*Itr = NULL;
+	StringListIterator  sli;
+
 	char	Ip[16];
 
 	if( l == NULL )
@@ -1374,14 +1427,18 @@ int InitBlockedIP(StringList *l)
 		return 0;
 	}
 
+    if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -1;
+    }
+
 	if( IPMiscellaneous == NULL )
 	{
 		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
 		IpChunk_Init(IPMiscellaneous);
 	}
 
-	Itr = StringList_GetNext(l, NULL);
-
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		if( strchr(Itr, '.') != NULL )
@@ -1394,10 +1451,10 @@ int InitBlockedIP(StringList *l)
 			IpChunk_Add6(IPMiscellaneous, Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
 		} else {}
 
-		Itr = StringList_GetNext(l, Itr);
+		Itr = sli.Next(&sli);
 	}
 
-	StringList_Free(l);
+	l->Free(l);
 
 	return 0;
 }
@@ -1405,6 +1462,7 @@ int InitBlockedIP(StringList *l)
 int InitIPSubstituting(StringList *l)
 {
 	const char	*Itr = NULL;
+	StringListIterator  sli;
 
 	char	Origin_Str[] = "xxx.xxx.xxx.xxx";
 	char	Substituted_Str[] = "xxx.xxx.xxx.xxx";
@@ -1416,14 +1474,18 @@ int InitIPSubstituting(StringList *l)
 		return 0;
 	}
 
+	if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -1;
+    }
+
 	if( IPMiscellaneous == NULL )
 	{
 		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
 		IpChunk_Init(IPMiscellaneous);
 	}
 
-	Itr = StringList_GetNext(l, NULL);
-
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		sscanf(Itr, "%s %s", Origin_Str, Substituted_Str);
@@ -1433,10 +1495,10 @@ int InitIPSubstituting(StringList *l)
 
 		IpChunk_Add(IPMiscellaneous, Origin, IP_MISCELLANEOUS_TYPE_SUBSTITUTE, (const char *)&Substituted, 4);
 
-		Itr = StringList_GetNext(l, Itr);
+		Itr = sli.Next(&sli);
 	}
 
-	StringList_Free(l);
+	l->Free(l);
 
 	return 0;
 }

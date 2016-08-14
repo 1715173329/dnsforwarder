@@ -6,57 +6,6 @@
 
 HostsContainer	MainStaticContainer;
 
-static int32_t Hosts_IdenticalToLast(HostsContainer	*Container,
-										HostsRecordType	CurrentType,
-										const char		*CurrentContent,
-										int				CurrentLength
-										)
-{
-	static HostsContainer *LastContainer = NULL;
-	static HostsRecordType LastType = HOSTS_TYPE_UNKNOWN;
-	static int32_t LastOffset = 0;
-	static int32_t LastLength = 0;
-
-	if( LastContainer == NULL || LastContainer != Container )
-	{
-		LastContainer = Container;
-		LastType = CurrentType;
-		LastOffset = 0;
-		LastLength = CurrentLength;
-		return -1;
-	}
-
-	if( LastType == HOSTS_TYPE_UNKNOWN )
-	{
-		LastType = CurrentType;
-		LastOffset = 0;
-		LastLength = CurrentLength;
-		return -1;
-	}
-
-	if( LastType == CurrentType )
-	{
-		if( memcmp(ExtendableBuffer_GetPositionByOffset(&(Container -> IPs), LastOffset),
-					CurrentContent,
-					CurrentLength
-					) == 0
-			)
-		{
-			return LastOffset;
-		} else {
-			LastOffset += LastLength;
-			LastLength = CurrentLength;
-			return -1;
-		}
-	} else {
-		LastType = CurrentType;
-		LastOffset += LastLength;
-		LastLength = CurrentLength;
-		return -1;
-	}
-
-}
-
 static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 {
 	if( IPOrCName == NULL )
@@ -130,8 +79,10 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 
 static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
 {
-	OffsetOfHosts	r;
+	HostsPosition	r;
 	char			NumericIP[16];
+
+	StableBuffer    *sb;
 
 	if( StringChunk_Match_NoWildCard(&(Container -> Ipv6Hosts), Domain, NULL, NULL) == TRUE )
 	{
@@ -139,30 +90,28 @@ static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrC
 		return -1;
 	}
 
+	sb = &(Container->IPs);
+
 	IPv6AddressToNum(IPOrCName, NumericIP);
 
-	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_AAAA, NumericIP, 16);
+    r.Position = sb->Add(sb, NumericIP, 16);
 
-	if( r.Offset < 0 )
-	{
-		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 16);
+    if( r.Position == NULL )
+    {
+        return -1;
+    }
 
-		if( r.Offset < 0 )
-		{
-			return -1;
-		}
-
-	}
-
-	StringChunk_Add(&(Container -> Ipv6Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+	StringChunk_Add(&(Container -> Ipv6Hosts), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
 static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
 {
-	OffsetOfHosts	r;
+	HostsPosition	r;
 	char			NumericIP[4];
+
+	StableBuffer    *sb;
 
 	if( StringChunk_Match_NoWildCard(&(Container -> Ipv4Hosts), Domain, NULL, NULL) == TRUE )
 	{
@@ -170,29 +119,27 @@ static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrC
 		return -1;
 	}
 
+	sb = &(Container->IPs);
+
 	IPv4AddressToNum(IPOrCName, NumericIP);
 
-	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_A, NumericIP, 4);
+    r.Position = sb->Add(sb, NumericIP, 4);
 
-	if( r.Offset < 0 )
-	{
-		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), NumericIP, 4);
+    if( r.Position == NULL )
+    {
+        return -1;
+    }
 
-		if( r.Offset < 0 )
-		{
-			return -1;
-		}
-
-	}
-
-	StringChunk_Add(&(Container -> Ipv4Hosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+	StringChunk_Add(&(Container -> Ipv4Hosts), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
 static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
 {
-	OffsetOfHosts	r;
+	HostsPosition	r;
+
+	StableBuffer    *sb;
 
 	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
 	{
@@ -206,20 +153,16 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
 		return -1;
 	}
 
-	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_CNAME, IPOrCName, strlen(IPOrCName) + 1);
+    sb = &(Container->IPs);
 
-	if( r.Offset < 0 )
-	{
-		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), IPOrCName, strlen(IPOrCName) + 1);
+    r.Position = sb->Add(sb, IPOrCName, strlen(IPOrCName) + 1);
 
-		if( r.Offset < 0 )
-		{
-			return -1;
-		}
+    if( r.Position == NULL )
+    {
+        return -1;
+    }
 
-	}
-
-	StringChunk_Add(&(Container -> CNameHosts), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+	StringChunk_Add(&(Container -> CNameHosts), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
@@ -227,7 +170,10 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
 
 static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *ListName, const char *Domain)
 {
-	OffsetOfHosts	r;
+	HostsPosition	r;
+
+	StableBuffer    *sb;
+	char            Trimed[128];
 
 	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
 	{
@@ -241,22 +187,17 @@ static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *L
 		return -1;
 	}
 
-	r.Offset = Hosts_IdenticalToLast(Container, HOSTS_TYPE_GOOD_IP_LIST, ListName, strlen(ListName) + 1);
+    sb = &(Container->IPs);
 
-	if( r.Offset < 0 )
-	{
-		char Trimed[128];
-		sscanf(ListName, "<%127[^>]", Trimed);
-		r.Offset = ExtendableBuffer_Add(&(Container -> IPs), Trimed, strlen(Trimed) + 1);
+    sscanf(ListName, "<%127[^>]", Trimed);
+    r.Position = sb->Add(sb, Trimed, strlen(Trimed) + 1);
 
-		if( r.Offset < 0 )
-		{
-			return -1;
-		}
+    if( r.Position == NULL )
+    {
+        return -1;
+    }
 
-	}
-
-	StringChunk_Add(&(Container -> GoodIpLists), Domain, (const char *)&r, sizeof(OffsetOfHosts));
+	StringChunk_Add(&(Container -> GoodIpLists), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
@@ -348,7 +289,7 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 
 int Hosts_InitContainer(HostsContainer	*Container)
 {
-	if( StringList_Init(&(Container -> Domains), NULL, ',') != 0 )
+	if( StringList_Init(&(Container -> Domains), NULL, NULL) != 0 )
 	{
 		return -1;
 	}
@@ -373,7 +314,7 @@ int Hosts_InitContainer(HostsContainer	*Container)
 	{
 		return -5;
 	}
-	if( ExtendableBuffer_Init(&(Container -> IPs), 0, -1) != 0 )
+	if( StableBuffer_Init(&(Container -> IPs)) != 0 )
 	{
 		return -6;
 	}
@@ -408,6 +349,8 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 	int		IPv4Count = 0, IPv6Count = 0, CNameCount = 0, ExcludedCount = 0, GoodIpListCount = 0;
 
 	StringList *AppendHosts = ConfigGetStringList(ConfigInfo, "AppendHosts");
+	StringListIterator  sli;
+
 	const char *Itr;
 	char Buffer[2 * DOMAIN_NAME_LENGTH_MAX + 2];
 
@@ -418,10 +361,15 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	if( AppendHosts == NULL )
 	{
-		return -1;
+		return -2; /* Important */
 	}
 
-	Itr = StringList_GetNext(AppendHosts, NULL);
+	if( StringListIterator_Init(&sli, AppendHosts) != 0 )
+    {
+        return -3;
+    }
+
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		if( strlen(Itr) > sizeof(Buffer) - 1 )
@@ -463,7 +411,7 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 			}
 		}
 
-		Itr = StringList_GetNext(AppendHosts, Itr);
+		Itr = sli.Next(&sli);
 	}
 
 	INFO("Loading Appendhosts completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded, %d items point to GoodIPLists.\n",

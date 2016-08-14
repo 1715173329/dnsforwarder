@@ -2,192 +2,283 @@
 #include "stringlist.h"
 #include "utils.h"
 
-static int Divide(char *Str, char Delimiter)
+static int Divide(char *Str, const char *Delimiters)
 {
 	int		Count = 0;
-	char	*Itr = Str;
+	char	*Itr;
 
-	for(Itr = strchr(Itr, Delimiter); Itr != NULL; Itr = strchr(Itr, Delimiter))
-	{
-		*Itr = '\0';
-		++Itr;
+	if( Delimiters == NULL )
+    {
+        Delimiters = "";
+    }
+
+	Itr = strpbrk(Str, Delimiters);
+	while( Itr != NULL )
+    {
+        *Itr = '\0';
+
+        ++Itr;
 		++Count;
-	}
+
+		Itr = strpbrk(Itr, Delimiters);
+    }
 
 	return Count + 1;
 }
 
-int StringList_Init(__in StringList *s, __in const char *ori, __in char Delimiter)
+static int StringList_Count(StringList *s)
 {
-	if( s == NULL )
-		return -1;
+    StringListIterator    i;
+    const char            *b;
+    int                   ret = 0;
 
-	if( ori == NULL )
+    if( StringListIterator_Init(&i, s) != 0 )
+    {
+        return -1;
+    }
+
+    b = i.Next(&i);
+    while( b != NULL )
+    {
+        ++ret;
+
+        b = i.Next(&i);
+    }
+
+    return ret;
+}
+
+static void *StringList_Add(StringList *s,
+                          const char *str,
+                          const char *Delimiters
+                          )
+{
+    StableBuffer *sb;
+
+    sb = &(s->Buffer);
+
+    void *Here = sb ->Add(sb, str, strlen(str) + 1);
+    if( Here == NULL )
+    {
+        return NULL;
+    }
+
+    Divide(Here, Delimiters);
+
+    return Here;
+}
+
+/* Unsafe operation */
+static int StringList_AppendLast(StringList *s,
+                                 const char *str,
+                                 const char *Delimiters
+                                 )
+{
+    StableBuffer            *sb;
+    StableBufferIterator    i;
+    char                    *b;
+
+    char *l;
+    int Used;
+
+    int StrLength; /* Including terminated-0 */
+    int LastHalfLength;
+    char *NewStr;
+    char *NewlyAdded;
+
+    if( s == NULL )
+    {
+        return -1;
+    }
+
+    sb = &(s->Buffer);
+
+    if( StableBufferIterator_Init(&i, sb) != 0 )
+    {
+        return -2;
+    }
+
+    b = i.ToLast(&i);
+    if( b == NULL )
+    {
+        return -3;
+    }
+
+    Used = i.CurrentBlockUsed(&i);
+    for( l = b + Used - 2; l > b; --l )
+    {
+        if( *l == '\0' )
+        {
+            ++l;
+            break;
+        }
+    }
+
+    if( l <= b )
+    {
+        l = b;
+    }
+
+    StrLength = strlen(str) + 1; /* Including terminated-0 */
+    LastHalfLength = Used - (l - b); /* Including terminated-0 */
+    NewStr = SafeMalloc(StrLength + LastHalfLength - 1);
+    if( NewStr == NULL )
+    {
+        return -4;
+    }
+
+    strcpy(NewStr, l);
+    strcat(NewStr, str);
+
+    i.RemoveLastNBytesOfCurrentBlock(&i, LastHalfLength);
+
+    NewlyAdded = sb->Add(sb, NewStr, StrLength + LastHalfLength - 1);
+
+    SafeFree(NewStr);
+
+    if( NewlyAdded == NULL )
+    {
+        return -5;
+    }
+
+    return Divide(NewlyAdded, Delimiters);
+}
+
+static const char **StringList_ToCharPtrArray(StringList *s)
+{
+    const char  **ret;
+    int         Index = 0;
+
+    StringListIterator    i;
+    const char  *ci;
+
+    if( StringListIterator_Init(&i, s) != 0 )
+    {
+        return NULL;
+    }
+
+    ret = SafeMalloc(StringList_Count(s) * sizeof(const char *));
+    if( ret == NULL )
+    {
+        return NULL;
+    }
+
+    ci = i.Next(&i);
+    while( ci != NULL )
+    {
+        ret[Index] = ci;
+        ++Index;
+
+        ci = i.Next(&i);
+    }
+
+    return ret;
+}
+
+
+
+static void StringList_Clear(StringList *s)
+{
+    s->Buffer.Clear(&(s->Buffer));
+}
+
+static void StringList_Free(StringList *s)
+{
+    s->Buffer.Free(&(s->Buffer));
+}
+
+int StringList_Init(__in StringList *s,
+                    __in const char *ori,
+                    __in const char *Delimiters
+                    )
+{
+    StableBuffer *sb;
+
+	if( s == NULL )
+    {
+        return -1;
+    }
+
+    sb = &(s->Buffer);
+
+    if( StableBuffer_Init(sb) != 0 )
+    {
+        return -2;
+    }
+
+    s->Count = StringList_Count;
+    s->Add = StringList_Add;
+    s->AppendLast = StringList_AppendLast;
+    s->ToCharPtrArray = StringList_ToCharPtrArray;
+    s->Clear = StringList_Clear;
+    s->Free = StringList_Free;
+
+	if( ori != NULL )
 	{
-		ExtendableBuffer_Init((ExtendableBuffer *)s, 0, -1);
-		return 0;
+        void *Here = sb ->Add(sb, ori, strlen(ori) + 1);
+        if( Here == NULL )
+        {
+            sb->Free(sb);
+            return -3;
+        }
+
+		return Divide(Here, Delimiters);
 	} else {
-		if( ExtendableBuffer_Init((ExtendableBuffer *)s, strlen(ori) + 1, -1) != 0 )
-		{
-			return -1;
-		}
-
-		ExtendableBuffer_Add((ExtendableBuffer *)s, ori, strlen(ori) + 1);
-
-		return Divide(ExtendableBuffer_GetData((ExtendableBuffer *)s), Delimiter);
+	    return 0;
 	}
 }
 
-const char *StringList_GetNext(__in const StringList *s, __in const char *Current)
+/**
+  Iterator Implementation
+*/
+
+static const char *StringListIterator_Next(StringListIterator *i)
 {
-	const char *n;
-	const char *End;
-	const char *Data;
+    if( i->CurrentPosition == NULL )
+    {
+        i->BufferIterator.Reset(&(i->BufferIterator));
+        i->CurrentPosition = i->BufferIterator.NextBlock(&(i->BufferIterator));
+    } else {
+        i->CurrentPosition += strlen(i->CurrentPosition) + 1;
+    }
 
-	if( s == NULL )
-		return NULL;
+    while(TRUE)
+    {
+        if( i->CurrentPosition == NULL )
+        {
+            return NULL;
+        } else if( i->BufferIterator.IsInCurrentBlock(&(i->BufferIterator),
+                                                      i->CurrentPosition)
+                 )
+        {
+            return i->CurrentPosition;
+        }
 
-	Data = ExtendableBuffer_GetData((ExtendableBuffer *)s);
-
-	if( Current == NULL )
-		return Data;
-
-	End = Data + ExtendableBuffer_GetUsedBytes((ExtendableBuffer *)s);
-
-	if( End == NULL || End == Data )
-	{
-		return NULL;
-	}
-
-	if( Current < Data || Current >= End )
-		return NULL;
-
-	n = Current + strlen(Current) + 1;
-
-	return n >= End ? NULL : n;
+        i->CurrentPosition = i->BufferIterator.NextBlock(&(i->BufferIterator));
+    }
 }
 
-const char *StringList_Get(__in StringList *s, __in int Subscript)
+static void StringListIterator_Reset(StringListIterator *i)
 {
-	int			i	=	0;
-	const char	*itr;
-
-	if( s == NULL || Subscript < 0 )
-		return NULL;
-
-	for(itr = ExtendableBuffer_GetData((ExtendableBuffer *)s); i < Subscript; ++i)
-	{
-		itr = StringList_GetNext(s, itr);
-		if( itr == NULL )
-			return NULL;
-	}
-	return itr;
+    i->CurrentPosition = NULL;
 }
 
-int StringList_Count(StringList *s)
+int StringListIterator_Init(StringListIterator *i, StringList *l)
 {
-	int n = 0;
-	const char *itr = NULL;
+    if( i == NULL || l == NULL )
+    {
+        return -1;
+    }
 
-	if( s == NULL )
-		return 0;
+    if( StableBufferIterator_Init(&(i->BufferIterator), &(l->Buffer)) != 0 )
+    {
+        return -2;
+    }
 
-	for(itr = StringList_GetNext(s, itr); itr != NULL; itr = StringList_GetNext(s, itr))
-	{
-		++n;
-	}
-	return n;
-}
+    i->CurrentPosition = NULL;
 
-int32_t StringList_Add(StringList *s, const char *str, char Delimiter)
-{
-	int Offset = ExtendableBuffer_Add((ExtendableBuffer *)s, str, strlen(str) + 1);
+    i->Next = StringListIterator_Next;
+    i->Reset = StringListIterator_Reset;
 
-	if( Offset < 0 )
-	{
-		return -1;
-	}
-
-	Divide(s -> Data + Offset, Delimiter);
-
-	return Offset;
-}
-
-const char *StringList_Find(StringList *s, const char *str)
-{
-	const char *itr = NULL;
-
-	if( s == NULL )
-		return 0;
-
-	for(itr = StringList_GetNext(s, itr); itr != NULL; itr = StringList_GetNext(s, itr))
-	{
-		if( strcmp(itr, str) == 0 )
-		{
-			return itr;
-		}
-	}
-
-	return NULL;
-}
-
-int32_t StringList_AppendLast(StringList *s, const char *str, char Delimiter)
-{
-	char *Tail;
-	int Length = strlen(str);
-
-	if( s == NULL )
-		return 0;
-
-	if( ExtendableBuffer_GuarantyLeft(s, Length) == FALSE )
-	{
-		return -1;
-	}
-
-	Tail = s -> Data + s -> Used - 1;
-
-	s -> Used += Length;
-
-	strcat(Tail, str);
-
-	Divide(Tail, Delimiter);
-
-	return 0;
-}
-
-void StringList_Catenate(StringList *des, StringList *src)
-{
-	if( des == NULL || src == NULL )
-	{
-		return;
-	}
-
-	ExtendableBuffer_Add(des, src -> Data, src -> Used);
-}
-
-const char **StringList_ToCharPtrArray(StringList *s)
-{
-	const char **URLs;
-	int NumberOfURLs = 0;
-	int Count = StringList_Count(s);
-	const char *Str_Itr;
-
-	URLs = malloc(sizeof(char *) * (Count + 1));
-	if( URLs == NULL )
-	{
-		return NULL;
-	}
-
-	Str_Itr = StringList_GetNext(s, NULL);
-	while( Str_Itr != NULL )
-	{
-		URLs[NumberOfURLs] = Str_Itr;
-		++NumberOfURLs;
-
-		Str_Itr = StringList_GetNext(s, Str_Itr);
-	}
-
-	URLs[NumberOfURLs] = NULL;
-
-	return URLs;
+    return 0;
 }

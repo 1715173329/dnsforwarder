@@ -28,7 +28,7 @@ int CacheTtlCrtl_Add(CacheTtlCtrl *c, const char *Domain, int State, uint32_t Co
 
 int CacheTtlCrtl_Add_From_String(CacheTtlCtrl *c, const char *Rule);
 
-int CacheTtlCrtl_Add_From_StringList(CacheTtlCtrl *c, const StringList *sl);
+int CacheTtlCrtl_Add_From_StringList(CacheTtlCtrl *c, StringList *sl);
 
 const CtrlContent *CacheTtlCrtl_Get(CacheTtlCtrl *c, const char *Domain);
 

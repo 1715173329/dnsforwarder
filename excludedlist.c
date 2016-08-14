@@ -46,10 +46,12 @@ static int TypeCompare(const int *_1, const int *_2)
 
 static int LoadDisableType(ConfigFileInfo *ConfigInfo)
 {
-	const StringList *DisableType_Str = ConfigGetStringList(ConfigInfo, "DisabledType");
+	StringList *DisableType_Str = ConfigGetStringList(ConfigInfo, "DisabledType");
 
 	const char *OneTypePendingToAdd_Str;
 	int OneTypePendingToAdd;
+
+    StringListIterator  sli;
 
 	if( Bst_Init(&DisabledTypes, NULL, sizeof(int), (int (*)(const void *, const void *))TypeCompare) != 0 )
 	{
@@ -61,35 +63,47 @@ static int LoadDisableType(ConfigFileInfo *ConfigInfo)
 		return 0;
 	}
 
-	OneTypePendingToAdd_Str = StringList_GetNext(DisableType_Str, NULL);
+	if( StringListIterator_Init(&sli, DisableType_Str) != 0 )
+    {
+        return -2;
+    }
+
+	OneTypePendingToAdd_Str = sli.Next(&sli);
 	while( OneTypePendingToAdd_Str != NULL )
 	{
 		sscanf(OneTypePendingToAdd_Str, "%d", &OneTypePendingToAdd);
 		Bst_Add(&DisabledTypes, &OneTypePendingToAdd);
 
-		OneTypePendingToAdd_Str = StringList_GetNext(DisableType_Str, OneTypePendingToAdd_Str);
+		OneTypePendingToAdd_Str = sli.Next(&sli);
 	}
 
 	return 0;
 }
 
-static int LoadDomainsFromList(StringChunk *List, const StringList *Domains)
+static int LoadDomainsFromList(StringChunk *List, StringList *Domains)
 {
 	const char *Str;
+
+	StringListIterator  sli;
 
 	if( List == NULL || Domains == NULL )
 	{
 		return 0;
 	}
 
-	Str = StringList_GetNext(Domains, NULL);
+	if( StringListIterator_Init(&sli, Domains) != 0 )
+    {
+        return -1;
+    }
+
+	Str = sli.Next(&sli);
 	while( Str != NULL )
 	{
 		if( StringChunk_Add_Domain(List, Str, NULL, 0) != 0 )
 		{
 			return -2;
 		}
-		Str = StringList_GetNext(Domains, Str);
+		Str = sli.Next(&sli);
 	}
 
 	return 0;
@@ -152,7 +166,7 @@ int ExcludedList_Init(ConfigFileInfo *ConfigInfo, DNSQuaryProtocol PrimaryProtoc
 	if( DisabledDomain != NULL && InitContainer(&StaticDisabled) == 0 )
 	{
 		LoadDomainsFromList(StaticDisabled, DisabledDomain);
-		StringList_Free(DisabledDomain);
+		DisabledDomain->Free(DisabledDomain);
 	}
 
 	ExcludedDomain = ConfigGetStringList(ConfigInfo, "ExcludedDomain");
@@ -170,9 +184,20 @@ int ExcludedList_Init(ConfigFileInfo *ConfigInfo, DNSQuaryProtocol PrimaryProtoc
 			LoadDomainsFromList(StaticExcluded, AlwaysTCP);
 		}
 
-		StringList_Free(ExcludedDomain);
-		StringList_Free(AlwaysUDP);
-		StringList_Free(AlwaysTCP);
+		if( ExcludedDomain != NULL )
+        {
+            ExcludedDomain->Free(ExcludedDomain);
+        }
+
+		if( AlwaysUDP != NULL )
+        {
+            AlwaysUDP->Free(AlwaysUDP);
+        }
+
+		if( AlwaysTCP != NULL )
+        {
+            AlwaysTCP->Free(AlwaysTCP);
+        }
 	}
 
 	DisabledFile = ConfigGetRawString(ConfigInfo, "DisabledList");

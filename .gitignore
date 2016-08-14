@@ -23,7 +23,10 @@ codeblocks_win/bin/*/*.bak
 codeblocks_win/bin/*/*.log
 codeblocks_win/bin/*/*.config
 codeblocks_win/bin/*/*.html
-test/
+test/*/bin/*
+test/*/obj/*
+test/*/*.depend
+test/*/*.layout
 
 .deps/
 autom4te.cache/

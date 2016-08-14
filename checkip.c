@@ -2,19 +2,15 @@
 #include "checkip.h"
 #include "debug.h"
 
-int CheckIP_Init(CheckIP *c)
-{
-	return StringChunk_Init((StringChunk *)c, NULL);
-}
-
-int CheckIP_Add(CheckIP *c, const char *Domain, int Port, int Timeout, int Strategy)
+static int CheckIP_Add(CheckIP *c, const char *Domain, int Port, int Timeout, int Strategy)
 {
 	CheckingMeta cm = {Port, Timeout, Strategy};
 
-    return StringChunk_Add_Domain((StringChunk *)c, Domain, (const char *)&cm, sizeof(CheckingMeta));
+    return StringChunk_Add_Domain(&(c -> Chunk), Domain, (const char *)&cm, sizeof(CheckingMeta));
 }
 
-int CheckIP_Add_From_String(CheckIP *c, const char *Rule)
+/* Domain Port Timeout [keep|discard]  */
+static int CheckIP_Add_From_String(CheckIP *c, const char *Rule)
 {
 	char	Domain[128] = {0}, StrategyS[16] = {0};
 	int	Port, Timeout, Strategy;
@@ -35,14 +31,22 @@ int CheckIP_Add_From_String(CheckIP *c, const char *Rule)
 	return CheckIP_Add(c, Domain, Port, Timeout, Strategy);
 }
 
-const CheckingMeta *CheckIP_Find(CheckIP *c, const char *Domain)
+static const CheckingMeta *CheckIP_Find(CheckIP *c, const char *Domain)
 {
 	const CheckingMeta *cm;
 
-	if( StringChunk_Domain_Match((StringChunk *)c, Domain, NULL, (char **)&cm) == TRUE )
+	if( StringChunk_Domain_Match(&(c -> Chunk), Domain, NULL, (char **)&cm) == TRUE )
 	{
 		return cm;
 	} else {
 		return NULL;
 	}
+}
+
+int CheckIP_Init(CheckIP *c)
+{
+    c -> Add = CheckIP_Add;
+    c -> AddFromString = CheckIP_Add_From_String;
+    c -> Find = CheckIP_Find;
+	return StringChunk_Init(&(c -> Chunk), NULL);
 }

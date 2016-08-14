@@ -14,13 +14,6 @@ BOOL SocketIsStillReadable(SOCKET Sock, int timeout);
 
 void ClearSocketBuffer(SOCKET Sock);
 
-int SendAndReveiveRawMessageViaTCP(SOCKET			Sock,
-								   const void		*Content,
-								   int				ContentLength,
-								   ExtendableBuffer	*ResultBuffer,
-								   uint16_t		*TCPLength /* Big-endian */
-								   );
-
 int TCPProxies_Init(StringList *Proxies);
 
 int QueryDNSViaTCP(void);

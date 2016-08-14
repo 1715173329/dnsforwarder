@@ -13,7 +13,6 @@ typedef enum _DnsQuaryProtocol{
 #include "common.h"
 #include "dnscache.h"
 #include "readconfig.h"
-#include "extendablebuffer.h"
 #include "internalsocket.h"
 
 void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Massage);

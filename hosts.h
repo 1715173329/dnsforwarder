@@ -3,7 +3,6 @@
 
 #include "statichosts.h"
 #include "querydnsbase.h"
-#include "extendablebuffer.h"
 #include "readconfig.h"
 
 int DynamicHosts_Init(ConfigFileInfo *ConfigInfo);

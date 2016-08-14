@@ -68,16 +68,27 @@ int CacheTtlCrtl_Add_From_String(CacheTtlCtrl *c, const char *Rule)
 	return CacheTtlCrtl_Add(c, Domain, State, Coefficient, Increment, Infection);
 }
 
-int CacheTtlCrtl_Add_From_StringList(CacheTtlCtrl *c, const StringList *sl)
+int CacheTtlCrtl_Add_From_StringList(CacheTtlCtrl *c, StringList *sl)
 {
 	const char *Itr = NULL;
+	StringListIterator  sli;
 
-	Itr = StringList_GetNext(sl, NULL);
+	if( sl == NULL )
+    {
+        return 0;
+    }
+
+	if( StringListIterator_Init(&sli, sl) != 0 )
+    {
+        return -1;
+    }
+
+	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
 		CacheTtlCrtl_Add_From_String(c, Itr);
 
-		Itr = StringList_GetNext(sl, Itr);
+		Itr = sli.Next(&sli);
 	}
 
 	return 0;

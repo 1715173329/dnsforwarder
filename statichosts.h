@@ -7,9 +7,9 @@
 
 #define DOMAIN_NAME_LENGTH_MAX 128
 
-typedef struct _OffsetOfHosts{
-	int32_t	Offset;
-} OffsetOfHosts;
+typedef struct _HostsPosition{
+	void    *Position;
+} HostsPosition;
 
 typedef struct _HostsContainer{
 	StringList	Domains;
@@ -21,7 +21,7 @@ typedef struct _HostsContainer{
 	StringChunk	GoodIpLists;
 /*	StringChunk	ExcludedIPs;*/
 
-	ExtendableBuffer	IPs;
+	StableBuffer    IPs;
 } HostsContainer;
 
 extern HostsContainer	MainStaticContainer;

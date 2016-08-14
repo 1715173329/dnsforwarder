@@ -111,12 +111,11 @@ am_dnsforwarder_OBJECTS = addresschunk.$(OBJEXT) checkip.$(OBJEXT) \
 	ipchunk.$(OBJEXT) statichosts.$(OBJEXT) readconfig.$(OBJEXT) \
 	bst.$(OBJEXT) dnscache.$(OBJEXT) excludedlist.$(OBJEXT) \
 	linkedqueue.$(OBJEXT) stringchunk.$(OBJEXT) readline.$(OBJEXT) \
-	cacheht.$(OBJEXT) dnsgenerator.$(OBJEXT) \
-	extendablebuffer.$(OBJEXT) main.$(OBJEXT) stringlist.$(OBJEXT) \
-	querydnsbase.$(OBJEXT) request_response.$(OBJEXT) \
-	cachettlcrtl.$(OBJEXT) dnsparser.$(OBJEXT) \
-	goodiplist.$(OBJEXT) utils.$(OBJEXT) \
-	querydnsinterface.$(OBJEXT)
+	cacheht.$(OBJEXT) dnsgenerator.$(OBJEXT) main.$(OBJEXT) \
+	stringlist.$(OBJEXT) querydnsbase.$(OBJEXT) \
+	request_response.$(OBJEXT) cachettlcrtl.$(OBJEXT) \
+	dnsparser.$(OBJEXT) goodiplist.$(OBJEXT) utils.$(OBJEXT) \
+	querydnsinterface.$(OBJEXT) stablebuffer.$(OBJEXT)
 dnsforwarder_OBJECTS = $(am_dnsforwarder_OBJECTS)
 dnsforwarder_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -283,7 +282,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dnsforwarder_SOURCES = addresschunk.c checkip.c dnsrelated.c hosts.c querydnsinterface.h simpleht.c addresschunk.h checkip.h dnsrelated.h hosts.h querydnslistentcp.c simpleht.h addresslist.c common.h domainstatistic.c internalsocket.c querydnslistentcp.h socketpool.c addresslist.h config.h domainstatistic.h internalsocket.h querydnslistenudp.c socketpool.h array.c debug.c downloader.c ipchunk.c querydnslistenudp.h statichosts.c array.h debug.h downloader.h ipchunk.h readconfig.c statichosts.h bst.c dnscache.c excludedlist.c linkedqueue.c readconfig.h stringchunk.c bst.h dnscache.h excludedlist.h linkedqueue.h readline.c stringchunk.h cacheht.c dnsgenerator.c extendablebuffer.c main.c readline.h stringlist.c cacheht.h dnsgenerator.h extendablebuffer.h querydnsbase.c request_response.c stringlist.h cachettlcrtl.c dnsparser.c goodiplist.c querydnsbase.h request_response.h utils.c cachettlcrtl.h dnsparser.h goodiplist.h querydnsinterface.c rwlock.h utils.h
+dnsforwarder_SOURCES = addresschunk.c checkip.c dnsrelated.c hosts.c querydnsinterface.h simpleht.c addresschunk.h checkip.h dnsrelated.h hosts.h querydnslistentcp.c simpleht.h addresslist.c common.h domainstatistic.c internalsocket.c querydnslistentcp.h socketpool.c addresslist.h config.h domainstatistic.h internalsocket.h querydnslistenudp.c socketpool.h array.c debug.c downloader.c ipchunk.c querydnslistenudp.h statichosts.c array.h debug.h downloader.h ipchunk.h readconfig.c statichosts.h bst.c dnscache.c excludedlist.c linkedqueue.c readconfig.h stringchunk.c bst.h dnscache.h excludedlist.h linkedqueue.h readline.c stringchunk.h cacheht.c dnsgenerator.c main.c readline.h stringlist.c cacheht.h dnsgenerator.h querydnsbase.c request_response.c stringlist.h cachettlcrtl.c dnsparser.c goodiplist.c querydnsbase.h request_response.h utils.c cachettlcrtl.h dnsparser.h goodiplist.h querydnsinterface.c rwlock.h utils.h stablebuffer.h stablebuffer.c
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -405,7 +404,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/domainstatistic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/downloader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/excludedlist.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/extendablebuffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/goodiplist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hosts.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/internalsocket.Po@am__quote@
@@ -421,6 +419,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/request_response.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simpleht.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socketpool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stablebuffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statichosts.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringchunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringlist.Po@am__quote@

@@ -3,7 +3,6 @@
 #include <time.h>
 #include "common.h"
 #include "stringchunk.h"
-#include "extendablebuffer.h"
 #include "domainstatistic.h"
 #include "utils.h"
 #include "querydnsbase.h"

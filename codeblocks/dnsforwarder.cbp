@@ -107,10 +107,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../excludedlist.h" />
-		<Unit filename="../extendablebuffer.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../extendablebuffer.h" />
 		<Unit filename="../goodiplist.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -171,6 +167,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../socketpool.h" />
+		<Unit filename="../stablebuffer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../stablebuffer.h" />
 		<Unit filename="../statichosts.c">
 			<Option compilerVar="CC" />
 		</Unit>

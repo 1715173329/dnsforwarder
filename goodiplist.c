@@ -18,6 +18,8 @@ static StringChunk	*GoodIpList = NULL;
 static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
 {
 	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPList");
+	StringListIterator  sli;
+
 	const char	*Itr	=	NULL;
 
 	if( l == NULL )
@@ -25,13 +27,18 @@ static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
 		return -1;
 	}
 
+	if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -2;
+    }
+
 	GoodIpList = SafeMalloc(sizeof(StringChunk));
 	if( GoodIpList != NULL && StringChunk_Init(GoodIpList, NULL) != 0 )
 	{
 		return -3;
 	}
 
-	Itr = StringList_GetNext(l, NULL);
+	Itr = sli.Next(&sli);
     while( Itr != NULL )
     {
 		CountDownMeta	m = {0, 0, Array_Init_Static(sizeof(struct sockaddr_in))};
@@ -48,7 +55,7 @@ static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
         m.Interval = i;
 		StringChunk_Add(GoodIpList, n, (const char *)&m, sizeof(CountDownMeta));
 
-		Itr = StringList_GetNext(l, Itr);
+		Itr = sli.Next(&sli);
     }
 
     return 0;
@@ -58,6 +65,8 @@ static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
 static int AddToLists(ConfigFileInfo *ConfigInfo)
 {
 	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPListAddIP");
+	StringListIterator  sli;
+
 	const char	*Itr	=	NULL;
 
 	if( l == NULL )
@@ -65,7 +74,12 @@ static int AddToLists(ConfigFileInfo *ConfigInfo)
 		return -1;
 	}
 
-	Itr = StringList_GetNext(l, NULL);
+	if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -2;
+    }
+
+	Itr = sli.Next(&sli);
     while( Itr != NULL )
     {
 		CountDownMeta	*m = NULL;
@@ -82,13 +96,13 @@ static int AddToLists(ConfigFileInfo *ConfigInfo)
 		if( StringChunk_Match_NoWildCard(GoodIpList, n, NULL, (char **)&m) == FALSE)
 		{
 			ERRORMSG("List is not found : %s\n", Itr);
-			Itr = StringList_GetNext(l, Itr);
+			Itr = sli.Next(&sli);
 			continue;
 		}
 
 		Array_PushBack(&(m -> List), &ip, NULL);
 
-		Itr = StringList_GetNext(l, Itr);
+		Itr = sli.Next(&sli);
     }
 
     return 0;

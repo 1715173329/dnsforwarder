@@ -34,6 +34,7 @@ int Array_Init(__in Array *a, __in int DataLength, __in int InitialCount, __in B
 
 	return 0;
 }
+
 /* Subscripts are always non-negative. */
 void *Array_GetBySubscript(__in const Array *a, __in int Subscript)
 {
@@ -48,6 +49,41 @@ void *Array_GetBySubscript(__in const Array *a, __in int Subscript)
 	} else {
 		return NULL;
 	}
+}
+
+void *Array_GetThis(__in Array *a, __in const void *Position)
+{
+    const char *pos = Position;
+
+    if( pos == NULL )
+    {
+        return NULL;
+    } else {
+        int n = (pos - a->Data) / a->DataLength;
+        return (void *)(a->Data + n * a->DataLength);
+    }
+}
+
+void *Array_GetNext(__in Array *a, __in const void *Position)
+{
+    const char *pos = Position;
+
+    int n;
+
+    if( pos == NULL )
+    {
+        n = 0;
+    } else {
+        n = (pos - a->Data) / a->DataLength + 1;
+    }
+
+    if( n >= a->Used )
+    {
+        return NULL;
+    } else {
+        return (void *)(a->Data + n * a->DataLength);
+    }
+
 }
 
 /* Subscript returned */
@@ -85,7 +121,6 @@ int Array_PushBack(__in Array *a, __in_opt const void *Data, __in_opt void *Boun
 		}
 	}
 }
-
 
 void *Array_SetToSubscript(Array *a, int Subscript, const void *Data)
 {

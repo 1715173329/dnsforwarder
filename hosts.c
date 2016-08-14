@@ -32,8 +32,8 @@ static void DynamicHosts_FreeHostsContainer(HostsContainer *Container)
 	StringChunk_Free(&(Container -> Ipv6Hosts), FALSE);
 	StringChunk_Free(&(Container -> CNameHosts), FALSE);
 	StringChunk_Free(&(Container -> ExcludedDomains), FALSE);
-	StringList_Free(&(Container -> Domains));
-	ExtendableBuffer_Free(&(Container -> IPs));
+    Container->Domains.Free(&(Container -> Domains));
+	Container->IPs.Free(&(Container->IPs));
 }
 
 static int DynamicHosts_Load(void)
@@ -143,7 +143,9 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 	int			DownloadState;
 	const char	**URLs;
 
-	URLs = StringList_ToCharPtrArray(ConfigGetStringList(ConfigInfo, "Hosts"));
+	StringList  *Hosts = ConfigGetStringList(ConfigInfo, "Hosts");
+
+	URLs = Hosts->ToCharPtrArray(Hosts);
 
 	while(1)
 	{
@@ -184,11 +186,11 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 
 static const char *Hosts_FindFromContainer(HostsContainer *Container, StringChunk *SubContainer, const char *Name)
 {
-	OffsetOfHosts *IP;
+	HostsPosition *IP;
 
 	if( StringChunk_Match(SubContainer, Name, NULL, (char **)&IP) == TRUE )
 	{
-		return ExtendableBuffer_GetPositionByOffset(&(Container -> IPs), IP -> Offset);
+		return IP->Position;
 	} else {
 		return NULL;
 	}
