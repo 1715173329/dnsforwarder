@@ -123,6 +123,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../ipchunk.h" />
+		<Unit filename="../ipmisc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../ipmisc.h" />
 		<Unit filename="../linkedqueue.c">
 			<Option compilerVar="CC" />
 		</Unit>

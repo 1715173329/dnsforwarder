@@ -21,9 +21,9 @@ void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domai
 
 void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter);
 
-void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const char *Package, int PackageLength, char ProtocolCharacter);
+void ShowNormalMassage(const char *Agent, const char *RequestingDomain, char *Package, int PackageLength, char ProtocolCharacter);
 
-void ShowBlockedMessage(const char *RequestingDomain, const char *Package, int PackageLength, const char *Message);
+void ShowBlockedMessage(const char *RequestingDomain, char *Package, int PackageLength, const char *Message);
 
 void ShowFatalMessage(const char *Message, int ErrorCode);
 

@@ -213,7 +213,7 @@ int DNSGenerateData(__in			char				*Data,
 			return strlen(Data) + 2;
 			break;
 
-		case DNS_CHARACTER_STRING:
+		case DNS_CHARACTER_STRINGS:
 			if( Buffer != NULL )
 			{
 				if( BufferLength < strlen(Data) + 1 )
@@ -311,7 +311,7 @@ int DNSRemoveEDNSPseudoRecord(char *RequestContent, int *RequestLength)
 {
 	if( DNSGetAdditionalCount(RequestContent) == 1 )
 	{
-		const char *AdditionalRecords;
+		char *AdditionalRecords;
 		AdditionalRecords = DNSJumpOverQuestionRecords(RequestContent);
 		if( DNSGetRecordType(AdditionalRecords) == DNS_TYPE_OPT )
 		{

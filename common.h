@@ -6,9 +6,9 @@
 	#include "config.h"
 #endif /* HAVE_CONFIG_H */
 
-/* There are some differeces between Linux and Windows.
- * For convenience, we defined something here to unify interfaces,
- * but it seems to be not very good. */
+/* There are many differeces between Linux and Windows.
+ * And we defined things here to unify interfaces,
+ * but it doesn't seem to be very good. */
 
 #ifdef WIN32 /* For Windows below. */
 

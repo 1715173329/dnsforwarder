@@ -24,7 +24,28 @@ int IpChunk_Init(IpChunk *ic);
 
 int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t DataLength);
 
+int IpChunk_AddFromString(IpChunk *ic,
+                          const char *Ip,
+                          int Type,
+                          const char *Data,
+                          uint32_t DataLength
+                          );
+
 int IpChunk_Add6(IpChunk *ic, const char *Ipv6, int Type, const char *Data, uint32_t DataLength);
+
+int IpChunk_Add6FromString(IpChunk *ic,
+                           const char *Ip,
+                           int Type,
+                           const char *Data,
+                           uint32_t DataLength
+                           );
+
+int IpChunk_AddAnyFromString(IpChunk *ic,
+                             const char *Ip,
+                             int Type,
+                             const char *Data,
+                             uint32_t DataLength
+                             );
 
 BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data);
 

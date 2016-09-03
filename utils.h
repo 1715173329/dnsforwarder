@@ -83,6 +83,8 @@ sa_family_t GetAddressFamily(const char *Addr);
 
 int IPv6AddressToAsc(const void *Address, void *Buffer);
 
+int IPv4AddressToAsc(const void *Address, void *Buffer);
+
 int	GetConfigDirectory(char *out);
 
 BOOL FileIsReadable(const char *File);
@@ -124,5 +126,18 @@ char *GetLocalPathFromURL(const char *URL, char *Buffer, int BufferLength);
 int CopyAFile(const char *Src, const char *Dst, BOOL Append);
 
 int FatalErrorDecideding(int LastError);
+
+int CountSubStr(const char *Src, const char *SubStr);
+
+char *ReplaceStr(char *Src, const char *OriSubstr, const char *DesSubstr);
+
+#define TOTAL_SPACE_NEEDED(str, orilen, deslen, n) \
+            (strlen(str) + 1 + ((deslen)-(orilen))*(n))
+
+char *ReplaceStr_WithLengthChecking(char *Src,
+                                    const char *OriSubstr,
+                                    const char *DesSubstr,
+                                    int SrcBufferLength
+                                    );
 
 #endif /* _UTILS_ */

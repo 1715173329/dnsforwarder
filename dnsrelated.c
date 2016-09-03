@@ -6,7 +6,7 @@ const DNSTypeAndName DNSTypeList[] = {
 	{1,		"IPv4 Address"},
 	{5,		"Canonical Name"},
 	{28,	"IPv6 Address"},
-	{6,		"start of authority record"},
+	{6,		"start of authority"},
 	{12,	"Domain pointer"},
 	{2,		"Name Server"},
 	{15,	"MX"},

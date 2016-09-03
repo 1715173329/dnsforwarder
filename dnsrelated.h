@@ -46,7 +46,7 @@ typedef enum _DNSRecordType{
 }DNSRecordType;
 
 typedef enum _DNSRecordClass{
-	DNS_CLASS_UNKNOEN	=	0,
+	DNS_CLASS_UNKNOWN	=	0,
 	DNS_CLASS_IN		=	1,
 	DNS_CLASS_CH		=	3,
 	DNS_CLASS_ANY		=	255,

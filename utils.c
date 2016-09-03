@@ -552,6 +552,19 @@ int IPv6AddressToAsc(const void *Address, void *Buffer)
 	return 0;
 }
 
+int IPv4AddressToAsc(const void *Address, void *Buffer)
+{
+    const char  *a = (const char *)Address;
+
+    sprintf(Buffer, "%u.%u.%u.%u",	GET_8_BIT_U_INT(a),
+                                    GET_8_BIT_U_INT(a + 1),
+                                    GET_8_BIT_U_INT(a + 2),
+                                    GET_8_BIT_U_INT(a + 3)
+        );
+
+	return 0;
+}
+
 int	GetConfigDirectory(char *out)
 {
 #ifdef WIN32
@@ -996,4 +1009,62 @@ int FatalErrorDecideding(int LastError)
 #endif
 
 	return -1;
+}
+
+int CountSubStr(const char *Src, const char *SubStr)
+{
+    int ret = 0;
+    int SubStrLen = strlen(SubStr);
+    const char *Itr;
+
+    Itr = strstr(Src, SubStr);
+    while( Itr != NULL )
+    {
+        ++ret;
+
+        Itr = strstr(Itr + SubStrLen, SubStr);
+    }
+
+    return ret;
+}
+
+char *ReplaceStr(char *Src, const char *OriSubstr, const char *DesSubstr)
+{
+    int DesLen = strlen(DesSubstr);
+    int OriLen = strlen(OriSubstr);
+    //int Difference = DesLen - OriLen;
+
+    char *Itr;
+
+    Itr = strstr(Src, OriSubstr);
+    while( Itr != NULL )
+    {
+        memmove(Itr + DesLen, Itr + OriLen, strlen(Itr + OriLen) + 1);
+
+        memcpy(Itr, DesSubstr, DesLen);
+
+        Itr = strstr(Itr + DesLen, OriSubstr);
+    }
+
+    return Src;
+}
+
+char *ReplaceStr_WithLengthChecking(char *Src,
+                                    const char *OriSubstr,
+                                    const char *DesSubstr,
+                                    int SrcBufferLength
+                                    )
+{
+    int TotalSpaceNeeded = TOTAL_SPACE_NEEDED(Src,
+                                              strlen(OriSubstr),
+                                              strlen(DesSubstr),
+                                              CountSubStr(Src, OriSubstr)
+                                              );
+
+    if( TotalSpaceNeeded > SrcBufferLength )
+    {
+        return NULL;
+    } else {
+        return ReplaceStr(Src, OriSubstr, DesSubstr);
+    }
 }

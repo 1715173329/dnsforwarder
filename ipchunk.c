@@ -1,4 +1,5 @@
 #include <string.h>
+#include "utils.h"
 #include "ipchunk.h"
 
 static int Compare(IpElement *_1, IpElement *_2)
@@ -59,6 +60,20 @@ int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t D
 	return Bst_Add(&(ic -> Chunk), &New);
 }
 
+int IpChunk_AddFromString(IpChunk *ic,
+                          const char *Ip,
+                          int Type,
+                          const char *Data,
+                          uint32_t DataLength
+                          )
+{
+    uint32_t    IpNum = 0;
+
+    IPv4AddressToNum(Ip, &IpNum);
+
+    return IpChunk_Add(ic, IpNum, Type, Data, DataLength);
+}
+
 int IpChunk_Add6(IpChunk *ic, const char *Ipv6, int Type, const char *Data, uint32_t DataLength)
 {
     StableBuffer *sb = &(ic->Datas);
@@ -75,6 +90,35 @@ int IpChunk_Add6(IpChunk *ic, const char *Ipv6, int Type, const char *Data, uint
 	}
 
 	return Bst_Add(&(ic -> Chunk), &New);
+}
+
+int IpChunk_Add6FromString(IpChunk *ic,
+                           const char *Ip,
+                           int Type,
+                           const char *Data,
+                           uint32_t DataLength
+                           )
+{
+    char	IpNum[16];
+
+    IPv6AddressToNum(Ip, IpNum);
+
+    return IpChunk_Add6(ic, IpNum, Type, Data, DataLength);
+}
+
+int IpChunk_AddAnyFromString(IpChunk *ic,
+                             const char *Ip,
+                             int Type,
+                             const char *Data,
+                             uint32_t DataLength
+                             )
+{
+    if( strchr(Ip, ':') != NULL )
+    {
+        return IpChunk_Add6FromString(ic, Ip, Type, Data, DataLength);
+    } else {
+        return IpChunk_AddFromString(ic, Ip, Type, Data, DataLength);
+    }
 }
 
 BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data)

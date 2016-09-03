@@ -116,7 +116,7 @@ void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain,
 			   );
 }
 
-void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const char *Package, int PackageLength, char ProtocolCharacter)
+void ShowNormalMassage(const char *Agent, const char *RequestingDomain, char *Package, int PackageLength, char ProtocolCharacter)
 {
 	DNSRecordType	Type = DNS_TYPE_UNKNOWN;
 
@@ -157,7 +157,7 @@ void ShowNormalMassage(const char *Agent, const char *RequestingDomain, const ch
 			  );
 }
 
-void ShowBlockedMessage(const char *RequestingDomain, const char *Package, int PackageLength, const char *Message)
+void ShowBlockedMessage(const char *RequestingDomain, char *Package, int PackageLength, const char *Message)
 {
 	char DateAndTime[32];
 	char InfoBuffer[1024];

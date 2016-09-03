@@ -29,25 +29,25 @@
 #define DNSJumpHeader(dns_body)				((char *)(dns_body) + DNS_HEADER_LENGTH)
 
 /* Handle question record */
-const char *DNSGetQuestionRecordPosition(const char *DNSBody, int Num);
+char *DNSGetQuestionRecordPosition(char *DNSBody, int Num);
 
 #define DNSJumpOverQuestionRecords(dns_body)	DNSGetQuestionRecordPosition((dns_body), DNSGetQuestionCount(dns_body) + 1)
 
 /* Handle resource\answer record */
-const char *DNSGetAnswerRecordPosition(const char *DNSBody, int Num);
+char *DNSGetAnswerRecordPosition(char *DNSBody, int Num);
 
 #define DNSGetTTL(ans_start_ptr)				GET_32_BIT_U_INT(DNSJumpOverName(ans_start_ptr) + 4)
 
 #define DNSGetResourceDataLength(ans_start_ptr)	GET_16_BIT_U_INT(DNSJumpOverName(ans_start_ptr) + 8)
 
-#define DNSGetResourceDataPos(ans_start_ptr)	(DNSJumpOverName((const char *)(ans_start_ptr)) + 10)
+#define DNSGetResourceDataPos(ans_start_ptr)	(DNSJumpOverName((char *)(ans_start_ptr)) + 10)
 
 #define DNSJumpOverAnswerRecords(dns_body)		DNSGetAnswerRecordPosition((dns_body), DNSGetAnswerCount(dns_body) + 1)
 
 #define DNSGetARecordLength(record_ptr)			((DNSJumpOverName(record_ptr) - record_ptr) + 10 + DNSGetResourceDataLength(record_ptr))
 
 /* Common */
-const char *DNSJumpOverName(const char *NameStart);
+char *DNSJumpOverName(char *NameStart);
 
 int DNSGetHostName(const char *DNSBody, int DNSBodyLength, const char *NameStart, char *buffer, int BufferLength);
 
@@ -59,11 +59,11 @@ int DNSGetHostNameLength(const char *DNSBody, int DNSBodyLength, const char *Nam
 
 #define DNSLabelGetPointer(rec_start_ptr)	((rec_start_ptr) == NULL ? 0 : (int)((unsigned char *)(rec_start_ptr))[1] + (int)(((unsigned char *)(rec_start_ptr))[0] - 192) * 256)
 
-#define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOEN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
+#define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOWN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
 
-int DNSExpandCName_MoreSpaceNeeded(const char *DNSBody, int DNSBodyLength);
+int DNSExpandCName_MoreSpaceNeeded(char *DNSBody, int DNSBodyLength);
 
-void DNSExpandCName(const char *DNSBody, int DNSBodyLength);
+void DNSExpandCName(char *DNSBody, int DNSBodyLength);
 
 typedef enum _RecordElement{
 	DNS_UNKNOWN  = 0,
@@ -71,9 +71,7 @@ typedef enum _RecordElement{
 	DNS_32BIT_UINT,
 	DNS_16BIT_UINT,
 	DNS_8BIT_UINT,
-	DNS_CHARACTER_STRING,
-
-
+	DNS_CHARACTER_STRINGS,
 
 	DNS_DNSKEY_FLAGS,
 	DNS_DNSKEY_PROTOCOL,
@@ -88,7 +86,7 @@ typedef enum _RecordElement{
 
 typedef struct _ElementDescriptor{
 	RecordElement	element;
-	char			*description;
+	const char		*description;
 }ElementDescriptor;
 
 extern const ElementDescriptor DNS_RECORD_A[];
@@ -213,36 +211,131 @@ typedef struct _DNSHeader{
 
 #define DNSGetHeader(dns_body_ptr)	((DNSHeader *)(dns_body_ptr))
 
-/* DNS_DataType and DNSDataInfo are for DNSParseData() */
-typedef enum _DNS_DataType{
-	DNS_DATA_TYPE_UNKNOWN = 0,
-	DNS_DATA_TYPE_INT,
-	DNS_DATA_TYPE_UINT,
-	DNS_DATA_TYPE_STRING
-}DNS_DataType;
-
-typedef struct _DNSDataInfo{
-	DNS_DataType	DataType;
-	int				DataLength;
-}DNSDataInfo;
-
-DNSDataInfo DNSParseData(const char *DNSBody,
-						int DNSBodyLength,
-						const char *DataBody,
-						int DataLength,
-						void *Buffer,
-						int BufferLength,
-						const ElementDescriptor *Descriptor,
-						int CountOfDescriptor,
-						int Num);
-
 /* Convert a DNS message to text */
-char *GetAnswer(const char *DNSBody, int DNSBodyLength, const char *DataBody, int DataLength, char *Buffer, DNSRecordType ResourceType);
-
-char *GetAllAnswers(const char *DNSBody, int DNSBodyLength, char *Buffer, size_t BufferLength);
+char *GetAllAnswers(char *DNSBody, int DNSBodyLength, char *Buffer, int BufferLength);
 
 void DNSCopyLable(const char *DNSBody, char *here, const char *src);
 
-void DNSParser(char *dns_over_tcp, char *buffer);
+/**
+  New Implementation
+*/
+
+typedef enum _DnsDirection{
+    DNS_DIRECTION_QUERY = 0,
+    DNS_DIRECTION_RESPONSE = 1,
+} DnsDirection;
+
+typedef enum _DnsOperation{
+    DNS_OPERATION_QUERY = 0,
+    DNS_OPERATION_IQUERY = 1,
+    DNS_OPERATION_STATUS = 2,
+} DnsOperation;
+
+typedef enum _ResponseCode{
+    RESPONSE_CODE_NO_ERROR = 0,
+    RESPONSE_CODE_FORMAT_ERROR = 1,
+    RESPONSE_CODE_SERVER_FAILURE = 2,
+    RESPONSE_CODE_NAME_ERROR = 3,
+    RESPONSE_CODE_NOT_IMPLEMENTED = 4,
+    RESPONSE_CODE_REFUSED = 5,
+} ResponseCode;
+
+typedef struct _DnsSimpleParser DnsSimpleParser;
+
+struct _DnsSimpleParser{
+    /* private */
+    char *RowDns;
+    int  RowDnsLength;
+
+    struct {
+        /* private */
+        const DNSFlags    *Flags;
+
+        /* public */
+        DnsDirection    (*Direction)(DnsSimpleParser *p);
+        DnsOperation    (*Operation)(DnsSimpleParser *p);
+        BOOL            (*IsAuthoritative)(DnsSimpleParser *p);
+        BOOL            (*Truncated)(DnsSimpleParser *p);
+        BOOL            (*RecursionDesired)(DnsSimpleParser *p);
+        BOOL            (*RecursionAvailable)(DnsSimpleParser *p);
+        ResponseCode    (*ResponseCode)(DnsSimpleParser *p);
+    } _Flags;
+
+    /* public */
+    uint16_t    (*QueryIdentifier)(DnsSimpleParser *p);
+    int         (*QuestionCount)(DnsSimpleParser *p);
+    int         (*AnswerCount)(DnsSimpleParser *p);
+    int         (*NameServerCount)(DnsSimpleParser *p);
+    int         (*AdditionalCount)(DnsSimpleParser *p);
+};
+
+int DnsSimpleParser_Init(DnsSimpleParser *p,
+                         char *RowDns,
+                         int Length,
+                         BOOL IsTcp);
+
+/**
+  Iterator
+*/
+
+typedef enum _DnsRecordPurpose{
+    /* Their values are not important */
+    DNS_RECORD_PURPOSE_UNKNOWN = 0,
+    DNS_RECORD_PURPOSE_QUESTION,
+    DNS_RECORD_PURPOSE_ANSWER,
+    DNS_RECORD_PURPOSE_NAME_SERVER,
+    DNS_RECORD_PURPOSE_ADDITIONAL,
+} DnsRecordPurpose;
+
+typedef struct _DnsSimpleParserIterator DnsSimpleParserIterator;
+
+struct _DnsSimpleParserIterator{
+    /* private */
+    DnsSimpleParser *Parser;
+
+    char        *CurrentPosition;
+    int         RecordPosition; /* Starts at 1 */
+
+    int         QuestionFirst; /* Starts at 1; 0 means no such record */
+    int         QuestionLast;
+
+    int         AnswerFirst; /* Starts at 1; 0 means no such record */
+    int         AnswerLast;
+
+    int         NameServerFirst; /* Starts at 1; 0 means no such record */
+    int         NameServerLast;
+
+    int         AdditionalFirst; /* Starts at 1; 0 means no such record */
+    int         AdditionalLast;
+
+    int         AllRecordCount;
+
+    /* public, but don't modify outside */
+    /* Current record informations */
+    DnsRecordPurpose    Purpose;
+    DNSRecordType       Type;
+    DNSRecordClass      Klass;
+    int                 DataLength;
+
+    char *(*Next)(DnsSimpleParserIterator *i);
+    void (*GotoAnswers)(DnsSimpleParserIterator *i);
+    int (*GetName)(DnsSimpleParserIterator *i,
+                   char *Buffer, /* Could be NULL */
+                   int BufferLength
+                   );
+    int (*GetNameLength)(DnsSimpleParserIterator *i);
+    char *(*RowData)(DnsSimpleParserIterator *i);
+    int (*TextifyData)(DnsSimpleParserIterator *i,
+                       const char *Format, /* "%t:%v\n" */
+                       char *Buffer,
+                       int BufferLength
+                       );
+
+    uint32_t (*GetTTL)(DnsSimpleParserIterator *i);
+};
+
+int DnsSimpleParserIterator_Init(DnsSimpleParserIterator *i,
+                                 DnsSimpleParser *p
+                                 );
 
 #endif /* _DNS_PARSER_H_ */
