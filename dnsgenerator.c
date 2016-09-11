@@ -333,3 +333,436 @@ void DNSAppendEDNSPseudoRecord(char *RequestContent, int *RequestLength)
 	DNSSetAdditionalCount(RequestContent, 1);
 	*RequestLength += OPT_PSEUDORECORD_LENGTH;
 }
+
+/**
+  New Implementation
+*/
+
+static DnsRecordPurpose DnsGenerator_CurrentPurpose(DnsGenerator *g)
+{
+    switch( (char *)(g->NumberOfRecords) - g->Buffer )
+    {
+    case 4:
+        return DNS_RECORD_PURPOSE_QUESTION;
+        break;
+
+    case 6:
+        return DNS_RECORD_PURPOSE_ANSWER;
+        break;
+
+    case 8:
+        return DNS_RECORD_PURPOSE_NAME_SERVER;
+        break;
+
+    case 10:
+        return DNS_RECORD_PURPOSE_ADDITIONAL;
+        break;
+
+    default:
+        return DNS_RECORD_PURPOSE_UNKNOWN;
+        break;
+    }
+}
+
+static DnsRecordPurpose DnsGenerator_NextPurpose(DnsGenerator *g)
+{
+    if( DnsGenerator_CurrentPurpose(g) == DNS_RECORD_PURPOSE_UNKNOWN )
+    {
+        return DNS_RECORD_PURPOSE_UNKNOWN;
+    }
+
+    g->NumberOfRecords = (char *)(g->NumberOfRecords) + 2;
+
+    return DnsGenerator_CurrentPurpose(g);
+}
+
+#define LEFT_LENGTH(g_ptr)  ((g_ptr)->BufferLength - ((g_ptr)->Itr - (g_ptr)->Buffer))
+#define LABEL_LENGTH(name)  (strlen(name) + 2)
+
+static int DnsGenerator_NamePart(DnsGenerator *g, const char *Name)
+{
+	if( Name == NULL || *Name == '\0' )
+    {
+        if( LEFT_LENGTH(g) < 1 )
+        {
+            return -1;
+        }
+
+        *(g->Itr) = '\0';
+        g->Itr += 1;
+
+    } else {
+
+        int LabelLen = LABEL_LENGTH(Name);
+
+        if( LEFT_LENGTH(g) < LabelLen )
+        {
+            return -2;
+        }
+
+        strcpy(g->Itr, Name);
+
+        if( DNSLabelizedName(g->Itr, LabelLen) == NULL )
+        {
+            return -3;
+        }
+
+        g->Itr += LabelLen;
+    }
+
+    return 0;
+}
+
+static int DnsGenerator_16Uint(DnsGenerator *g, int Value)
+{
+	if( LEFT_LENGTH(g) < 2 )
+    {
+        return -1;
+    }
+
+    SET_16_BIT_U_INT(g->Itr, Value);
+
+    g->Itr += 2;
+
+    return 0;
+}
+
+static int DnsGenerator_32Uint(DnsGenerator *g, int Value)
+{
+	if( LEFT_LENGTH(g) < 4 )
+    {
+        return -1;
+    }
+
+    SET_32_BIT_U_INT(g->Itr, Value);
+
+    g->Itr += 4;
+
+    return 0;
+}
+
+static int DnsGenerator_IPv4(DnsGenerator *g, const char *ip)
+{
+	if( LEFT_LENGTH(g) < 4 )
+    {
+        return -1;
+    }
+
+    IPv4AddressToNum(ip, g->Itr);
+
+    g->Itr += 4;
+
+    return 0;
+}
+
+static int DnsGenerator_IPv6(DnsGenerator *g, const char *ip)
+{
+	if( LEFT_LENGTH(g) < 16 )
+    {
+        return -1;
+    }
+
+    IPv6AddressToNum(ip, g->Itr);
+
+    g->Itr += 16;
+
+    return 0;
+}
+
+/* Record generations */
+static int DnsGenerator_Question(DnsGenerator *g,
+                                 const char *Name,
+                                 DNSRecordType Type,
+                                 DNSRecordClass Klass
+                                 )
+{
+    if( DnsGenerator_CurrentPurpose(g) != DNS_RECORD_PURPOSE_QUESTION )
+    {
+        return 1;
+    }
+
+	if( DnsGenerator_NamePart(g, Name) != 0 )
+    {
+        return -1;
+    }
+
+	if( DnsGenerator_16Uint(g, Type) != 0 )
+    {
+        return -2;
+    }
+
+	if( DnsGenerator_16Uint(g, Klass) != 0 )
+    {
+        return -3;
+    }
+
+    SET_16_BIT_U_INT(g->NumberOfRecords,
+                     GET_16_BIT_U_INT(g->NumberOfRecords) + 1
+                     );
+
+	return 0;
+}
+
+static int DnsGenerator_CName(DnsGenerator *g,
+                              const char *Name,
+                              const char *CName,
+                              int Ttl
+                              )
+{
+    DnsRecordPurpose p = DnsGenerator_CurrentPurpose(g);
+
+    if( p != DNS_RECORD_PURPOSE_ANSWER &&
+        p != DNS_RECORD_PURPOSE_NAME_SERVER &&
+        p != DNS_RECORD_PURPOSE_ADDITIONAL
+        )
+    {
+        return 1;
+    }
+
+	if( DnsGenerator_NamePart(g, Name) != 0 )
+    {
+        return -1;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_TYPE_CNAME) != 0 )
+    {
+        return -2;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_CLASS_IN) != 0 )
+    {
+        return -3;
+    }
+
+	if( DnsGenerator_32Uint(g, Ttl) != 0 )
+    {
+        return -4;
+    }
+
+	if( DnsGenerator_16Uint(g, LABEL_LENGTH(CName)) != 0 )
+    {
+        return -5;
+    }
+
+	if( DnsGenerator_NamePart(g, CName) != 0 )
+    {
+        return -6;
+    }
+
+    SET_16_BIT_U_INT(g->NumberOfRecords,
+                     GET_16_BIT_U_INT(g->NumberOfRecords) + 1
+                     );
+
+    return 0;
+}
+
+static int DnsGenerator_A(DnsGenerator *g,
+                          const char *Name,
+                          const char *ip,
+                          int Ttl
+                          )
+{
+    DnsRecordPurpose p = DnsGenerator_CurrentPurpose(g);
+
+    if( p != DNS_RECORD_PURPOSE_ANSWER &&
+        p != DNS_RECORD_PURPOSE_NAME_SERVER &&
+        p != DNS_RECORD_PURPOSE_ADDITIONAL
+        )
+    {
+        return 1;
+    }
+
+	if( DnsGenerator_NamePart(g, Name) != 0 )
+    {
+        return -1;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_TYPE_A) != 0 )
+    {
+        return -2;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_CLASS_IN) != 0 )
+    {
+        return -3;
+    }
+
+	if( DnsGenerator_32Uint(g, Ttl) != 0 )
+    {
+        return -4;
+    }
+
+	if( DnsGenerator_16Uint(g, 4) != 0 )
+    {
+        return -5;
+    }
+
+	if( DnsGenerator_IPv4(g, ip) != 0 )
+    {
+        return -6;
+    }
+
+    SET_16_BIT_U_INT(g->NumberOfRecords,
+                     GET_16_BIT_U_INT(g->NumberOfRecords) + 1
+                     );
+
+    return 0;
+}
+
+static int DnsGenerator_AAAA(DnsGenerator *g,
+                             const char *Name,
+                             const char *ip,
+                             int Ttl
+                             )
+{
+    DnsRecordPurpose p = DnsGenerator_CurrentPurpose(g);
+
+    if( p != DNS_RECORD_PURPOSE_ANSWER &&
+        p != DNS_RECORD_PURPOSE_NAME_SERVER &&
+        p != DNS_RECORD_PURPOSE_ADDITIONAL
+        )
+    {
+        return 1;
+    }
+
+	if( DnsGenerator_NamePart(g, Name) != 0 )
+    {
+        return -1;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_TYPE_AAAA) != 0 )
+    {
+        return -2;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_CLASS_IN) != 0 )
+    {
+        return -3;
+    }
+
+	if( DnsGenerator_32Uint(g, Ttl) != 0 )
+    {
+        return -4;
+    }
+
+	if( DnsGenerator_16Uint(g, 16) != 0 )
+    {
+        return -5;
+    }
+
+	if( DnsGenerator_IPv6(g, ip) != 0 )
+    {
+        return -6;
+    }
+
+    SET_16_BIT_U_INT(g->NumberOfRecords,
+                     GET_16_BIT_U_INT(g->NumberOfRecords) + 1
+                     );
+
+    return 0;
+}
+
+static int DnsGenerator_EDns(DnsGenerator *g,
+                             int UdpPayloadSize)
+{
+    DnsRecordPurpose p = DnsGenerator_CurrentPurpose(g);
+
+    if( p != DNS_RECORD_PURPOSE_ADDITIONAL )
+    {
+        return 1;
+    }
+
+	if( DnsGenerator_NamePart(g, NULL) != 0 )
+    {
+        return -1;
+    }
+
+	if( DnsGenerator_16Uint(g, DNS_TYPE_OPT) != 0 )
+    {
+        return -2;
+    }
+
+	if( DnsGenerator_16Uint(g, UdpPayloadSize) != 0 )
+    {
+        return -3;
+    }
+
+	if( DnsGenerator_32Uint(g, 0) != 0 )
+    {
+        return -4;
+    }
+
+	if( DnsGenerator_16Uint(g, 0) != 0 )
+    {
+        return -5;
+    }
+
+    SET_16_BIT_U_INT(g->NumberOfRecords,
+                     GET_16_BIT_U_INT(g->NumberOfRecords) + 1
+                     );
+
+    return 0;
+}
+
+static int DnsGenerator_Length(DnsGenerator *g)
+{
+    return g->Itr - g->Buffer;
+}
+
+int DnsGenerator_Init(DnsGenerator *g,
+                      char *Buffer,
+                      int BufferLength,
+                      const char *CopyFrom,
+                      int SourceLength
+                      )
+{
+    if( g == NULL || Buffer == NULL )
+    {
+        return -1;
+    }
+
+    g->Buffer = Buffer;
+    g->BufferLength = BufferLength;
+    g->Header = (DNSHeader *)(g->Buffer);
+
+    if( CopyFrom != NULL && SourceLength > 0 )
+    {
+        int FourCounts[4] = {
+            DNSGetQuestionCount(CopyFrom),
+            DNSGetAnswerCount(CopyFrom),
+            DNSGetNameServerCount(CopyFrom),
+            DNSGetAdditionalCount(CopyFrom)
+        };
+
+        int i;
+
+        memmove(g->Buffer, CopyFrom, SourceLength);
+        g->Itr = g->Buffer + SourceLength;
+
+        for( i = 3; i >= 0; --i )
+        {
+            if( FourCounts[i] > 0 )
+            {
+                break;
+            }
+        }
+
+        if( i < 0 )
+        {
+            g->NumberOfRecords = g->Buffer + 4;
+        } else {
+            g->NumberOfRecords = g->Buffer + 4 + 2 * i;
+        }
+
+    } else {
+        g->Itr = g->Buffer + DNS_HEADER_LENGTH;
+        g->NumberOfRecords = g->Buffer + 4;
+
+        DNSSetQuestionCount(g->Buffer, 0);
+        DNSSetAnswerCount(g->Buffer, 0);
+        DNSSetNameServerCount(g->Buffer, 0);
+        DNSSetAdditionalCount(g->Buffer, 0);
+    }
+
+    return 0;
+}

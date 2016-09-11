@@ -18,10 +18,6 @@ int TCPProxies_Init(StringList *Proxies);
 
 int QueryDNSViaTCP(void);
 
-void SetUDPFilter(BOOL State);
-
-void SetAppendEDNSOpt(BOOL State);
-
 int InitBlockedIP(StringList *l);
 
 int InitIPSubstituting(StringList *l);

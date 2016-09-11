@@ -435,7 +435,7 @@ static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i, time_t CurrentTi
 
 	/* Set record type and class */
 	BufferItr += snprintf(BufferItr,
-                          BufferItr - Buffer,
+                          sizeof(Buffer) - (BufferItr - Buffer),
                           "\1%d\1%d",
                           i->Type,
                           i->Klass
@@ -453,7 +453,11 @@ static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i, time_t CurrentTi
     }
 
 	/* Generate data and store them */
-    if( i->TextifyData(i, "%v", BufferItr, BufferItr - Buffer) <= 0 )
+    if( i->TextifyData(i,
+                       "%v",
+                       BufferItr,
+                       sizeof(Buffer) - (BufferItr - Buffer)
+                       ) <= 0 )
     {
         return -5;
     }

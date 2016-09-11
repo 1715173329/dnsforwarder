@@ -19,8 +19,6 @@ static SOCKET		UDPIncomeSocket;
 
 static SOCKET		UDPOutcomeSocket;
 
-static int			MaximumMessageSize;
-
 static int			RefusingResponseCode = 0;
 
 /* Functions */

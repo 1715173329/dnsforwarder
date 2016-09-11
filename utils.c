@@ -824,9 +824,9 @@ char *StrRNpbrk(char *Str, const char *Ch)
 
 }
 
-char *GoToNextNonSpace(char *Here)
+char *GoToNextNonSpace(const char *Here)
 {
-	return StrNpbrk(Here, "\t ");
+	return (char *)StrNpbrk((char *)Here, "\t ");
 }
 
 char *GoToPrevNonSpace(char *Here)

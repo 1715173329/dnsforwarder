@@ -2,7 +2,6 @@
 #define _DNS_GENERATOR_H_
 
 #include <string.h>
-//#include "common.h"
 #include "dnsparser.h"
 
 #define SET_16_BIT_U_INT(here, val)	(*(uint16_t *)(here) = htons((uint16_t)(val)))
@@ -77,5 +76,25 @@ int DNSAppendAnswerRecord(__inout char *OriginBody, __in char *Record, __in int 
 int DNSRemoveEDNSPseudoRecord(char *RequestContent, int *RequestLength);
 
 void DNSAppendEDNSPseudoRecord(char *RequestContent, int *RequestLength);
+
+/**
+  New Implementation
+*/
+
+typedef struct _DnsGenerator DnsGenerator;
+
+struct _DnsGenerator {
+    /* private */
+    char *Buffer;
+    int BufferLength;
+    char *Itr;
+
+    void *NumberOfRecords;
+
+    /* public */
+    DNSHeader *Header;
+
+
+};
 
 #endif /* _DNS_GENERATOR_H_ */

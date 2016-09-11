@@ -75,12 +75,6 @@ int QueryDNSInterfaceInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "ExcludedList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "UDPFilter", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "UDP Filter");
-
-    TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "AppendEDNSOpt", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
-
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPBlock_IP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
@@ -253,8 +247,6 @@ int QueryDNSInterfaceStart(void)
 
 	InitAddress(&ConfigInfo);
 
-	InitCheckIPs(&ConfigInfo);
-
 	TCPProxies_Init(ConfigGetStringList(&ConfigInfo, "TCPProxy"));
 
 	if( InternalInterface_Init(PrimaryProtocol, LocalAddr, LocalPort) != 0 )
@@ -293,14 +285,8 @@ int QueryDNSInterfaceStart(void)
 		DNSCache_Init(&ConfigInfo);
 	}
 
-	if( ConfigGetBoolean(&ConfigInfo, "UDPFilter") == TRUE )
-	{
-		SetUDPFilter(TRUE);
-		InitBlockedIP(ConfigGetStringList(&ConfigInfo, "UDPBlock_IP"));
-		InitIPSubstituting(ConfigGetStringList(&ConfigInfo, "IPSubstituting"));
-	}
-
-	SetAppendEDNSOpt(ConfigGetBoolean(&ConfigInfo, "AppendEDNSOpt"));
+    InitBlockedIP(ConfigGetStringList(&ConfigInfo, "UDPBlock_IP"));
+    InitIPSubstituting(ConfigGetStringList(&ConfigInfo, "IPSubstituting"));
 
 	TransferStart(TRUE);
 

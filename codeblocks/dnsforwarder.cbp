@@ -69,10 +69,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../cachettlcrtl.h" />
-		<Unit filename="../checkip.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../checkip.h" />
 		<Unit filename="../common.h" />
 		<Unit filename="../debug.c">
 			<Option compilerVar="CC" />

@@ -736,7 +736,7 @@ static int DnsSimpleParserIterator_ParseIPv4(DnsSimpleParserIterator *i,
                                           int *AcutalDataLength
                                           )
 {
-    char Example[] = "xxx.xxx.xxx.xxx";
+    char Example[LENGTH_OF_IPV4_ADDRESS_ASCII];
 
     if( DataLength < 4 || strlen(Format) + 1 > BufferLength )
     {
@@ -811,7 +811,7 @@ static int DnsSimpleParserIterator_ParseIPv6(DnsSimpleParserIterator *i,
                                           int *AcutalDataLength
                                           )
 {
-    char Example[] = "XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX";
+    char Example[LENGTH_OF_IPV6_ADDRESS_ASCII];
 
     if( DataLength < 16 || strlen(Format) + 1 > BufferLength )
     {
@@ -1452,6 +1452,13 @@ static int DnsSimpleParserIterator_TextifyData(DnsSimpleParserIterator *i,
                         char *Buffer,
                         int BufferLength
                         ) = NULL;
+
+    if( i->Type != DNS_TYPE_OPT &&
+        i->Klass != DNS_CLASS_IN
+        )
+    {
+        return 0; /* Unparsable */
+    }
 
     switch( i->Type )
     {

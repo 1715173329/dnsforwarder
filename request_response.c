@@ -4,7 +4,7 @@
 #include "dnsgenerator.h"
 #include "dnscache.h"
 #include "addresschunk.h"
-#include "ipchunk.h"
+#include "ipmisc.h"
 #include "internalsocket.h"
 #include "socketpool.h"
 #include "checkip.h"
@@ -18,8 +18,6 @@ static sa_family_t	UDPParallelMainFamily = AF_UNSPEC;
 static struct sockaddr **UDPAddresses_Array = NULL;
 static sa_family_t	*TCPParallelFamilies = NULL;
 static struct sockaddr **TCPAddresses_Array = NULL;
-
-static CheckIP *CheckIPFor = NULL;
 
 static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 {
@@ -56,46 +54,6 @@ static int LoadDedicatedServer(ConfigFileInfo *ConfigInfo)
 	}
 
 	DedicatedServer->Free(DedicatedServer);
-
-	return 0;
-}
-
-int InitCheckIPs(ConfigFileInfo *ConfigInfo)
-{
-	StringList	*ci	=	ConfigGetStringList(ConfigInfo, "CheckIP");
-	StringListIterator  sli;
-
-	const char	*Itr	=	NULL;
-
-	if( ci == NULL )
-    {
-        return 0;
-    }
-
-	if( StringListIterator_Init(&sli, ci) != 0 )
-    {
-        return -1;
-    }
-
-	CheckIPFor = SafeMalloc(sizeof(CheckIP));
-	if( CheckIPFor == NULL )
-	{
-		return -2;
-	}
-
-	if( CheckIP_Init(CheckIPFor) != 0 )
-	{
-	    SafeFree(CheckIPFor);
-	    CheckIPFor = NULL;
-		return -3;
-	}
-
-	Itr = sli.Next(&sli);
-	while( Itr != NULL )
-	{
-	    CheckIPFor->AddFromString(CheckIPFor, Itr);
-		Itr = sli.Next(&sli);
-	}
 
 	return 0;
 }
@@ -250,351 +208,49 @@ void ClearTCPSocketBuffer(SOCKET Sock, int Length)
 	SET_LAST_ERROR(OriginErrorCode);
 }
 
-static BOOL AppendEDNSOpt = FALSE;
-static BOOL UDPFilter = FALSE;
-
-void SetUDPFilter(BOOL State)
-{
-	UDPFilter = State;
-}
-
-void SetAppendEDNSOpt(BOOL State)
-{
-	AppendEDNSOpt = State;
-}
-
-#define CHECKIPS_ERROR_OR_TIMEOUT	(-1)
-#define CHECKIPS_NOTHING_HAPPEND	0
-static int CheckIPs(const Array *Ips, sa_family_t Family, int Port, int Timeout, char *AnswerEntity, const char *Domain, BOOL AdditionalRecord)
-{
-	static Array	SocketsA	=	Array_Init_Static(sizeof(SOCKET));
-	static const SOCKET	InvalidSocket	=	INVALID_SOCKET;
-
-	fd_set	rfd;
-	struct timeval	Time	=	{Timeout / 1000, (Timeout % 1000) * 1000};
-	int	MaxFd	=	-1;
-
-	const void *Finally = NULL;
-	int	FinallyI = -1;
-
-	int	i;
-
-	Array_Clear(&SocketsA);
-	Array_Fill(&SocketsA, Array_GetUsed(Ips), &InvalidSocket);
-	FD_ZERO(&rfd);
-
-	for( i = 0; i != Array_GetUsed(Ips); ++i )
-    {
-		const struct sockaddr **ra = (const struct sockaddr **)Array_GetBySubscript(Ips, i);
-
-		if( ra != NULL && *ra != NULL )
-		{
-			SOCKET	skt;
-
-			skt = socket(Family, SOCK_STREAM, IPPROTO_TCP);
-			if( skt == INVALID_SOCKET )
-			{
-				continue;
-			}
-			SetSocketNonBlock(skt, TRUE);
-			if( Family == AF_INET )
-			{
-				struct sockaddr_in sa;
-
-				memset(&(sa), 0, sizeof(sa));
-
-				sa.sin_family = AF_INET;
-				sa.sin_port = htons((uint16_t)Port);
-				memcpy(&(sa.sin_addr), *ra, sizeof(sa.sin_addr));
-
-				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 && FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
-				{
-					CLOSE_SOCKET(skt);
-					continue;
-				}
-
-			} else {
-				struct sockaddr_in6 sa;
-
-				memset(&(sa), 0, sizeof(sa));
-
-				sa.sin6_family = AF_INET6;
-				sa.sin6_port = htons((uint16_t)Port);
-				memcpy(&(sa.sin6_addr), *ra, sizeof(sa.sin6_addr));
-
-				if( connect(skt, (const struct sockaddr *)&sa, GetAddressLength(Family)) != 0 && FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
-				{
-					CLOSE_SOCKET(skt);
-					continue;
-				}
-			}
-
-			if( (int)skt > MaxFd )
-			{
-				MaxFd = skt;
-			}
-
-			FD_SET(skt, &rfd);
-			Array_SetToSubscript(&SocketsA, i, &skt);
-		}
-    }
-
-    if( MaxFd < 0 )
-    {
-		INFO("Oops! Cannot find any useable IP of %s.\n", Domain);
-		return CHECKIPS_NOTHING_HAPPEND;
-    }
-
-	switch( select(MaxFd + 1, NULL, &rfd, NULL, &Time) )
-	{
-		case 0:
-		case SOCKET_ERROR:
-			for( i = 0; i < Array_GetUsed(&SocketsA); ++i)
-			{
-				const SOCKET *rs = (const SOCKET *)Array_GetBySubscript(&SocketsA, i);
-
-				if( rs != NULL && *rs != INVALID_SOCKET )
-				{
-					CLOSE_SOCKET(*rs);
-				}
-			}
-			break;
-
-		default:
-			for( i = 0; i < Array_GetUsed(&SocketsA); ++i)
-			{
-				const SOCKET *rs = (const SOCKET *)Array_GetBySubscript(&SocketsA, i);
-
-				if( rs != NULL && *rs != INVALID_SOCKET )
-				{
-					if( FD_ISSET(*rs, &rfd) )
-					{
-						const void **fa = (const void **)Array_GetBySubscript(Ips, i);
-
-						if( fa != NULL && *fa != NULL )
-						{
-							Finally = *fa;
-							FinallyI = i;
-						}
-					}
-					CLOSE_SOCKET(*rs);
-				}
-			}
-			break;
-	}
-
-	if( FinallyI < 0 )
-	{
-		INFO("Oops! Cannot find any useable IP of %s.\n", Domain);
-		return CHECKIPS_ERROR_OR_TIMEOUT;
-	}
-
-/* Now Finally got. */
-{ /* Stage 2 */
-	char *AnswerRecordPos;
-	uint32_t Ttl = 0;
-	int	ResultLength = 0;
-
-	AnswerRecordPos = DNSJumpOverQuestionRecords(AnswerEntity);
-
-	Ttl = DNSGetTTL(DNSGetAnswerRecordPosition(AnswerEntity, FinallyI));
-
-	DNSGenResourceRecord(AnswerRecordPos + 1,
-						INT_MAX,
-						"",
-						Family == AF_INET ? DNS_TYPE_A : DNS_TYPE_AAAA,
-						DNS_CLASS_IN,
-						Ttl,
-						Finally,
-						Family == AF_INET ? 4 : 16,
-						FALSE
-						);
-
-	AnswerRecordPos[0] = 0xC0;
-	AnswerRecordPos[1] = 0x0C;
-
-	DNSSetAnswerCount(AnswerEntity, 1);
-
-	ResultLength = DNSJumpOverAnswerRecords(AnswerEntity) - AnswerEntity;
-
-	if( AdditionalRecord == TRUE )
-	{
-		DNSAppendEDNSPseudoRecord(AnswerEntity, &ResultLength);
-	} else {
-		DNSSetAdditionalCount(AnswerEntity, 0);
-	}
-
-	return ResultLength;
-} /* Stage 2 */
-}
-
-#define	IP_MISCELLANEOUS_TYPE_UNKNOWN		0
-#define	IP_MISCELLANEOUS_TYPE_BLOCK			1
-#define	IP_MISCELLANEOUS_TYPE_SUBSTITUTE	2
-static IpChunk	*IPMiscellaneous = NULL;
+static IPMisc	*IPMiscellaneous = NULL;
 
 #define	IP_MISCELLANEOUS_BLOCK	(-1)
 #define	IP_MISCELLANEOUS_NOTHING	(0)
-/* Something else means the package's length has changed to the returned value. */
-static int DoIPMiscellaneous(char *RequestEntity, int RequestLength, const char *Domain, BOOL Block, BOOL EDNSEnabled, const CheckingMeta *CheckM)
+static int DoIPMiscellaneous(char *RequestEntity,
+                             int RequestLength,
+                             const char *Domain,
+                             BOOL BlockEnabled
+                             )
 {
-	static	Array	IpsOfThisAnswer	=	Array_Init_Static(sizeof(void *));
-	int		AnswerCount;
-	DNSRecordType	QuestionRecordType = DNS_TYPE_UNKNOWN;
+    DnsSimpleParser p;
 
-	if( ((DNSHeader *)RequestEntity) -> Flags.ResponseCode != 0 )
-	{
-		return IP_MISCELLANEOUS_BLOCK;
-	}
+    if( DnsSimpleParser_Init(&p, RequestEntity, RequestLength, FALSE) != 0 )
+    {
+        return IP_MISCELLANEOUS_NOTHING;
+    }
 
-	AnswerCount = DNSGetAnswerCount(RequestEntity);
-	if( CheckM != NULL && DNSGetQuestionCount(RequestEntity) > 0 )
-	{
-		QuestionRecordType = DNSGetRecordType(DNSGetQuestionRecordPosition(RequestEntity, 1));
-		if( QuestionRecordType != DNS_TYPE_A && QuestionRecordType != DNS_TYPE_AAAA )
-		{
-			QuestionRecordType = DNS_TYPE_UNKNOWN;
-		} else {
-			static const void *const NullPtr = NULL;
-			Array_Clear(&IpsOfThisAnswer);
-			Array_Fill(&IpsOfThisAnswer, AnswerCount, &NullPtr);
-		}
-	} else {
-		QuestionRecordType = DNS_TYPE_UNKNOWN;
-	}
+    if( p._Flags.Flags->ResponseCode != 0 )
+    {
+        return IP_MISCELLANEOUS_BLOCK;
+    }
 
-	if( AnswerCount > 0 )
-	{
-		const char *Answer;
-		char *Data;
+    if( IPMiscellaneous == NULL || BlockEnabled == FALSE )
+    {
+        return IP_MISCELLANEOUS_NOTHING;
+    }
 
-		int	ActionType = IP_MISCELLANEOUS_TYPE_UNKNOWN;
-		const char *ActionData;
+    switch( IPMiscellaneous->Process(IPMiscellaneous,
+                                     RequestEntity,
+                                     RequestLength)
+          )
+    {
+    case IP_MISC_ACTION_BLOCK:
+        DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
+        ShowBlockedMessage(Domain, RequestEntity, RequestLength, "Bad package, discarded");
+        return IP_MISCELLANEOUS_BLOCK;
+        break;
 
-		if( Block == TRUE && EDNSEnabled == TRUE && DNSGetAdditionalCount(RequestEntity) == 0 )
-		{
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
-			ShowBlockedMessage(Domain, RequestEntity, RequestLength, "False package, discarded");
-			return IP_MISCELLANEOUS_BLOCK;
-		}
-
-		Answer = (const char *)DNSGetAnswerRecordPosition(RequestEntity, 1);
-
-		Data = (char *)DNSGetResourceDataPos(Answer);
-
-		if( Block == TRUE && (!DNSIsLabelPointerStart(GET_8_BIT_U_INT(Answer))) )
-		{
-			ShowBlockedMessage(Domain, RequestEntity, RequestLength, "False package, discarded");
-
-			DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
-			return IP_MISCELLANEOUS_BLOCK;
-		}
-
-		if( IPMiscellaneous != NULL || QuestionRecordType != DNS_TYPE_UNKNOWN )
-		{
-			int			Loop		=	1;
-			const char	*Answer1	=	Answer;
-			char		*Data1		=	Data;
-			BOOL		FindResult;
-
-			do
-			{
-				switch( DNSGetRecordType(Answer1) )
-				{
-					case DNS_TYPE_A:
-						FindResult = IpChunk_Find(IPMiscellaneous, *(uint32_t *)Data1, &ActionType, &ActionData);
-
-						if( QuestionRecordType == DNS_TYPE_A )
-						{
-							Array_SetToSubscript(&IpsOfThisAnswer, Loop, &Data1);
-						}
-						break;
-
-					case DNS_TYPE_AAAA:
-						FindResult = IpChunk_Find6(IPMiscellaneous, Data1, &ActionType, &ActionData);
-
-						if( QuestionRecordType == DNS_TYPE_AAAA )
-						{
-							Array_SetToSubscript(&IpsOfThisAnswer, Loop, &Data1);
-						}
-						break;
-
-					default:
-						goto ItrEnd;
-						break;
-				}
-
-				if( FindResult == TRUE )
-				{
-					switch( ActionType )
-					{
-						case IP_MISCELLANEOUS_TYPE_BLOCK:
-							if( Block == TRUE )
-							{
-								ShowBlockedMessage(Domain, RequestEntity, RequestLength, "One of the IPs is in `UDPBlock_IP', discarded");
-								DomainStatistic_Add(Domain, NULL, STATISTIC_TYPE_BLOCKEDMSG);
-								return IP_MISCELLANEOUS_BLOCK;
-							}
-							break;
-
-						case IP_MISCELLANEOUS_TYPE_SUBSTITUTE:
-							memcpy(Data1, ActionData, 4);
-							break;
-
-						default:
-							break;
-					}
-
-				}
-
-ItrEnd:
-				++Loop;
-
-				if( Loop > AnswerCount )
-				{
-					break;
-				}
-
-				Answer1 = (const char *)DNSGetAnswerRecordPosition(RequestEntity, Loop);
-				Data1 = (char *)DNSGetResourceDataPos(Answer1);
-
-			} while( TRUE );
-		}
-
-		if( QuestionRecordType != DNS_TYPE_UNKNOWN )
-		{
-			int CheckIPRet = CheckIPs(&IpsOfThisAnswer,
-								QuestionRecordType == DNS_TYPE_A ? AF_INET : AF_INET6,
-								CheckM -> Port,
-								CheckM -> Timeout,
-								RequestEntity,
-								Domain,
-								EDNSEnabled
-								);
-			switch( CheckIPRet ){
-				case -1:
-					if( CheckM -> Strategy == STRATEGY_DISCARD )
-					{
-						return IP_MISCELLANEOUS_BLOCK;
-					} else {
-						return IP_MISCELLANEOUS_NOTHING;
-					}
-					break;
-
-				case 0:
-					return IP_MISCELLANEOUS_NOTHING;
-					break;
-
-				default:
-					return CheckIPRet;
-					break;
-			}
-		}
-
-		return IP_MISCELLANEOUS_NOTHING;
-	} else {
-		return IP_MISCELLANEOUS_NOTHING;
-	}
+    case IP_MISC_ACTION_NOTHING:
+    default:
+        return IP_MISCELLANEOUS_NOTHING;
+        break;
+    }
 }
 
 static int SendBack(SOCKET Socket,
@@ -603,7 +259,7 @@ static int SendBack(SOCKET Socket,
 					int Length, /* Length of Response, including ControlHeader */
 					char Protocal,
 					StatisticType Type,
-					BOOL NeededBlock
+					BOOL BlockEnabled
 					)
 {
 	int		Ret = 1;
@@ -637,17 +293,10 @@ static int SendBack(SOCKET Socket,
 		MiscellaneousRet = DoIPMiscellaneous(RequestEntity,
 											 Length - sizeof(ControlHeader),
 											 Header -> RequestingDomain,
-											 NeededBlock,
-											 ThisContext -> EDNSEnabled,
-											 CheckIPFor == NULL ? NULL : CheckIPFor->Find(CheckIPFor, Header->RequestingDomain)
+											 BlockEnabled
 											 );
 		if( MiscellaneousRet != IP_MISCELLANEOUS_BLOCK )
-		{
-			if( MiscellaneousRet != IP_MISCELLANEOUS_NOTHING )
-			{
-				Length = sizeof(ControlHeader) + MiscellaneousRet;
-			}
-
+		{   /* IP_MISCELLANEOUS_NOTHING */
 			if( ThisContext -> NeededHeader == TRUE )
 			{
 				Ret = sendto(Socket,
@@ -673,6 +322,7 @@ static int SendBack(SOCKET Socket,
 			DNSCache_AddItemsToCache(RequestEntity, Length - sizeof(ControlHeader),time(NULL), Header -> RequestingDomain);
 		}
 	} else {
+        /* Do not send back */
 		/* ShowNormalMassage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */
 	}
 
@@ -1194,15 +844,6 @@ int QueryDNSViaTCP(void)
 
 					}
 
-					if( AppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
-					{
-						memcpy(RequestEntity + RecvState, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
-
-						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 1);
-
-						RecvState += OPT_PSEUDORECORD_LENGTH;
-					}
-
 					/* Preparing socket */
 					if( TCPProxies == NULL )
 					{
@@ -1412,9 +1053,16 @@ int QueryDNSViaTCP(void)
 					}
 					*TCPQueryActiveSocketLastPtr = time(NULL);
 
-					if( SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'T', STATISTIC_TYPE_TCP, FALSE) <= 0 )
+					if( SendBack(SendBackSocket,
+                                 Header,
+                                 &Context,
+                                 State + sizeof(ControlHeader),
+                                 'T',
+                                 STATISTIC_TYPE_TCP,
+                                 FALSE
+                                 ) <= 0 )
 					{
-						ERRORMSG("TCP sending back error (940).\n");
+						ERRORMSG("TCP sending back error (1085).\n");
 					}
 				}
 		}
@@ -1425,8 +1073,6 @@ int InitBlockedIP(StringList *l)
 {
 	const char	*Itr = NULL;
 	StringListIterator  sli;
-
-	char	Ip[16];
 
 	if( l == NULL )
 	{
@@ -1440,22 +1086,17 @@ int InitBlockedIP(StringList *l)
 
 	if( IPMiscellaneous == NULL )
 	{
-		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
-		IpChunk_Init(IPMiscellaneous);
+		IPMiscellaneous = SafeMalloc(sizeof(IPMisc));
+		if( IPMisc_Init(IPMiscellaneous) != 0 )
+        {
+            return -2;
+        }
 	}
 
 	Itr = sli.Next(&sli);
 	while( Itr != NULL )
 	{
-		if( strchr(Itr, '.') != NULL )
-		{
-			IPv4AddressToNum(Itr, Ip);
-			IpChunk_Add(IPMiscellaneous, *(uint32_t *)Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
-		} else if( strchr(Itr, ':') != NULL )
-		{
-			IPv6AddressToNum(Itr, Ip);
-			IpChunk_Add6(IPMiscellaneous, Ip, IP_MISCELLANEOUS_TYPE_BLOCK, NULL, 0);
-		} else {}
+        IPMiscellaneous->AddBlockFromString(IPMiscellaneous, Itr);
 
 		Itr = sli.Next(&sli);
 	}
@@ -1470,10 +1111,8 @@ int InitIPSubstituting(StringList *l)
 	const char	*Itr = NULL;
 	StringListIterator  sli;
 
-	char	Origin_Str[] = "xxx.xxx.xxx.xxx";
-	char	Substituted_Str[] = "xxx.xxx.xxx.xxx";
-
-	uint32_t	Origin, Substituted;
+	char	Origin_Str[LENGTH_OF_IPV6_ADDRESS_ASCII];
+	char	Substituted_Str[LENGTH_OF_IPV6_ADDRESS_ASCII];
 
 	if( l == NULL )
 	{
@@ -1487,8 +1126,11 @@ int InitIPSubstituting(StringList *l)
 
 	if( IPMiscellaneous == NULL )
 	{
-		IPMiscellaneous = SafeMalloc(sizeof(IpChunk));
-		IpChunk_Init(IPMiscellaneous);
+		IPMiscellaneous = SafeMalloc(sizeof(IPMisc));
+		if( IPMisc_Init(IPMiscellaneous) != 0 )
+        {
+            return -2;
+        }
 	}
 
 	Itr = sli.Next(&sli);
@@ -1496,10 +1138,10 @@ int InitIPSubstituting(StringList *l)
 	{
 		sscanf(Itr, "%s %s", Origin_Str, Substituted_Str);
 
-		IPv4AddressToNum(Origin_Str, &Origin);
-		IPv4AddressToNum(Substituted_Str, &Substituted);
-
-		IpChunk_Add(IPMiscellaneous, Origin, IP_MISCELLANEOUS_TYPE_SUBSTITUTE, (const char *)&Substituted, 4);
+		IPMiscellaneous->AddSubstituteFromString(IPMiscellaneous,
+                                                 Origin_Str,
+                                                 Substituted_Str
+                                                 );
 
 		Itr = sli.Next(&sli);
 	}
@@ -1649,15 +1291,6 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
-					if( AppendEDNSOpt == TRUE && DNSGetAdditionalCount(RequestEntity + sizeof(ControlHeader)) == 0 )
-					{
-						memcpy(RequestEntity + State, OptPseudoRecord, OPT_PSEUDORECORD_LENGTH);
-
-						DNSSetAdditionalCount(RequestEntity + sizeof(ControlHeader), 1);
-
-						State += OPT_PSEUDORECORD_LENGTH;
-					}
-
 					InternalInterface_QueryContextAddUDP(&Context, Header);
 
 					NewAddress[0] = AddressChunk_GetDedicated(&Addresses, &NewFamily, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
@@ -1748,7 +1381,14 @@ int QueryDNSViaUDP(void)
 						break;
 					}
 
-					SendBack(SendBackSocket, Header, &Context, State + sizeof(ControlHeader), 'U', STATISTIC_TYPE_UDP, UDPFilter);
+					SendBack(SendBackSocket,
+                             Header,
+                             &Context,
+                             State + sizeof(ControlHeader),
+                             'U',
+                             STATISTIC_TYPE_UDP,
+                             TRUE
+                             );
 				}
 			break;
 		}

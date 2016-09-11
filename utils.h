@@ -111,7 +111,7 @@ char *StrNpbrk(char *Str, const char *Ch);
 
 char *StrRNpbrk(char *Str, const char *Ch);
 
-char *GoToNextNonSpace(char *Here);
+char *GoToNextNonSpace(const char *Here);
 
 char *GoToPrevNonSpace(char *Here);
 
