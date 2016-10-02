@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.37"
+#define VERSION__ "5.0.39"
 
 #define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
 
@@ -123,33 +123,6 @@ int DaemonInit(void)
 #endif /* WIN32 */
 }
 
-void Test(const char *ServerAddress)
-{
-	ThreadHandle	t;
-
-	uint32_t	Counter = 0;
-
-	struct TestServerArguments	Args = {ServerAddress, &Counter};
-
-	if( ServerAddress == NULL )
-	{
-		printf("Please specify server address.\n");
-		return;
-	}
-
-	CREATE_THREAD(TestServer, &Args, t);
-	DETACH_THREAD(t);
-
-    while( TRUE )
-    {
-		SLEEP(1000);
-
-		printf("Requrests per second : %u\n", Counter);
-
-		Counter = 0;
-    }
-}
-
 int GetDefaultConfigureFile(char *out, int OutLength)
 {
 #ifdef WIN32
@@ -240,22 +213,6 @@ int ArgParse(int argc, char *argv_ori[], const char **Contexts)
         {
             ConfigFile = *(++argv);
             ++argv;
-            continue;
-        }
-
-        if( strcmp("-T", *argv) == 0 )
-        {
-			ShowMassages = FALSE;
-			ErrorMessages = FALSE;
-#ifdef WIN32
-			SetConsoleTitle("dnsforwarder - testing");
-#endif
-			++argv;
-			Test(*argv);
-
-			exit(0);
-
-			++argv;
             continue;
         }
 

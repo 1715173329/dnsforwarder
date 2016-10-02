@@ -87,7 +87,11 @@ static void *Add(StableBuffer *s, const void *Data, int Length)
         return NULL;
     }
 
-    memcpy(wh, Data, Length);
+    if( Data != NULL )
+    {
+        memcpy(wh, Data, Length);
+    }
+
     return wh;
 }
 

@@ -28,23 +28,11 @@
 
 #define DNSJumpHeader(dns_body)				((char *)(dns_body) + DNS_HEADER_LENGTH)
 
-/* Handle question record */
-char *DNSGetQuestionRecordPosition(char *DNSBody, int Num);
-
-#define DNSJumpOverQuestionRecords(dns_body)	DNSGetQuestionRecordPosition((dns_body), DNSGetQuestionCount(dns_body) + 1)
-
-/* Handle resource\answer record */
-char *DNSGetAnswerRecordPosition(char *DNSBody, int Num);
-
 #define DNSGetTTL(ans_start_ptr)				GET_32_BIT_U_INT(DNSJumpOverName(ans_start_ptr) + 4)
 
 #define DNSGetResourceDataLength(ans_start_ptr)	GET_16_BIT_U_INT(DNSJumpOverName(ans_start_ptr) + 8)
 
 #define DNSGetResourceDataPos(ans_start_ptr)	(DNSJumpOverName((char *)(ans_start_ptr)) + 10)
-
-#define DNSJumpOverAnswerRecords(dns_body)		DNSGetAnswerRecordPosition((dns_body), DNSGetAnswerCount(dns_body) + 1)
-
-#define DNSGetARecordLength(record_ptr)			((DNSJumpOverName(record_ptr) - record_ptr) + 10 + DNSGetResourceDataLength(record_ptr))
 
 /* Common */
 char *DNSJumpOverName(char *NameStart);
@@ -60,66 +48,6 @@ int DNSGetHostNameLength(const char *DNSBody, int DNSBodyLength, const char *Nam
 #define DNSLabelGetPointer(rec_start_ptr)	((rec_start_ptr) == NULL ? 0 : (int)((unsigned char *)(rec_start_ptr))[1] + (int)(((unsigned char *)(rec_start_ptr))[0] - 192) * 256)
 
 #define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOWN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
-
-int DNSExpandCName_MoreSpaceNeeded(char *DNSBody, int DNSBodyLength);
-
-void DNSExpandCName(char *DNSBody, int DNSBodyLength);
-
-typedef enum _RecordElement{
-	DNS_UNKNOWN  = 0,
-	DNS_LABELED_NAME,
-	DNS_32BIT_UINT,
-	DNS_16BIT_UINT,
-	DNS_8BIT_UINT,
-	DNS_CHARACTER_STRINGS,
-
-	DNS_DNSKEY_FLAGS,
-	DNS_DNSKEY_PROTOCOL,
-	DNS_DNSKEY_ALGORITHM,
-	DNS_DNSKEY_PUBLIC_KEY,
-
-	DNS_DNSSIG_SIGNATURE,
-
-	DNS_IPV4_ADDR = (INT_MAX / 4),
-	DNS_IPV6_ADDR,
-}RecordElement;
-
-typedef struct _ElementDescriptor{
-	RecordElement	element;
-	const char		*description;
-}ElementDescriptor;
-
-extern const ElementDescriptor DNS_RECORD_A[];
-#define	NUM_OF_DNS_RECORD_A	1
-
-extern const ElementDescriptor DNS_RECORD_AAAA[];
-#define	NUM_OF_DNS_RECORD_AAAA	1
-
-extern const ElementDescriptor DNS_RECORD_CNAME[];
-#define	NUM_OF_DNS_RECORD_CNAME	1
-
-extern const ElementDescriptor DNS_RECORD_SOA[];
-#define	NUM_OF_DNS_RECORD_SOA	7
-
-extern const ElementDescriptor DNS_RECORD_DOMAIN_POINTER[];
-#define	NUM_OF_DNS_RECORD_DOMAIN_POINTER	1
-
-extern const ElementDescriptor DNS_RECORD_NAME_SERVER[];
-#define	NUM_OF_DNS_RECORD_NAME_SERVER	1
-
-extern const ElementDescriptor DNS_RECORD_MX[];
-#define	NUM_OF_DNS_RECORD_MX	2
-
-extern const ElementDescriptor DNS_RECORD_TXT[];
-#define	NUM_OF_DNS_RECORD_TXT	1
-
-extern const ElementDescriptor DNS_RECORD_DNSKEY[];
-#define	NUM_OF_DNS_RECORD_DNSKEY	4
-
-extern const ElementDescriptor DNS_RECORD_RRSIG[];
-#define	NUM_OF_DNS_RECORD_RRSIG	9
-
-int DNSGetDescriptor(DNSRecordType Type, BOOL NeededCache, const ElementDescriptor **Buffer);
 
 #ifdef HOST_BIG_ENDIAN
 /* DNSMessageFlags, on offset 2(bytes) of a DNS message body, is 2 bytes length.
@@ -214,7 +142,7 @@ typedef struct _DNSHeader{
 /* Convert a DNS message to text */
 char *GetAllAnswers(char *DNSBody, int DNSBodyLength, char *Buffer, int BufferLength);
 
-void DNSCopyLable(const char *DNSBody, char *here, const char *src);
+int DNSCopyLable(const char *DNSBody, char *here, const char *src);
 
 /**
   New Implementation
@@ -240,12 +168,21 @@ typedef enum _ResponseCode{
     RESPONSE_CODE_REFUSED = 5,
 } ResponseCode;
 
+typedef enum _DnsRecordPurpose{
+    /* Their values are not important */
+    DNS_RECORD_PURPOSE_UNKNOWN = 0,
+    DNS_RECORD_PURPOSE_QUESTION,
+    DNS_RECORD_PURPOSE_ANSWER,
+    DNS_RECORD_PURPOSE_NAME_SERVER,
+    DNS_RECORD_PURPOSE_ADDITIONAL,
+} DnsRecordPurpose;
+
 typedef struct _DnsSimpleParser DnsSimpleParser;
 
 struct _DnsSimpleParser{
-    /* private */
-    char *RowDns;
-    int  RowDnsLength;
+    /* public, but don't modify outside, unless you know what are you doing */
+    char *RawDns;
+    int  RawDnsLength;
 
     struct {
         /* private */
@@ -267,32 +204,29 @@ struct _DnsSimpleParser{
     int         (*AnswerCount)(DnsSimpleParser *p);
     int         (*NameServerCount)(DnsSimpleParser *p);
     int         (*AdditionalCount)(DnsSimpleParser *p);
+
+    BOOL        (*HasType)(DnsSimpleParser *p,
+                           DnsRecordPurpose Purpose,
+                           DNSRecordClass Klass,
+                           DNSRecordType Type
+                           );
 };
 
 int DnsSimpleParser_Init(DnsSimpleParser *p,
-                         char *RowDns,
+                         char *RawDns,
                          int Length,
                          BOOL IsTcp);
 
 /**
   Iterator
 */
-
-typedef enum _DnsRecordPurpose{
-    /* Their values are not important */
-    DNS_RECORD_PURPOSE_UNKNOWN = 0,
-    DNS_RECORD_PURPOSE_QUESTION,
-    DNS_RECORD_PURPOSE_ANSWER,
-    DNS_RECORD_PURPOSE_NAME_SERVER,
-    DNS_RECORD_PURPOSE_ADDITIONAL,
-} DnsRecordPurpose;
-
 typedef struct _DnsSimpleParserIterator DnsSimpleParserIterator;
 
 struct _DnsSimpleParserIterator{
-    /* private */
+    /* public, but don't modify outside */
     DnsSimpleParser *Parser;
 
+    /* private */
     char        *CurrentPosition;
     int         RecordPosition; /* Starts at 1 */
 

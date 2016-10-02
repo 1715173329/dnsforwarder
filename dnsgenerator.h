@@ -3,6 +3,8 @@
 
 #include <string.h>
 #include "dnsparser.h"
+#include "array.h"
+#include "stringlist.h"
 
 #define SET_16_BIT_U_INT(here, val)	(*(uint16_t *)(here) = htons((uint16_t)(val)))
 #define SET_32_BIT_U_INT(here, val)	(*(uint32_t *)(here) = htonl((uint32_t)(val)))
@@ -22,60 +24,9 @@
 
 #define DNSLabelMakePointer(pointer_ptr, location)	(((unsigned char *)(pointer_ptr))[0] = (192 + (location) / 256), ((unsigned char *)(pointer_ptr))[1] = (location) % 256)
 
-extern const char OptPseudoRecord[];
-#define	OPT_PSEUDORECORD_LENGTH	11
-
 char *DNSLabelizedName(__inout char *Origin, __in size_t OriginSpaceLength);
 
 int DNSCompress(__inout char *DNSBody, __in int DNSBodyLength);
-
-int DNSGenerateData(__in char *Data,
-					__out void *Buffer,
-					__in size_t BufferLength,
-					__in const ElementDescriptor *Descriptor
-					);
-
-char *DNSGenHeader(	__out char			*Buffer,
-					__in unsigned short	QueryIdentifier,
-					__in DNSFlags		Flags,
-					__in unsigned short	QuestionCount,
-					__in unsigned short	AnswerCount,
-					__in unsigned short	NameServerCount,
-					__in unsigned short	AdditionalCount
-					);
-
-int DNSGenQuestionRecord(__out char			*Buffer,
-						 __in int			BufferLength,
-						 __in const char	*Name,
-						 __in uint16_t		Type,
-						 __in uint16_t		Class
-						 );
-
-int DNSGenResourceRecord(	__out char		*Buffer,
-							__in int		BufferLength,
-							__in const char	*Name,
-							__in uint16_t	Type,
-							__in uint16_t	Class,
-							__in uint32_t	TTL,
-							__in const void	*Data,
-							__in uint16_t	DataLength,
-							__in BOOL		LablelizedData
-						   );
-
-
-#define DNSSetName(here, labeled_name)			(memcpy((here), (labeled_name), strlen(labeled_name) + 1), \
-													((char *)here) + strlen(labeled_name) + 1)
-
-#define DNSSetResourceDataLength(ans_start_ptr, len)	SET_16_BIT_U_INT(DNSJumpOverName(ans_start_ptr) + 8, len)
-
-int DNSAppendAnswerRecord(__inout char *OriginBody, __in char *Record, __in int RecordLength);
-
-#define	EDNS_REMOVED	1
-#define	EDNS_NO_AR		0
-#define EDNS_NOT_EDNS	(-1)
-int DNSRemoveEDNSPseudoRecord(char *RequestContent, int *RequestLength);
-
-void DNSAppendEDNSPseudoRecord(char *RequestContent, int *RequestLength);
 
 /**
   New Implementation
@@ -94,7 +45,64 @@ struct _DnsGenerator {
     /* public */
     DNSHeader *Header;
 
+    int (*Length)(DnsGenerator *g);
 
+    DnsRecordPurpose (*NextPurpose)(DnsGenerator *g);
+    void (*CopyHeader)(DnsGenerator *g,
+                       const char *Source,
+                       BOOL IncludeRecordCounts
+                       );
+    void (*CopyIdentifier)(DnsGenerator *g, int Value);
+    int (*CopyCName)(DnsGenerator *g, DnsSimpleParserIterator *i);
+    int (*CopyA)(DnsGenerator *g, DnsSimpleParserIterator *i);
+    int (*CopyAAAA)(DnsGenerator *g, DnsSimpleParserIterator *i);
+
+    int (*Question)(DnsGenerator *g,
+                    const char *Name,
+                    DNSRecordType Type,
+                    DNSRecordClass Klass
+                    );
+
+    int (*CName)(DnsGenerator *g,
+                 const char *Name,
+                 const char *CName,
+                 int Ttl
+                 );
+
+    int (*A)(DnsGenerator *g,
+             const char *Name,
+             const char *ip,
+             int Ttl
+             );
+
+    int (*AAAA)(DnsGenerator *g,
+                const char *Name,
+                const char *ip,
+                int Ttl
+                );
+
+    int (*EDns)(DnsGenerator *g, int UdpPayloadSize);
+
+    int (*RawData)(DnsGenerator *g,
+                   const char *Name,
+                   DNSRecordType Type,
+                   DNSRecordClass Klass,
+                   const char *Data,
+                   int DataLength,
+                   int Ttl
+                   );
 };
+
+int DnsGenerator_Init(DnsGenerator *g,
+                      char *Buffer,
+                      int BufferLength,
+                      const char *CopyFrom,
+                      int SourceLength,
+
+                      /* Whether to remove every record except question and
+                         answer records. Used when `CopyFrom' is not `NULL'.
+                      */
+                      BOOL Strip
+                      );
 
 #endif /* _DNS_GENERATOR_H_ */

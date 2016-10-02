@@ -49,15 +49,15 @@ static int StringList_Count(StringList *s)
 }
 
 static void *StringList_Add(StringList *s,
-                          const char *str,
-                          const char *Delimiters
-                          )
+                            const char *str,
+                            const char *Delimiters
+                            )
 {
     StableBuffer *sb;
 
     sb = &(s->Buffer);
 
-    void *Here = sb ->Add(sb, str, strlen(str) + 1);
+    void *Here = sb->Add(sb, str, strlen(str) + 1);
     if( Here == NULL )
     {
         return NULL;
@@ -68,7 +68,7 @@ static void *StringList_Add(StringList *s,
     return Here;
 }
 
-/* Unsafe operation */
+/* Unsafe operation, it may change string positions */
 static int StringList_AppendLast(StringList *s,
                                  const char *str,
                                  const char *Delimiters

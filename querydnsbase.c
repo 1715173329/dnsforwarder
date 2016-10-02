@@ -218,9 +218,9 @@ static int QueryFromServer(char *Content, int ContentLength, SOCKET ThisSocket)
 #define DNS_FETCH_FROM_HOSTS_OK	0
 #define DNS_FETCH_FROM_HOSTS_NONE_RESULT	(-1)
 #define DNS_FETCH_FROM_HOSTS_DISABLE_IPV6	(-2)
-static int DNSFetchFromHosts(char *Content, int ContentLength, SOCKET ThisSocket)
+static int DNSFetchFromHosts(char *Content, int ContentLength, int BufferLength, SOCKET ThisSocket)
 {
-	switch ( Hosts_Try(Content, &ContentLength) )
+	switch ( Hosts_Try(Content, &ContentLength, BufferLength) )
 	{
 		case MATCH_STATE_NONE:
 		case MATCH_STATE_DISABLED:
@@ -277,7 +277,7 @@ int QueryBase(char *Content, int ContentLength, int BufferLength, SOCKET ThisSoc
 	if( DNSGetQuestionCount(RequestEntity) == 1 )
 	{
 		/* First query from hosts and cache */
-		StateOfReceiving = DNSFetchFromHosts(Content, ContentLength, ThisSocket);
+		StateOfReceiving = DNSFetchFromHosts(Content, ContentLength, BufferLength, ThisSocket);
 
 		if( StateOfReceiving == DNS_FETCH_FROM_HOSTS_NONE_RESULT )
 		{

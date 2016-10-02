@@ -7,162 +7,9 @@
 #include "dnsgenerator.h"
 #include "utils.h"
 
-const ElementDescriptor DNS_RECORD_A[] = {
-	{DNS_IPV4_ADDR, "IPv4 Address"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_AAAA[] = {
-	{DNS_IPV6_ADDR, "IPv6 Address"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_CNAME[] = {
-	{DNS_LABELED_NAME,	"Canonical Name"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_SOA[] = {
-	{DNS_LABELED_NAME,	"primary name server"},
-	{DNS_LABELED_NAME,	"responsible mail addr"},
-	{DNS_32BIT_UINT,	"serial"},
-	{DNS_32BIT_UINT,	"refresh"},
-	{DNS_32BIT_UINT,	"retry"},
-	{DNS_32BIT_UINT,	"expire"},
-	{DNS_32BIT_UINT,	"default TTL"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_DOMAIN_POINTER[] = {
-	{DNS_LABELED_NAME,	"name"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_NAME_SERVER[] = {
-	{DNS_LABELED_NAME,	"Name Server"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_MX[] = {
-	{DNS_16BIT_UINT,	"Preference"},
-	{DNS_LABELED_NAME,	"Mail Exchanger"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_TXT[] = {
-	{DNS_CHARACTER_STRINGS,	"TXT"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_DNSKEY[] = {
-	{DNS_DNSKEY_FLAGS,		"Flags"},
-	{DNS_DNSKEY_PROTOCOL,	"Protocol"},
-	{DNS_DNSKEY_ALGORITHM,	"Algorithm"},
-	{DNS_DNSKEY_PUBLIC_KEY,	"Public Key"},
-	{DNS_UNKNOWN, NULL}
-};
-
-const ElementDescriptor DNS_RECORD_RRSIG[] = {
-	{DNS_16BIT_UINT,		"Type Covered"},
-	{DNS_DNSKEY_ALGORITHM,	"Algorithm"},
-	{DNS_8BIT_UINT,			"Labels"},
-	{DNS_32BIT_UINT,		"Original TTL"},
-	{DNS_32BIT_UINT,		"Signature Expiration"},
-	{DNS_32BIT_UINT,		"Signature Inception"},
-	{DNS_16BIT_UINT,		"Key Tag"},
-	{DNS_LABELED_NAME,		"Signer's Name"},
-	{DNS_DNSSIG_SIGNATURE,	"Signature"},
-	{DNS_UNKNOWN, NULL}
-};
-
-static const struct _Type_Descriptor_DCount
-{
-	DNSRecordType			Type;
-	const ElementDescriptor	*Descriptor;
-	int						DCount;
-	BOOL					Cached;
-}Type_Descriptor_DCount[] = {
-	{DNS_TYPE_A,		DNS_RECORD_A,		NUM_OF_DNS_RECORD_A,		TRUE},
-	{DNS_TYPE_CNAME,	DNS_RECORD_CNAME,	NUM_OF_DNS_RECORD_CNAME,	TRUE},
-	{DNS_TYPE_AAAA,		DNS_RECORD_AAAA,	NUM_OF_DNS_RECORD_AAAA,		TRUE},
-	{DNS_TYPE_SOA,		DNS_RECORD_SOA,		NUM_OF_DNS_RECORD_SOA,		TRUE},
-	{DNS_TYPE_PTR,		DNS_RECORD_DOMAIN_POINTER,	NUM_OF_DNS_RECORD_DOMAIN_POINTER, TRUE},
-	{DNS_TYPE_NS,		DNS_RECORD_NAME_SERVER,	NUM_OF_DNS_RECORD_NAME_SERVER, TRUE},
-	{DNS_TYPE_MX,		DNS_RECORD_MX,		NUM_OF_DNS_RECORD_MX,		TRUE},
-	{DNS_TYPE_TXT,		DNS_RECORD_TXT,		NUM_OF_DNS_RECORD_TXT,		FALSE},
-	{DNS_TYPE_DNSKEY,	DNS_RECORD_DNSKEY,	NUM_OF_DNS_RECORD_DNSKEY,	TRUE},
-	{DNS_TYPE_RRSIG,	DNS_RECORD_RRSIG,	NUM_OF_DNS_RECORD_RRSIG,	FALSE}
-
-};
-
-int DNSGetDescriptor(DNSRecordType Type, BOOL NeededCache, const ElementDescriptor **Buffer)
-{
-	int loop;
-
-	for(loop = 0; loop != sizeof(Type_Descriptor_DCount) / sizeof(struct _Type_Descriptor_DCount); ++loop)
-	{
-		if( Type_Descriptor_DCount[loop].Type == Type )
-		{
-			if( NeededCache == TRUE && Type_Descriptor_DCount[loop].Cached == FALSE )
-			{
-				*Buffer = NULL;
-				return 0;
-			} else {
-				*Buffer = Type_Descriptor_DCount[loop].Descriptor;
-				return Type_Descriptor_DCount[loop].DCount;
-			}
-		}
-	}
-
-	*Buffer = NULL;
-	return 0;
-}
-
 char *DNSJumpOverName(char *NameStart)
 {
 	return NameStart + DNSGetHostName(NULL, INT_MAX, NameStart, NULL, 0);
-}
-
-char *DNSGetQuestionRecordPosition(char *DNSBody, int Num)
-{
-	char *QR = DNSJumpHeader(DNSBody);
-	int QuestionCount = DNSGetQuestionCount(DNSBody);
-
-	if( Num < 1 )
-	{
-		return NULL;
-	}
-
-	if( Num > QuestionCount )
-	{
-		Num = QuestionCount + 1;
-	}
-
-	for(; Num != 1; --Num)
-		QR = DNSJumpOverName(QR) + 4;
-
-	return QR;
-}
-
-char *DNSGetAnswerRecordPosition(char *DNSBody, int Num)
-{
-	char *SR = DNSJumpOverQuestionRecords(DNSBody);
-	int AnswerCount = DNSGetAnswerCount(DNSBody);
-
-	if( Num < 1 )
-	{
-		return NULL;
-	}
-
-	if( Num > AnswerCount )
-	{
-		Num = AnswerCount + 1;
-	}
-
-	for(; Num != 1; --Num)
-		SR = DNSJumpOverName(SR) + 10 + DNSGetResourceDataLength(SR);
-
-	return SR;
 }
 
 /* Labels length returned */
@@ -354,119 +201,35 @@ char *GetAllAnswers(char *DNSBody, int DNSBodyLength, char *Buffer, int BufferLe
     return Buffer;
 }
 
-void DNSCopyLable(const char *DNSBody, char *here, const char *src)
+/* Full label length returned, including terminated-zero */
+int DNSCopyLable(const char *DNSBody, char *here, const char *src)
 {
-	while( 1 )
+    int FullLength = 0;
+
+	while( TRUE )
 	{
 		if( DNSIsLabelPointerStart(GET_8_BIT_U_INT(src)) )
 		{
 			src = DNSBody + DNSLabelGetPointer(src);
 		} else {
-			*here = *src;
+		    ++FullLength;
 
-			if( *src == 0 )
+		    if( here != NULL )
+            {
+                *here = *src;
+                ++here;
+            }
+
+			if( *src == '\0' )
 			{
 				break;
 			}
 
-			++here;
 			++src;
 		}
 	}
-}
 
-int DNSExpandCName_MoreSpaceNeeded(char *DNSBody, int DNSBodyLength)
-{
-	int				AnswerCount	=	DNSGetAnswerCount(DNSBody);
-	int				Itr	=	1;
-	int				MoreSpaceNeeded = 0;
-	char		    *Answer;
-	DNSRecordType	Type;
-	char		    *Resource;
-	int				ResourceLength;
-
-	int				NameLength;
-
-	if( AnswerCount < 1 )
-	{
-		return 0;
-	}
-
-	do
-	{
-		Answer = DNSGetAnswerRecordPosition(DNSBody, Itr);
-
-		Type = DNSGetRecordType(Answer);
-		if( Type == DNS_TYPE_CNAME )
-		{
-			ResourceLength = DNSGetResourceDataLength(Answer);
-			Resource = DNSGetResourceDataPos(Answer);
-			NameLength = DNSGetHostNameLength(DNSBody, DNSBodyLength, Resource);
-			if( NameLength == INT_MAX )
-			{
-				return INT_MAX;
-			}
-
-			MoreSpaceNeeded += (NameLength + 1) - ResourceLength;
-		}
-
-		++Itr;
-
-	}while( Itr <= AnswerCount );
-
-	return MoreSpaceNeeded;
-}
-
-/* You should meke sure there is no additional record and nameserver record */
-void DNSExpandCName(char *DNSBody, int DNSBodyLength)
-{
-	int				AnswerCount	=	DNSGetAnswerCount(DNSBody);
-	int				Itr	=	1;
-	char		    *Answer;
-	DNSRecordType	Type;
-	char			*Resource;
-	int				ResourceLength;
-
-	int				NameLength;
-	char			*NameEnd; /* After terminated-zero */
-
-	char			*DNSEnd;
-
-
-	if( AnswerCount < 1 )
-	{
-		return;
-	}
-
-	do
-	{
-		Answer = DNSGetAnswerRecordPosition(DNSBody, Itr);
-
-		Type = DNSGetRecordType(Answer);
-		if( Type == DNS_TYPE_CNAME )
-		{
-			ResourceLength = DNSGetResourceDataLength(Answer);
-			Resource = (char *)DNSGetResourceDataPos(Answer);
-			NameLength = DNSGetHostNameLength(DNSBody, DNSBodyLength, Resource);
-			if( NameLength == INT_MAX )
-			{
-				return;
-			}
-
-			NameEnd = Resource + ResourceLength;
-
-			DNSEnd = DNSGetAnswerRecordPosition(DNSBody, AnswerCount + 1);
-
-			SET_16_BIT_U_INT(Resource - 2, NameLength + 1);
-
-			memmove(Resource + NameLength + 1, NameEnd, DNSEnd - NameEnd);
-
-			DNSCopyLable(DNSBody, Resource, Resource);
-		}
-
-		++Itr;
-
-	}while( Itr <= AnswerCount );
+	return FullLength;
 }
 
 /**
@@ -476,7 +239,7 @@ void DNSExpandCName(char *DNSBody, int DNSBodyLength)
 /* Converted to host byte order */
 static uint16_t DnsSimpleParser_QueryIdentifier(DnsSimpleParser *p)
 {
-    return DNSGetQueryIdentifier(p->RowDns);
+    return DNSGetQueryIdentifier(p->RawDns);
 }
 
 static DnsDirection DnsSimpleParser_Flags_Direction(DnsSimpleParser *p)
@@ -516,44 +279,71 @@ static ResponseCode DnsSimpleParser_Flags_ResponseCode(DnsSimpleParser *p)
 
 static int DnsSimpleParser_QuestionCount(DnsSimpleParser *p)
 {
-    return DNSGetQuestionCount(p->RowDns);
+    return DNSGetQuestionCount(p->RawDns);
 }
 
 static int DnsSimpleParser_AnswerCount(DnsSimpleParser *p)
 {
-    return DNSGetAnswerCount(p->RowDns);
+    return DNSGetAnswerCount(p->RawDns);
 }
 
 static int DnsSimpleParser_NameServerCount(DnsSimpleParser *p)
 {
-    return DNSGetNameServerCount(p->RowDns);
+    return DNSGetNameServerCount(p->RawDns);
 }
 
 static int DnsSimpleParser_AdditionalCount(DnsSimpleParser *p)
 {
-    return DNSGetAdditionalCount(p->RowDns);
+    return DNSGetAdditionalCount(p->RawDns);
+}
+
+static BOOL DnsSimpleParser_HasType(DnsSimpleParser *p,
+                                    DnsRecordPurpose Purpose,
+                                    DNSRecordClass Klass,
+                                    DNSRecordType Type
+                                    )
+{
+    DnsSimpleParserIterator i;
+
+    if( DnsSimpleParserIterator_Init(&i, p) != 0 )
+    {
+        return FALSE;
+    }
+
+    while( i.Next(&i) != NULL )
+    {
+        if( (Purpose == DNS_RECORD_PURPOSE_UNKNOWN || i.Purpose == Purpose) &&
+            (Klass == DNS_CLASS_UNKNOWN || i.Klass == Klass) &&
+             i.Type == Type
+             )
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
 
 int DnsSimpleParser_Init(DnsSimpleParser *p,
-                         char *RowDns,
+                         char *RawDns,
                          int Length,
                          BOOL IsTcp)
 {
-    if( RowDns == NULL || Length < DNS_HEADER_LENGTH )
+    if( RawDns == NULL || Length < DNS_HEADER_LENGTH )
     {
         return -1;
     }
 
     if( IsTcp )
     {
-        p->RowDns = RowDns + 2;
-        p->RowDnsLength = Length - 2;
+        p->RawDns = RawDns + 2;
+        p->RawDnsLength = Length - 2;
     } else {
-        p->RowDns = RowDns;
-        p->RowDnsLength = Length;
+        p->RawDns = RawDns;
+        p->RawDnsLength = Length;
     }
 
-    p->_Flags.Flags = (DNSFlags *)(p->RowDns + 2);
+    p->_Flags.Flags = (DNSFlags *)(p->RawDns + 2);
 
     p->QueryIdentifier = DnsSimpleParser_QueryIdentifier;
 
@@ -569,6 +359,7 @@ int DnsSimpleParser_Init(DnsSimpleParser *p,
     p->AnswerCount = DnsSimpleParser_AnswerCount;
     p->NameServerCount = DnsSimpleParser_NameServerCount;
     p->AdditionalCount = DnsSimpleParser_AdditionalCount;
+    p->HasType = DnsSimpleParser_HasType;
 
     return 0;
 }
@@ -619,7 +410,7 @@ static char *DnsSimpleParserIterator_Next(DnsSimpleParserIterator *i)
 {
     if( i->CurrentPosition == NULL )
     {
-        i->CurrentPosition = i->Parser->RowDns + DNS_HEADER_LENGTH;
+        i->CurrentPosition = i->Parser->RawDns + DNS_HEADER_LENGTH;
         i->RecordPosition = 1;
     } else if( i->RecordPosition < i->AllRecordCount ){
         /* The record length excluding its labeled name at the beginning. */
@@ -647,7 +438,7 @@ static char *DnsSimpleParserIterator_Next(DnsSimpleParserIterator *i)
     }
 
     if( (i->RecordPosition > i->AllRecordCount) ||
-        (i->CurrentPosition - i->Parser->RowDns > i->Parser->RowDnsLength)
+        (i->CurrentPosition - i->Parser->RawDns > i->Parser->RawDnsLength)
       )
     {
         i->CurrentPosition = NULL;
@@ -699,8 +490,8 @@ static int DnsSimpleParserIterator_GetName(DnsSimpleParserIterator *i,
                                        int BufferLength
                                        )
 {
-    return DNSGetHostName(i->Parser->RowDns,
-                          i->Parser->RowDnsLength,
+    return DNSGetHostName(i->Parser->RawDns,
+                          i->Parser->RawDnsLength,
                           i->CurrentPosition,
                           Buffer,
                           BufferLength
@@ -709,8 +500,8 @@ static int DnsSimpleParserIterator_GetName(DnsSimpleParserIterator *i,
 
 static int DnsSimpleParserIterator_GetNameLength(DnsSimpleParserIterator *i)
 {
-    return DNSGetHostNameLength(i->Parser->RowDns,
-                                i->Parser->RowDnsLength,
+    return DNSGetHostNameLength(i->Parser->RawDns,
+                                i->Parser->RawDnsLength,
                                 i->CurrentPosition
                                 );
 }
@@ -890,7 +681,7 @@ static int DnsSimpleParserIterator_ParseLabeledName(DnsSimpleParserIterator *i,
     char Example[128];
     char *Resulting;
 
-    int HostNameLength; /* Including terminared-zero */
+    int HostNameLength; /* Including terminated-zero */
     int LabelLength;
 
     if( strlen(Format) + 1 > BufferLength )
@@ -916,8 +707,8 @@ static int DnsSimpleParserIterator_ParseLabeledName(DnsSimpleParserIterator *i,
         return 0;
     }
 
-    HostNameLength = DNSGetHostNameLength(i->Parser->RowDns,
-                                          i->Parser->RowDnsLength,
+    HostNameLength = DNSGetHostNameLength(i->Parser->RawDns,
+                                          i->Parser->RawDnsLength,
                                           Data
                                           );
 
@@ -934,8 +725,8 @@ static int DnsSimpleParserIterator_ParseLabeledName(DnsSimpleParserIterator *i,
         Resulting = Example;
     }
 
-    LabelLength = DNSGetHostName(i->Parser->RowDns,
-                                 i->Parser->RowDnsLength,
+    LabelLength = DNSGetHostName(i->Parser->RawDns,
+                                 i->Parser->RawDnsLength,
                                  Data,
                                  Resulting,
                                  HostNameLength
