@@ -1203,7 +1203,7 @@ int QueryDNSViaUDP(void)
 	int		MaxFd;
 
     /* Infos of last used server. */
-	sa_family_t		LastFamily = UDPParallelMainFamily;
+	sa_family_t		LastFamily = AF_INET;
 
 	static char		RequestEntity[2048];
 	ControlHeader	*Header = (ControlHeader *)RequestEntity;
@@ -1296,7 +1296,7 @@ int QueryDNSViaUDP(void)
 					NewAddress[0] = AddressChunk_GetDedicated(&Addresses, &NewFamily, Header -> RequestingDomain, &(Header -> RequestingDomainHashValue));
 					/* If ParallelQuery is off or a dedicated server is specified, */
 					if( ParallelQuery == FALSE || NewAddress[0] != NULL )
-					{   /* then use the only one server */
+					{   /* then use only one server */
 						if( NewAddress[0] == NULL )
 						{
 							NewAddress[0] = AddressChunk_GetOne(&Addresses, &NewFamily, DNS_QUARY_PROTOCOL_UDP);
