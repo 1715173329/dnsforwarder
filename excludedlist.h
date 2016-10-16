@@ -16,6 +16,4 @@ BOOL IsDisabledDomain(const char *Domain, int *HashValue);
 
 BOOL IsExcludedDomain(const char *Domain, int *HashValue);
 
-int LoadGfwList(void);
-
 #endif // EXCLUDEDLIST_H_INCLUDED

@@ -767,7 +767,7 @@ static int DNSCache_GetByQuestion(__inout DnsGenerator *g,
         )
     {
         RWLock_UnRLock(CacheLock);
-        return -4;
+        return -6;
     }
 
     RWLock_UnRLock(CacheLock);
@@ -786,6 +786,11 @@ int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferL
     int LeftBufferLength = BufferLength - RequestLength;
 
     int ResultLength;
+
+	if( Inited != TRUE )
+	{
+		return -792;
+	}
 
     if( DnsSimpleParser_Init(&p, RequestContent, RequestLength, FALSE) != 0 )
     {
