@@ -1395,11 +1395,6 @@ int QueryDNSViaUDP(void)
 	}
 }
 
-int SetSocketWait(SOCKET sock, BOOL Wait)
-{
-	return setsockopt(sock, SOL_SOCKET, SO_DONTLINGER, (const char *)&Wait, sizeof(BOOL));
-}
-
 int SetSocketSendTimeLimit(SOCKET sock, int time)
 {
 #ifdef WIN32

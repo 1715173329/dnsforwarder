@@ -32,8 +32,6 @@ struct TestServerArguments
 
 int TestServer(struct TestServerArguments *Args);
 
-int SetSocketWait(SOCKET sock, BOOL Wait);
-
 int SetSocketSendTimeLimit(SOCKET sock, int time);
 
 int SetSocketRecvTimeLimit(SOCKET sock, int time);

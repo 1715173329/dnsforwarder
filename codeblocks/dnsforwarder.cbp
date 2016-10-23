@@ -134,6 +134,10 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../pipes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../pipes.h" />
 		<Unit filename="../querydnsbase.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -171,6 +175,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../socketpool.h" />
+		<Unit filename="../sockets.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../sockets.h" />
 		<Unit filename="../stablebuffer.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -187,6 +195,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../stringlist.h" />
+		<Unit filename="../udpm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../udpm.h" />
 		<Unit filename="../utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
