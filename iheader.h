@@ -15,6 +15,7 @@ struct _IHeader{
 	DNSRecordType   Type;
 
 	BOOL            ReturnHeader;
+	BOOL		    EDNSEnabled;
 
 	char            Agent[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
 };
@@ -25,7 +26,7 @@ void IHeader_Reset(IHeader *h);
 
 int IHeader_Fill(IHeader *h,
                  BOOL ReturnHeader,
-                 const char *DnsEntity,
+                 char *DnsEntity,
                  int EntityLength,
                  struct sockaddr *BackAddress,
                  sa_family_t Family,

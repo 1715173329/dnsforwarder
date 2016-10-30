@@ -2,8 +2,6 @@
  *
  */
 
-
-
 #ifndef ADDRESSLIST_H_INCLUDED
 #define ADDRESSLIST_H_INCLUDED
 
@@ -94,7 +92,7 @@ struct sockaddr *AddressList_GetOne(__in		AddressList	*a,
 
 #define AddressList_GetNumberOfAddresses(a_ptr)	( Array_GetUsed(&((a_ptr) -> AddressList)) )
 
-/* You should free the return value and *families after the are no longer needed. */
+/* You should free the return value and *families when they are no longer needed. */
 struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t family);
 struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t **families);
 

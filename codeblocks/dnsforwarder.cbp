@@ -134,10 +134,6 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../pipes.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../pipes.h" />
 		<Unit filename="../querydnsbase.c">
 			<Option compilerVar="CC" />
 		</Unit>

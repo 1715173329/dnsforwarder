@@ -9,41 +9,80 @@ void IHeader_Reset(IHeader *h)
     h->Agent[0] = '\0';
     h->BackAddress.family = AF_UNSPEC;
     h->Domain[0] = '\0';
+    h->EDNSEnabled = FALSE;
 }
 
 int IHeader_Fill(IHeader *h,
                  BOOL ReturnHeader,
-                 const char *DnsEntity,
+                 char *DnsEntity,
                  int EntityLength,
                  struct sockaddr *BackAddress,
                  sa_family_t Family,
                  const char *Agent
                  )
 {
+    DnsSimpleParser p;
+    DnsSimpleParserIterator i;
+
     h->_Pad = 0;
 
-    if( DNSGetHostName(DnsEntity,
-                       EntityLength,
-                       DNSJumpHeader(DnsEntity),
-                       h->Domain,
-                       sizeof(h->Domain)
-                       )
-       < 0 )
+    if( DnsSimpleParser_Init(&p, DnsEntity, EntityLength, FALSE) != 0 )
     {
-        return -1;
+        return -31;
     }
 
-    StrToLower(h->Domain);
-    h->HashValue = ELFHash(h->Domain, 0);
+    if( DnsSimpleParserIterator_Init(&i, &p) != 0 )
+    {
+        return -36;
+    }
 
-    h->Type = (DNSRecordType)DNSGetRecordType(DNSJumpHeader(DnsEntity));
+    while( i.Next(&i) != NULL )
+    {
+        if( i.Klass != DNS_CLASS_IN )
+        {
+            return -42;
+        }
+
+        switch( i.Purpose )
+        {
+        case DNS_RECORD_PURPOSE_QUESTION:
+            if( i.GetName(&i, h->Domain, sizeof(h->Domain)) < 0 )
+            {
+                return -46;
+            }
+
+            StrToLower(h->Domain);
+            h->HashValue = ELFHash(h->Domain, 0);
+            h->Type = (DNSRecordType)DNSGetRecordType(DNSJumpHeader(DnsEntity));
+            break;
+
+        case DNS_RECORD_PURPOSE_ADDITIONAL:
+            if( i.Type == DNS_TYPE_OPT )
+            {
+                h->EDNSEnabled = TRUE;
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
     h->ReturnHeader = ReturnHeader;
 
-    memcpy(&(h->BackAddress.Addr), BackAddress, GetAddressLength(Family));
-    h->BackAddress.family = Family;
+    if( BackAddress != NULL )
+    {
+        memcpy(&(h->BackAddress.Addr), BackAddress, GetAddressLength(Family));
+        h->BackAddress.family = Family;
+    }
 
-    strncpy(h->Agent, Agent, sizeof(h->Agent));
-    h->Agent[sizeof(h->Agent) -1] = '\0';
+    if( Agent != NULL )
+    {
+        strncpy(h->Agent, Agent, sizeof(h->Agent));
+        h->Agent[sizeof(h->Agent) - 1] = '\0';
+    } else {
+        h->Agent[0] = '\0';
+    }
 
     return 0;
 }
