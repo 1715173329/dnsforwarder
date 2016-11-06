@@ -48,6 +48,7 @@ struct _UdpM {
     } Parallels;
 
     /* public */
+    int (*Send)(UdpM *m, IHeader *h, /* Entity followed */ int FullLength);
 };
 
 #endif // UDPM_H_INCLUDED

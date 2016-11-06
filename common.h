@@ -215,6 +215,7 @@
 																	(addr_struct).sin_addr.s_addr = inet_addr(address_string); \
 																	(addr_struct).sin_port = htons(port);
 
+    /* Suspend current thread for some milliseconds */
 	#define	SLEEP(i)	do \
 						{ \
 							int	Count = 1000; \
@@ -324,11 +325,6 @@
 
 #define LENGTH_OF_IPV6_ADDRESS_ASCII	(sizeof("XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:xxx.xxx.xxx.xxx"))
 #define LENGTH_OF_IPV4_ADDRESS_ASCII	(sizeof("xxx.xxx.xxx.xxx"))
-
-typedef union _CompatibleAddr{
-	struct sockaddr_in	Addr4;
-	struct sockaddr_in6	Addr6;
-} CompatibleAddr;
 
 typedef struct _Address_Type{
 

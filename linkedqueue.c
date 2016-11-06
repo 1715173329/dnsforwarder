@@ -1,111 +1,118 @@
 #include <string.h>
 #include "linkedqueue.h"
 
-int LinkedQueue_Init(LinkedQueue *l, int DataLength)
+static int LinkedQueue_Add(LinkedQueue *l, const void *Data)
 {
-	l -> First = -1;
-	l -> Last = -1;
-	l -> FreeList = -1;
-    return Array_Init(&(l -> DataList), DataLength + sizeof(ListHead), 0, FALSE, NULL);
+    ListHead *d;
+
+    /* Fill the new node */
+    if( l == NULL || Data == NULL )
+    {
+        return -10;
+    }
+
+    d = SafeMalloc(sizeof(ListHead) + l->DataLength);
+    if( d == NULL )
+    {
+        return -16;
+    }
+
+    memcpy((void *)(d + 1), Data, l->DataLength);
+
+    /* Find the place to add */
+    if( l->First == NULL || l->Compare(Data, (void *)(l->First + 1)) < 0 )
+    {
+        d->Next = l->First;
+        l->First = d;
+    } else {
+        ListHead *n;
+
+        n = l->First;
+        while( n->Next != NULL && l->Compare(Data, (void *)(n->Next + 1)) >= 0 )
+        {
+            n = n->Next;
+        }
+
+        d->Next = n->Next;
+        n->Next = d;
+    }
+
+    return 0;
 }
 
-int LinkedQueue_Add(LinkedQueue *l, const void *Data)
+static void *LinkedQueue_Get(LinkedQueue *l)
 {
-	/* Makeup data */
-    char TempZone[Array_GetDataLength(&(l -> DataList))];
-    ListHead *h = (ListHead *)TempZone;
-    h -> Next = -1;
-    memcpy(TempZone + sizeof(ListHead), Data, sizeof(TempZone) - sizeof(ListHead));
+    ListHead *h;
 
-    int InsertSubscript = -1;
-    ListHead *fn, *en;
+    if( l == NULL )
+    {
+        return NULL;
+    }
 
-	/* Makeup node */
-	if( l -> FreeList < 0 )
-	{
-		/* No free node */
-		InsertSubscript = Array_PushBack(&(l -> DataList), TempZone, NULL);
-		if( InsertSubscript < 0 )
-		{
-			return -1;
-		}
-	} else {
-		/* Has free node */
-		/* Remove the node from free list */
-		InsertSubscript = l -> FreeList;
-		fn = (ListHead *)Array_GetBySubscript(&(l -> DataList), InsertSubscript);
-		if( fn == NULL )
-		{
-			return -2;
-		}
-		l -> FreeList = fn -> Next;
+    if( l->First == NULL )
+    {
+        return NULL;
+    }
 
-		/* Set the data */
-		memcpy(fn, TempZone, sizeof(TempZone));
-	}
+    h = l->First;
+    l->First = h->Next;
 
-	/* Insert the node */
-	if( l -> Last < 0 )
-	{
-		/* The list is empty */
-        l -> First = InsertSubscript;
-        l -> Last = InsertSubscript;
-	} else {
-		/* The list is not empty */
-		en = (ListHead *)Array_GetBySubscript(&(l -> DataList), l -> Last);
-		if( en == NULL )
-		{
-			return -3;
-		}
-        en -> Next = InsertSubscript;
-        l -> Last = InsertSubscript;
-	}
-
-	return 0;
+    return (void *)(h + 1);
 }
 
-int LinkedQueue_Get(LinkedQueue *l, void *Buffer)
+static void LinkedQueue_Free(LinkedQueue *l)
 {
-	ListHead *n;
-	int	s;
+    void *d;
 
-	if( l -> First < 0 )
-	{
-		return -1;
-	}
-
-	/* Get the subscript */
-	s = l -> First;
-
-	/* Get the node */
-	n = (ListHead *)Array_GetBySubscript(&(l -> DataList), s);
-	if( n == NULL )
-	{
-		return -2;
-	}
-
-	/* Remove from list, set the First ptr */
-	l -> First = n -> Next;
-
-	/* Copy out data */
-	if( Buffer != NULL )
-	{
-		memcpy(Buffer, (char *)(n + 1), Array_GetDataLength(&(l -> DataList)) - sizeof(ListHead));
-	}
-
-	/* Set the Last ptr */
-	if( n -> Next < 0 )
-	{
-		l -> Last = -1;
-	}
-
-	/* Insert into freelist */
-	n -> Next = l -> FreeList;
-	l -> FreeList = s;
-	return 0;
+    while( (d = LinkedQueue_Get(l)) != NULL )
+    {
+        LinkedQueue_FreeNode(d);
+    }
 }
 
-void LinkedQueue_Free(LinkedQueue *l)
+int LinkedQueue_Init(LinkedQueue *l,
+                     int DataLength,
+                     int (*CompareFunc)(const void *One, const void *Two)
+                     )
 {
-	Array_Free(&(l -> DataList));
+    l->First = NULL;
+    l->DataLength = DataLength;
+    l->Compare = CompareFunc;
+
+    l->Add = LinkedQueue_Add;
+    l->Get = LinkedQueue_Get;
+    l->Free = LinkedQueue_Free;
+    return 0;
+}
+
+/** Iterator Implementation */
+static void *LinkedQueueIterator_Next(LinkedQueueIterator *i)
+{
+    if( i->Current == NULL )
+    {
+        i->Current = i->l->First;
+    } else {
+        i->Current = i->Current->Next;
+    }
+
+    if( i->Current == NULL )
+    {
+        return NULL;
+    } else {
+        return (void *)(i->Current + 1);
+    }
+}
+
+int LinkedQueueIterator_Init(LinkedQueueIterator *i, LinkedQueue *l)
+{
+    if( i == NULL )
+    {
+        return -96;
+    }
+
+    i->l = l;
+    i->Current = NULL;
+
+    i->Next = LinkedQueueIterator_Next;
+    return 0;
 }

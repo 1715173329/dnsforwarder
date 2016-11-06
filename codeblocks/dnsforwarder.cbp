@@ -134,6 +134,10 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../pipes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../pipes.h" />
 		<Unit filename="../querydnsbase.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -191,6 +195,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../stringlist.h" />
+		<Unit filename="../timedtask.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../timedtask.h" />
 		<Unit filename="../udpm.c">
 			<Option compilerVar="CC" />
 		</Unit>

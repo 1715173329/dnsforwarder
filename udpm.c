@@ -47,7 +47,6 @@ static int UdpmContext_Add(UdpmContext *c, IHeader *h /* Entity followed */)
 
     if( ret != 0 )
     {
-        /** TODO: Set timeout task: UdpmContext_Swep */
         return 0;
     } else {
         return -83;
@@ -133,6 +132,13 @@ static void UdpM_Works(void *Module)
     #define LEFT_LENGTH  (BUF_LENGTH - sizeof(IHeader))
     char *Entity;
 
+    fd_set	ReadSet, ReadySet;
+
+	static const struct timeval	LongTime = {3600, 0};
+	static const struct timeval	ShortTime = {5, 0};
+
+	struct timeval	TimeLimit = LongTime;
+
     ReceiveBuffer = SafeMalloc(BUF_LENGTH);
     if( ReceiveBuffer == NULL )
     {
@@ -179,8 +185,44 @@ static void UdpM_Works(void *Module)
                 EFFECTIVE_LOCK_RELEASE(m->Lock);
                 return;
             }
+
+            FD_ZERO(&ReadSet);
+            FD_SET(m->Departure, &ReadSet);
         }
         EFFECTIVE_LOCK_RELEASE(m->Lock);
+
+        ReadySet = ReadSet;
+        switch( select(m->Departure + 1, &ReadySet, NULL, NULL, &TimeLimit) )
+        {
+            case SOCKET_ERROR:
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                while( TRUE )
+                {
+                    SLEEP(32767);
+                }
+                break;
+
+            case 0:
+                UdpmContext_Swep(&(m->Context), 10);
+                TimeLimit = LongTime;
+                continue;
+                break;
+
+            default:
+                TimeLimit = ShortTime;
+                /* Goto recv job */
+                break;
+        }
 
         /* recv */
         RecvState = recvfrom(m->Departure,
@@ -364,6 +406,8 @@ int UdpM_Init(UdpM *m, SOCKET SendBack, ConfigFileInfo *ConfigInfo)
     }
 
     EFFECTIVE_LOCK_INIT(m->Lock);
+
+    m->Send = UdpM_Send;
 
     CREATE_THREAD(UdpM_Works, m, m->WorkThread);
 
