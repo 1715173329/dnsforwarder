@@ -101,7 +101,6 @@
 			<Add library="libws2_32.a" />
 			<Add library="libwininet.a" />
 			<Add library="libshlwapi.a" />
-			<Add library="libcrypt32.a" />
 		</Linker>
 		<Unit filename="../addresschunk.c">
 			<Option compilerVar="CC" />
@@ -156,10 +155,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../downloader.h" />
-		<Unit filename="../excludedlist.c">
+		<Unit filename="../filter.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../excludedlist.h" />
+		<Unit filename="../filter.h" />
 		<Unit filename="../goodiplist.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -187,6 +186,10 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../pipes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../pipes.h" />
 		<Unit filename="../querydnsbase.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -240,10 +243,18 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../stringlist.h" />
+		<Unit filename="../timedtask.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../timedtask.h" />
 		<Unit filename="../utils.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../utils.h" />
+		<Unit filename="../winmsgque.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../winmsgque.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

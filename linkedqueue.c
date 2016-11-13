@@ -20,7 +20,7 @@ static int LinkedQueue_Add(LinkedQueue *l, const void *Data)
     memcpy((void *)(d + 1), Data, l->DataLength);
 
     /* Find the place to add */
-    if( l->First == NULL || l->Compare(Data, (void *)(l->First + 1)) < 0 )
+    if( l->First == NULL || l->Compare(Data, (void *)(l->First + 1)) <= 0 )
     {
         d->Next = l->First;
         l->First = d;
@@ -28,7 +28,7 @@ static int LinkedQueue_Add(LinkedQueue *l, const void *Data)
         ListHead *n;
 
         n = l->First;
-        while( n->Next != NULL && l->Compare(Data, (void *)(n->Next + 1)) >= 0 )
+        while( n->Next != NULL && l->Compare(Data, (void *)(n->Next + 1)) > 0 )
         {
             n = n->Next;
         }

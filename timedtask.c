@@ -3,22 +3,92 @@
 #include "pipes.h"
 #include "debug.h"
 
+#ifdef WIN32
+#include "winmsgque.h"
+#endif /* WIN32 */
+
 typedef struct _TaskInfo{
     TaskFunc    Task;
 
     void    *Arg1;
     void    *Arg2;
 
+#ifdef WIN32
+    DWORD   TimeOut;
+    DWORD   LeftTime;
+#else /* WIN32 */
     struct timeval  TimeOut;
     struct timeval  LeftTime;
+#endif /* WIN32 */
 
     BOOL    Persistent;
 } TaskInfo;
 
 static LinkedQueue  TimeQueue;
 
+#ifdef WIN32
+static WinMsgQue    MsgQue;
+#else /* WIN32 */
 static PIPE_HANDLE  WriteTo, ReadFrom;
+#endif /* WIN32 */
 
+#ifndef WIN32
+static int Tv_Comapre(const struct timeval *one, const struct timeval *two)
+{
+    if( one->tv_sec == two->tv_sec )
+    {
+        return one->tv_usec - two->tv_usec;
+    } else {
+        return one->tv_sec - two->tv_sec;
+    }
+}
+
+static int Tv_Subtract(struct timeval *Minuend,
+                       const struct timeval *Subtrahend
+                       )
+{
+    if( Tv_Comapre(Minuend, Subtrahend) <= 0 )
+    {
+        Minuend->tv_sec = 0;
+        Minuend->tv_usec = 0;
+        return 0;
+    } else {
+        if( Minuend->tv_usec >= Subtrahend->tv_usec )
+        {
+            Minuend->tv_usec -= Subtrahend->tv_usec;
+            Minuend->tv_sec -= Subtrahend->tv_sec;
+        } else {
+            Minuend->tv_sec -= (1 + Subtrahend->tv_sec);
+            Minuend->tv_usec = 1000000 - Subtrahend->tv_usec + Minuend->tv_usec;
+        }
+        return 1;
+    }
+}
+#endif /* WIN32 */
+
+#ifdef WIN32
+static void TimeTask_ReduceTime(const DWORD tv)
+{
+    LinkedQueueIterator i;
+    TaskInfo *ti;
+
+    if( LinkedQueueIterator_Init(&i, &TimeQueue) != 0 )
+    {
+        /** TODO: Show fatal error */
+        return;
+    }
+
+    while( (ti = i.Next(&i)) != NULL )
+    {
+        if( tv > ti->LeftTime )
+        {
+            ti->LeftTime = 0;
+        } else {
+            ti->LeftTime -= tv;
+        }
+    }
+}
+#else /* WIN32 */
 static void TimeTask_ReduceTime(const struct timeval *tv)
 {
     LinkedQueueIterator i;
@@ -38,22 +108,10 @@ static void TimeTask_ReduceTime(const struct timeval *tv)
 
     while( (ti = i.Next(&i)) != NULL )
     {
-        if( ti->LeftTime.tv_usec >= tv->tv_usec )
-        {
-            ti->LeftTime.tv_usec -= tv->tv_usec;
-        } else {
-            ti->LeftTime.tv_sec -= 1;
-            ti->LeftTime.tv_usec = ti->LeftTime.tv_usec + 1000000 - tv->tv_usec;
-        }
-
-        if( ti->LeftTime.tv_sec >= tv->tv_sec )
-        {
-            ti->LeftTime.tv_sec -= tv->tv_sec;
-        } else {
-            ti->LeftTime.tv_sec = 0;
-        }
+        Tv_Subtract(&(ti->LeftTime), tv);
     }
 }
+#endif /* WIN32 */
 
 static int TimeTask_ReallyAdd(TaskInfo *i)
 {
@@ -64,13 +122,72 @@ static int TimeTask_ReallyAdd(TaskInfo *i)
 static void TimeTask_Work(void *Unused)
 {
 #ifdef WIN32
+    static TaskInfo *i = NULL;
+    static DWORD *tv = NULL;
+    static DWORD BeforeWaiting = 0;
 
+    while( TRUE )
+    {
+        static TaskInfo *New;
 
+        /* Get a task and set the time */
+        if( tv == NULL )
+        {
+            /* Start a new round */
+            i = TimeQueue.Get(&TimeQueue);
+            if( i == NULL )
+            {
+                tv = NULL;
+            } else {
+                tv = &(i->LeftTime);
+                BeforeWaiting = *tv;
+            }
+        } else {
+            /* Resume last unfinished round */
+            BeforeWaiting = *tv;
+        }
+
+        New = MsgQue.Wait(&MsgQue, tv);
+        if( New == NULL )
+        {
+            /* Run the task */
+            TimeTask_ReduceTime(BeforeWaiting - *tv);
+
+            i->Task(i->Arg1, i->Arg2);
+
+            if( i->Persistent )
+            {
+                i->LeftTime = i->TimeOut;
+                if( TimeTask_ReallyAdd(i) != 0 )
+                {
+                    /** TODO: Show fatal error */
+                }
+            }
+
+            LinkedQueue_FreeNode(i);
+            tv = NULL;
+        } else {
+            /* Receive a new task from other thread */
+            if( tv != NULL )
+            {
+                TimeTask_ReduceTime(BeforeWaiting - *tv);
+            }
+
+            if( TimeTask_ReallyAdd(New) != 0 )
+            {
+                /** TODO: Show fatal error */
+                break;
+            }
+
+            WinMsgQue_FreeMsg(New);
+        }
+    }
 #else /* WIN32 */
     static fd_set   ReadSet, ReadySet;
 
     static TaskInfo *i = NULL;
     static struct timeval   *tv = NULL;
+    static struct timeval   Elapsed = {0, 0};
 
     FD_ZERO(&ReadSet);
     FD_SET(ReadFrom, &ReadSet);
@@ -88,29 +205,18 @@ static void TimeTask_Work(void *Unused)
                 tv = NULL;
             } else {
                 tv = &(i->LeftTime);
+                Elapsed = *tv;
             }
         } else {
             /* Resume last unfinished round */
+            Elapsed = *tv;
         }
 
         ReadySet = ReadSet;
         switch( select(ReadFrom + 1, &ReadySet, NULL, NULL, tv) )
         {
         case SOCKET_ERROR:
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
-            ERRORMSG("SOCKET_ERROR Reached, 53.\n");
+            /** TODO: Show fatal error */
             while( TRUE )
             {
                 SLEEP(32767);
@@ -119,7 +225,8 @@ static void TimeTask_Work(void *Unused)
 
         case 0:
             /* Run the task */
-            TimeTask_ReduceTime(&(i->TimeOut));
+            Tv_Subtract(&Elapsed, tv);
+            TimeTask_ReduceTime(&Elapsed);
 
             i->Task(i->Arg1, i->Arg2);
 
@@ -138,6 +245,12 @@ static void TimeTask_Work(void *Unused)
 
         default:
             /* Receive a new task from other thread */
+            if( tv != NULL )
+            {
+                Tv_Subtract(&Elapsed, tv);
+                TimeTask_ReduceTime(&Elapsed);
+            }
+
             {
                 static TaskInfo ni;
 
@@ -156,7 +269,6 @@ static void TimeTask_Work(void *Unused)
             break;
         }
     }
-
 #endif /* WIN32 */
 }
 
@@ -178,14 +290,25 @@ int TimeTask_Add(BOOL Persistent,
     i.Arg1 = Arg1;
     i.Arg2 = Arg2;
     i.Persistent = Persistent;
+#ifdef WIN32
+    i.TimeOut = Milliseconds;
+#else /* WIN32 */
     i.TimeOut.tv_usec = (Milliseconds % 1000) * 1000;
     i.TimeOut.tv_sec = Milliseconds / 1000;
+#endif /* WIN32 */
     i.LeftTime = i.TimeOut;
 
+#ifdef WIN32
+    if( MsgQue.Post(&MsgQue, &i) != 0 )
+    {
+        return -212;
+    }
+#else /* WIN32 */
     if( WRITE_PIPE(WriteTo, &i, sizeof(TaskInfo)) < 0 )
     {
         return -53;
     }
+#endif /* WIN32 */
 
     return 0;
 }
@@ -193,13 +316,16 @@ int TimeTask_Add(BOOL Persistent,
 static int CompareFunc(const void *One, const void *Two)
 {
     const TaskInfo *o = One, *t = Two;
-
+#ifdef WIN32
+    return o->LeftTime - t->LeftTime;
+#else /* WIN32 */
     if( o->LeftTime.tv_sec == t->LeftTime.tv_sec )
     {
         return o->LeftTime.tv_usec - t->LeftTime.tv_usec;
     } else {
         return o->LeftTime.tv_sec - t->LeftTime.tv_sec;
     }
+#endif /* WIN32 */
 }
 
 int TimeTask_Init(void)
@@ -215,10 +341,17 @@ int TimeTask_Init(void)
         return -20;
     }
 
+#ifdef WIN32
+    if( WinMsgQue_Init(&MsgQue, sizeof(TaskInfo)) != 0 )
+    {
+        return -247;
+    }
+#else /* WIN32 */
     if( !CREATE_PIPE_SUCCEEDED(CREATE_PIPE(&ReadFrom, &WriteTo)) )
     {
         return -25;
     }
+#endif /* WIN32 */
 
     CREATE_THREAD(TimeTask_Work, NULL, t);
     DETACH_THREAD(t);
