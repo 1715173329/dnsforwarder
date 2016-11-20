@@ -318,12 +318,12 @@ static int SendBack(SOCKET Socket,
 			}
 
 			InternalInterface_QueryContextRemoveByNumber(Context, QueryContextNumber);
-			ShowNormalMassage(ThisContext -> Agent, Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal);
+			ShowNormalMessage(ThisContext -> Agent, Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal);
 			DNSCache_AddItemsToCache(RequestEntity, Length - sizeof(ControlHeader),time(NULL), Header -> RequestingDomain);
 		}
 	} else {
         /* Do not send back */
-		/* ShowNormalMassage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */
+		/* ShowNormalMessage("Redundant Package", Header -> RequestingDomain, RequestEntity, Length - sizeof(ControlHeader), Protocal); */
 	}
 
 	return Ret;
@@ -376,7 +376,7 @@ int TCPProxies_Init(StringList *Proxies)
 
 static void TCPSwepOutput(QueryContextEntry *Entry, int Number)
 {
-	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'T');
+	ShowTimeOutMessage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'T');
 	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
 
 	if( Number == 1 )
@@ -1174,7 +1174,7 @@ static int SendQueryViaUDP(SOCKET			Socket,
 
 static void UDPSwepOutput(QueryContextEntry *Entry, int Number)
 {
-	ShowTimeOutMassage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'U');
+	ShowTimeOutMessage(Entry -> Agent, Entry -> Type, Entry -> Domain, 'U');
 	DomainStatistic_Add(Entry -> Domain, &(Entry -> HashValue), STATISTIC_TYPE_REFUSED);
 
 	if( Number == 1 && ParallelQuery == FALSE )

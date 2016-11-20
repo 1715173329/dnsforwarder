@@ -1,98 +1,112 @@
+#include <string.h>
 #include "socketpool.h"
 #include "utils.h"
 
-static int Compare(const SocketUnit *_1, const SocketUnit *_2)
-{
-	return ( _1 -> Address - _2 -> Address );
-}
-
-int SocketPool_Init(SocketPool *sp)
-{
-	return Bst_Init(sp, NULL, sizeof(SocketUnit), (int (*)(const void*, const void*))Compare);
-}
-
-SOCKET *SocketPool_Add(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr)
+static int SocketPool_Add(SocketPool *sp,
+                          SOCKET Sock,
+                          const char *Data,
+                          int DataLength
+                          )
 {
 	SocketUnit su;
 
-	su.Address = Address;
-	su.Sock = SafeMalloc(sizeof(SOCKET));
-	if( su.Sock == NULL )
+	su.Sock = Sock;
+
+    if( Data != NULL )
+    {
+        su.Data = sp->d.Add(&(sp->d), Data, DataLength);
+    } else {
+        su.Data = NULL;
+    }
+
+	if( Bst_Add(&(sp->t), &su) != 0 )
 	{
-		return NULL;
-	}
-	*(su.Sock) = INVALID_SOCKET;
-	su.Last = SafeMalloc(sizeof(time_t));
-	if( su.Last == NULL )
-	{
-		return NULL;
+		return -27;
 	}
 
-	if( Bst_Add(sp, &su) != 0 )
-	{
-		SafeFree(su.Sock);
-		return NULL;
-	}
-
-	*LastPtr = su.Last;
-	return su.Sock;
+	return 0;
 }
 
-SOCKET *SocketPool_Fetch(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr)
-{
-	int32_t Result;
-	SocketUnit su = {Address, NULL};
-
-	if( Address == NULL )
-	{
-		return NULL;
-	}
-
-	Result = Bst_Search(sp, &su, NULL);
-	if( Result < 0 )
-	{
-        return SocketPool_Add(sp, Address, LastPtr);
-	} else {
-		SocketUnit *sup;
-
-		sup = Bst_GetDataByNumber(sp, Result);
-		*LastPtr = sup -> Last;
-		return sup -> Sock;
-	}
-}
-
-SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr)
+static SOCKET SocketPool_FetchOnSet(SocketPool *sp,
+                                    fd_set *fs,
+                                    const char **Data
+                                    )
 {
 	SocketUnit	*sup;
 	int32_t		Start = -1;
 
-	sup = Bst_Enum(sp, &Start);
+	sup = Bst_Enum(&(sp->t), &Start);
 	while( sup != NULL )
 	{
-		if( FD_ISSET(*(sup -> Sock), fs) )
+		if( FD_ISSET(sup->Sock, fs) )
 		{
-			*LastPtr = sup -> Last;
-			return sup -> Sock;
+		    if( Data != NULL )
+            {
+                *Data = sup->Data;
+            }
+			return sup->Sock;
 		}
+		sup = Bst_Enum(&(sp->t), &Start);
 	}
 
-	return NULL;
+	return INVALID_SOCKET;
 }
 
-void SocketPool_CloseAll(SocketPool *sp)
+static void SocketPool_CloseAll(SocketPool *sp)
 {
-	SOCKET	*sock;
-	int32_t	Start = -1;
+	SocketUnit	*sup;
+	int32_t		Start = -1;
 
-	sock = Bst_Enum((Bst *)sp, &Start);
-	while( sock != NULL )
+	sup = Bst_Enum(&(sp->t), &Start);
+	while( sup != NULL )
 	{
-		if( *sock != INVALID_SOCKET )
-		{
-			CLOSE_SOCKET(*sock);
-			*sock = INVALID_SOCKET;
-		}
+	    if( sup->Sock != INVALID_SOCKET )
+        {
+            CLOSE_SOCKET(sup->Sock);
+        }
 
-		sock = Bst_Enum((Bst *)sp, &Start);
+		sup = Bst_Enum(&(sp->t), &Start);
 	}
+}
+
+static void SocketPool_Free(SocketPool *sp, BOOL CloseAllSocket)
+{
+    if( CloseAllSocket )
+    {
+        SocketPool_CloseAll(sp);
+    }
+
+    Bst_Free(&(sp->t));
+    sp->d.Free(&(sp->d));
+}
+
+static int Compare(const SocketUnit *_1, const SocketUnit *_2)
+{
+	return (int)(_1 -> Sock) - (int)(_2 -> Sock);
+}
+
+int SocketPool_Init(SocketPool *sp)
+{
+    if( Bst_Init(&(sp->t),
+                    NULL,
+                    sizeof(SocketUnit),
+                    (int (*)(const void*, const void*))Compare
+                    )
+       != 0 )
+    {
+        return -113;
+    }
+
+    if( StableBuffer_Init(&(sp->d)) != 0 )
+    {
+        Bst_Free(&(sp->t));
+        return -119;
+    }
+
+    sp->Add = SocketPool_Add;
+    sp->CloseAll = SocketPool_CloseAll;
+    sp->FetchOnSet = SocketPool_FetchOnSet;
+    sp->Free = SocketPool_Free;
+
+    return 0;
 }

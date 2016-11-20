@@ -29,7 +29,7 @@
 #endif /* NODOWNLOAD */
 
 #include "downloader.h"
-#include "debug.h"
+#include "logs.h"
 
 int GetFromInternet_MultiFiles(const char	**URLs,
 							   const char	*File,

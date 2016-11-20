@@ -3,23 +3,38 @@
 
 #include <time.h>
 #include "bst.h"
+#include "stablebuffer.h"
 #include "common.h"
 
 typedef struct _SocketUnit {
-	struct sockaddr	*Address;
-	SOCKET          *Sock;
-	time_t			*Last;
+	SOCKET      Sock;
+	const char *Data;
 } SocketUnit;
 
-typedef Bst SocketPool;
+typedef struct _SocketPool SocketPool;
+
+struct _SocketPool{
+    /* private */
+    Bst t;
+    StableBuffer d;
+
+	/* public */
+    int (*Add)(SocketPool *sp,
+               SOCKET Sock,
+               const char *Data,
+               int DataLength
+               );
+
+    SOCKET (*FetchOnSet)(SocketPool *sp,
+                         fd_set *fs,
+                         const char **Data
+                         );
+
+    void (*CloseAll)(SocketPool *sp);
+
+    void (*Free)(SocketPool *sp, BOOL CloseAllSocket);
+};
 
 int SocketPool_Init(SocketPool *sp);
 
-SOCKET *SocketPool_Add(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr);
-
-SOCKET *SocketPool_Fetch(SocketPool *sp, struct sockaddr *Address, time_t **LastPtr);
-
-SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr);
-
-void SocketPool_CloseAll(SocketPool *sp);
 #endif // SOCKETPOOL_H_INCLUDED

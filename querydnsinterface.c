@@ -11,7 +11,7 @@
 #include "utils.h"
 #include "domainstatistic.h"
 #include "goodiplist.h"
-#include "debug.h"
+#include "logs.h"
 
 static ConfigFileInfo	ConfigInfo;
 
@@ -228,14 +228,14 @@ int QueryDNSInterfaceStart(void)
 
 	int			IsZeroZeroZeroZero;
 
-	Debug_Init(&ConfigInfo);
+	Log_Init(&ConfigInfo);
 
 	if( PrimaryProtocol == DNS_QUARY_PROTOCOL_UNSPECIFIED )
 	{
 		return -1;
 	}
 
-	if( ShowMassages == TRUE )
+	if( ShowMessages == TRUE )
 	{
 		ConfigDisplay(&ConfigInfo);
 		putchar('\n');

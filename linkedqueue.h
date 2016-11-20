@@ -14,9 +14,7 @@ typedef struct _LinkedQueue LinkedQueue;
 struct _LinkedQueue{
     /* private */
     ListHead *First;
-
     int DataLength;
-
     int (*Compare)(const void *One, const void *Two);
 
     /* public */

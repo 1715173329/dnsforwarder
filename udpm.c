@@ -1,6 +1,6 @@
 #include <string.h>
 #include "udpm.h"
-#include "debug.h"
+#include "logs.h"
 #include "utils.h"
 
 /** Context handling */

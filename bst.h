@@ -44,4 +44,6 @@ int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber);
 
 int Bst_Reset(Bst *t);
 
+void Bst_Free(Bst *t);
+
 #endif // BST_H_INCLUDED

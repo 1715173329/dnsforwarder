@@ -319,7 +319,7 @@ int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber)
 
 int Bst_Reset(Bst *t)
 {
-	if( t -> PrivateNodes == FALSE )
+	if( !(t->PrivateNodes) )
 	{
 		return -1;
 	}
@@ -329,4 +329,13 @@ int Bst_Reset(Bst *t)
 	t -> FreeList = -1;
 
 	return 0;
+}
+
+void Bst_Free(Bst *t)
+{
+	if( t->PrivateNodes )
+	{
+        Array_Free(t->Nodes);
+        SafeFree(t->Nodes);
+	}
 }

@@ -4,7 +4,7 @@
 #include "stringlist.h"
 #include "bst.h"
 #include "common.h"
-#include "debug.h"
+#include "logs.h"
 
 static Bst			*DisabledTypes = NULL;
 

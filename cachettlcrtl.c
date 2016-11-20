@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "cachettlcrtl.h"
-#include "debug.h"
+#include "logs.h"
 
 int CacheTtlCrtl_Init(CacheTtlCtrl *c)
 {

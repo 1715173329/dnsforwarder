@@ -1,7 +1,7 @@
 #ifndef _QUERY_DNS_BASE_H_
 #define _QUERY_DNS_BASE_H_
 
-#include "debug.h"
+#include "logs.h"
 
 typedef enum _DnsQuaryProtocol{
 	DNS_QUARY_PROTOCOL_UNSPECIFIED = -1,
@@ -15,17 +15,6 @@ typedef enum _DnsQuaryProtocol{
 #include "readconfig.h"
 #include "internalsocket.h"
 
-void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Massage);
-
-void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol);
-
-void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter);
-
-void ShowNormalMassage(const char *Agent, const char *RequestingDomain, char *Package, int PackageLength, char ProtocolCharacter);
-
-void ShowBlockedMessage(const char *RequestingDomain, char *Package, int PackageLength, const char *Message);
-
-void ShowFatalMessage(const char *Message, int ErrorCode);
 
 #define QUERY_RESULT_SUCCESS		(0)
 #define QUERY_RESULT_DISABLE	(-1)

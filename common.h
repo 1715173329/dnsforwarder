@@ -64,6 +64,7 @@
 	#define CRITICAL_SECTION_INIT(c, spin_count)	(InitializeCriticalSectionAndSpinCount(&(c), (spin_count)))
 	#define ENTER_CRITICAL_SECTION(c)				(EnterCriticalSection(&(c)))
 	#define ENTER_CRITICAL_SECTION_TRY(c)			(TryEnterCriticalSection(&(c)))
+	#define CRITICAL_SECTION_TRY_SUCCEED(ret)       ((ret) != 0)
 	#define LEAVE_CRITICAL_SECTION(c)				(LeaveCriticalSection(&(c)))
 	#define DELETE_CRITICAL_SECTION(c)				(DeleteCriticalSection(&(c)))
 
@@ -189,12 +190,14 @@
 	#define CREATE_SPIN(s)		(pthread_spin_init(&(s), PTHREAD_PROCESS_PRIVATE))
 	#define LOCK_SPIN(s)		(pthread_spin_lock(&(s)))
 	#define LOCK_SPIN_TRY(s)	(pthread_spin_trylock(&(s)))
+	#define SPIN_TRY_SUCCEED(ret) ((ret) == 0)
 	#define UNLOCK_SPIN(s)		(pthread_spin_unlock(&(s)))
 	#define DESTROY_SPIN(s)		(pthread_spin_destroy(&(s)))
 #else /*HAVE_PTHREAD_SPIN_INIT  */
 	#define CREATE_SPIN(s)		(pthread_mutex_init(&(s), NULL))
 	#define LOCK_SPIN(s)		(pthread_mutex_lock(&(s)))
 	#define LOCK_SPIN_TRY(s)	(pthread_mutex_trylock(&(s)))
+	#define SPIN_TRY_SUCCEED(ret) ((ret) == 0)
 	#define UNLOCK_SPIN(s)		(pthread_mutex_unlock(&(s)))
 	#define DESTROY_SPIN(s)		(pthread_mutex_destroy(&(s)))
 #endif /*HAVE_PTHREAD_SPIN_INIT  */
@@ -247,6 +250,7 @@
 	#define EFFECTIVE_LOCK_INIT(l)		CRITICAL_SECTION_INIT((l), 1024)
 	#define EFFECTIVE_LOCK_GET(l)		ENTER_CRITICAL_SECTION(l)
 	#define EFFECTIVE_LOCK_TRY_GET(l)	ENTER_CRITICAL_SECTION_TRY(l)
+	#define EFFECTIVE_LOCK_TRY_SUCCEED(ret) CRITICAL_SECTION_TRY_SUCCEED(ret)
 	#define EFFECTIVE_LOCK_RELEASE(l)	LEAVE_CRITICAL_SECTION(l)
 	#define EFFECTIVE_LOCK_DESTROY(l)	DELETE_CRITICAL_SECTION(l)
 #else /* WIN32 */
@@ -254,6 +258,7 @@
 	#define EFFECTIVE_LOCK_INIT(l)		CREATE_SPIN(l)
 	#define EFFECTIVE_LOCK_GET(l)		LOCK_SPIN(l)
 	#define EFFECTIVE_LOCK_TRY_GET(l)	LOCK_SPIN_TRY(l)
+	#define EFFECTIVE_LOCK_TRY_SUCCEED(ret) SPIN_TRY_SUCCEED(ret)
 	#define EFFECTIVE_LOCK_RELEASE(l)	UNLOCK_SPIN(l)
 	#define EFFECTIVE_LOCK_DESTROY(l)	DESTROY_SPIN(l)
 #endif /* WIN32 */

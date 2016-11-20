@@ -4,7 +4,7 @@
 #include "goodiplist.h"
 #include "request_response.h"
 #include "utils.h"
-#include "debug.h"
+#include "logs.h"
 
 typedef struct _CountDownMeta{
 	int	TimeLeft;

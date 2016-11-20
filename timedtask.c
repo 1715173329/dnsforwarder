@@ -1,7 +1,7 @@
 #include "timedtask.h"
 #include "linkedqueue.h"
 #include "pipes.h"
-#include "debug.h"
+#include "logs.h"
 
 #ifdef WIN32
 #include "winmsgque.h"
@@ -319,12 +319,7 @@ static int CompareFunc(const void *One, const void *Two)
 #ifdef WIN32
     return o->LeftTime - t->LeftTime;
 #else /* WIN32 */
-    if( o->LeftTime.tv_sec == t->LeftTime.tv_sec )
-    {
-        return o->LeftTime.tv_usec - t->LeftTime.tv_usec;
-    } else {
-        return o->LeftTime.tv_sec - t->LeftTime.tv_sec;
-    }
+    return Tv_Comapre(o, t);
 #endif /* WIN32 */
 }
 

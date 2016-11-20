@@ -70,10 +70,6 @@
 		</Unit>
 		<Unit filename="../cachettlcrtl.h" />
 		<Unit filename="../common.h" />
-		<Unit filename="../debug.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../debug.h" />
 		<Unit filename="../default.config" />
 		<Unit filename="../dnscache.c">
 			<Option compilerVar="CC" />
@@ -131,9 +127,14 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../linkedqueue.h" />
+		<Unit filename="../logs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../logs.h" />
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../oo.h" />
 		<Unit filename="../pipes.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -175,6 +176,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../socketpool.h" />
+		<Unit filename="../socketpuller.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../socketpuller.h" />
 		<Unit filename="../sockets.c">
 			<Option compilerVar="CC" />
 		</Unit>
