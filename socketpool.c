@@ -74,6 +74,7 @@ SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr)
 			*LastPtr = sup -> Last;
 			return sup -> Sock;
 		}
+		sup = Bst_Enum(sp, &Start);
 	}
 
 	return NULL;
@@ -81,18 +82,18 @@ SOCKET *SocketPool_IsSet(SocketPool *sp, fd_set *fs, time_t **LastPtr)
 
 void SocketPool_CloseAll(SocketPool *sp)
 {
-	SOCKET	*sock;
+	SocketUnit	*sup;
 	int32_t	Start = -1;
 
-	sock = Bst_Enum((Bst *)sp, &Start);
-	while( sock != NULL )
+	sup = Bst_Enum((Bst *)sp, &Start);
+	while( sup != NULL )
 	{
-		if( *sock != INVALID_SOCKET )
+		if( sup->Sock != NULL && *(sup->Sock) != INVALID_SOCKET )
 		{
-			CLOSE_SOCKET(*sock);
-			*sock = INVALID_SOCKET;
+			CLOSE_SOCKET(*(sup->Sock));
+			*(sup->Sock) = INVALID_SOCKET;
 		}
 
-		sock = Bst_Enum((Bst *)sp, &Start);
+		sup = Bst_Enum((Bst *)sp, &Start);
 	}
 }
