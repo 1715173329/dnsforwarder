@@ -24,7 +24,7 @@
 
 #define VERSION__ "5.0.42"
 
-#define PRINTM(...)		if(ShowMassages == TRUE) printf(__VA_ARGS__);
+#define PRINTM(...)		if(ShowMessages == TRUE) printf(__VA_ARGS__);
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -189,7 +189,7 @@ int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 		}
         if(strcmp("-q", *argv) == 0)
         {
-            ShowMassages = FALSE;
+            ShowMessages = FALSE;
             ErrorMessages = FALSE;
             ++argv;
             continue;
@@ -197,7 +197,7 @@ int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 
         if(strcmp("-e", *argv) == 0)
         {
-            ShowMassages = FALSE;
+            ShowMessages = FALSE;
             ++argv;
             continue;
         }
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
 	{
 		if( DaemonInit() == 0 )
 		{
-			ShowMassages = FALSE;
+			ShowMessages = FALSE;
 			ErrorMessages = FALSE;
 		} else {
 			printf("Daemon init failed, continuing on non-daemon mode.\n");

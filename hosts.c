@@ -505,7 +505,7 @@ int DynamicHosts_SocketLoop(void)
 									);
 						}
 
-						ShowNormalMassage(Header -> Agent,
+						ShowNormalMessage(Header -> Agent,
 											Header -> RequestingDomain,
 											RequestEntity + sizeof(ControlHeader),
 											TotalLength - sizeof(ControlHeader),
@@ -695,7 +695,7 @@ int DynamicHosts_SocketLoop(void)
 
 					InternalInterface_QueryContextRemoveByNumber(&Context, EntryNumber);
 
-					ShowNormalMassage(Entry -> Agent,
+					ShowNormalMessage(Entry -> Agent,
 										Entry -> Domain,
 										NewlyGeneratedRocord + sizeof(ControlHeader),
 										CompressedLength,

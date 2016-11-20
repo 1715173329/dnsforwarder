@@ -235,7 +235,7 @@ int QueryDNSInterfaceStart(void)
 		return -1;
 	}
 
-	if( ShowMassages == TRUE )
+	if( ShowMessages == TRUE )
 	{
 		ConfigDisplay(&ConfigInfo);
 		putchar('\n');

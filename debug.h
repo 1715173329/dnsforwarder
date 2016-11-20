@@ -4,12 +4,12 @@
 #include "readconfig.h"
 #include "common.h"
 
-#define	PRINT(...)		if(ShowMassages == TRUE){ printf(__VA_ARGS__); } DEBUG_FILE(__VA_ARGS__);
-#define	INFO(...)		if(ShowMassages == TRUE){ printf("[INFO] "__VA_ARGS__); } DEBUG_FILE("[INFO] " __VA_ARGS__);
+#define	PRINT(...)		if(ShowMessages == TRUE){ printf(__VA_ARGS__); } DEBUG_FILE(__VA_ARGS__);
+#define	INFO(...)		if(ShowMessages == TRUE){ printf("[INFO] "__VA_ARGS__); } DEBUG_FILE("[INFO] " __VA_ARGS__);
 #define	ERRORMSG(...)	if(ErrorMessages == TRUE){ fprintf(stderr, "[ERROR] "__VA_ARGS__); } DEBUG_FILE("[ERROR] " __VA_ARGS__);
 
 /* Global Varibles */
-extern BOOL				ShowMassages;
+extern BOOL				ShowMessages;
 extern BOOL				ErrorMessages;
 
 

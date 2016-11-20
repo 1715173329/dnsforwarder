@@ -6,7 +6,7 @@
 #include "common.h"
 
 /* Global Variables */
-BOOL			ShowMassages = TRUE;
+BOOL			ShowMessages = TRUE;
 BOOL			ErrorMessages = TRUE;
 
 static FILE				*Debug_File = NULL;

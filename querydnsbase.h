@@ -15,13 +15,13 @@ typedef enum _DnsQuaryProtocol{
 #include "readconfig.h"
 #include "internalsocket.h"
 
-void ShowRefusingMassage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Massage);
+void ShowRefusingMessage(const char *Agent, DNSRecordType Type, const char *Domain, const char *Message);
 
-void ShowTimeOutMassage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol);
+void ShowTimeOutMessage(const char *Agent, DNSRecordType Type, const char *Domain, char Protocol);
 
-void ShowErrorMassage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter);
+void ShowErrorMessage(const char *Agent, DNSRecordType Type, const char *Domain, char ProtocolCharacter);
 
-void ShowNormalMassage(const char *Agent, const char *RequestingDomain, char *Package, int PackageLength, char ProtocolCharacter);
+void ShowNormalMessage(const char *Agent, const char *RequestingDomain, char *Package, int PackageLength, char ProtocolCharacter);
 
 void ShowBlockedMessage(const char *RequestingDomain, char *Package, int PackageLength, const char *Message);
 
