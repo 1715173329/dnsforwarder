@@ -28,7 +28,7 @@ int LinkedQueue_Init(LinkedQueue *l,
                      int (*CompareFunc)(const void *One, const void *Two)
                      );
 
-#define LinkedQueue_FreeNode(ptr)   SafeFree(((ListHead *)(ptr)) - 1)
+#define LinkedQueue_FreeNode(ptr)   SafeFree((ptr) == NULL ? NULL : ((ListHead *)(ptr)) - 1)
 
 /** Iterator Implementation */
 typedef struct _LinkedQueueIterator LinkedQueueIterator;

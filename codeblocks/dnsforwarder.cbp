@@ -45,10 +45,6 @@
 			<Add option="-lcurl -lssl -lcrypto -pthread" />
 		</Linker>
 		<Unit filename="../StatisticTemplate.html" />
-		<Unit filename="../addresschunk.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../addresschunk.h" />
 		<Unit filename="../addresslist.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -111,10 +107,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../iheader.h" />
-		<Unit filename="../internalsocket.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../internalsocket.h" />
 		<Unit filename="../ipchunk.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -134,6 +126,10 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../mmgr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../mmgr.h" />
 		<Unit filename="../oo.h" />
 		<Unit filename="../pipes.c">
 			<Option compilerVar="CC" />

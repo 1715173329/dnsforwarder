@@ -225,6 +225,30 @@ static void StableBufferIterator_RemoveLastNBytesOfCurrentBlock(
     }
 }
 
+static void StableBufferIterator_RemoveNBytesOfCurrentBlock(
+                                                    StableBufferIterator *i,
+                                                    char *Here,
+                                                    int n)
+{
+    StableBuffer_MetaInfo   *m = StableBufferIterator_CurrentMeta(i);
+
+    if( n < 0 ||
+       !StableBufferIterator_IsInCurrentBlock(i, Here) ||
+       Here + n - m->Start > m->Used
+       )
+    {
+        return;
+    }
+
+    if( m->Used < n )
+    {
+        m->Used = 0;
+    } else {
+        memmove(Here, Here + n, m->Used - (Here - m->Start) - n);
+        m->Used -= n;
+    }
+}
+
 static void StableBufferIterator_Free(StableBufferIterator *i)
 {
 
@@ -249,6 +273,8 @@ int StableBufferIterator_Init(StableBufferIterator *i, StableBuffer *s)
     i->CurrentBlockUsed = StableBufferIterator_CurrentBlockUsed;
     i->RemoveLastNBytesOfCurrentBlock =
                             StableBufferIterator_RemoveLastNBytesOfCurrentBlock;
+    i->RemoveNBytesOfCurrentBlock =
+                                StableBufferIterator_RemoveNBytesOfCurrentBlock;
 
     i->Free = StableBufferIterator_Free;
 

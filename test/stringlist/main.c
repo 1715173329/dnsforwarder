@@ -14,13 +14,52 @@ int main(void)
     int n;
 
     srand(time(NULL));
-    StringList_Init(&l, "asd,facryhty,00000", ",");
+    StringList_Init(&l, "          asd          ,      facryhty,,    ,  ,00000", ",");
 
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+    l.Add(&l, ",,,,,,asd          ,      facryhty,,    ,  ,00000,,,,,,,", ",");
+
+    l.TrimAll(&l);
+
+/*
     for( n = 2; n < sizeof(str); ++n )
     {
         l.Add(&l, RandomString(str, n), "");
     }
-
+*/
     printf("Count : %d\n", l.Count(&l));
 
     StringListIterator_Init(&i, &l);

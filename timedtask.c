@@ -22,6 +22,7 @@ typedef struct _TaskInfo{
 #endif /* WIN32 */
 
     BOOL    Persistent;
+    BOOL    Asynchronous;
 } TaskInfo;
 
 static LinkedQueue  TimeQueue;
@@ -118,6 +119,39 @@ static int TimeTask_ReallyAdd(TaskInfo *i)
     return TimeQueue.Add(&TimeQueue, i);
 }
 
+static void TimeTask_RunTack(void *i)
+{
+    TaskInfo *Info = (TaskInfo *)i;
+
+    Info->Task(Info->Arg1, Info->Arg2);
+
+    if( Info->Persistent )
+    {
+        Info->LeftTime = Info->TimeOut;
+        if( Info->Asynchronous )
+        {
+#ifdef WIN32
+            if( MsgQue.Post(&MsgQue, Info) != 0 )
+            {
+                /** TODO: Show fatal error */
+            }
+#else /* WIN32 */
+            if( WRITE_PIPE(WriteTo, Info, sizeof(TaskInfo)) < 0 )
+            {
+                /** TODO: Show fatal error */
+            }
+#endif /* WIN32 */
+        } else {
+            if( TimeTask_ReallyAdd(Info) != 0 )
+            {
+                /** TODO: Show fatal error */
+            }
+        }
+    }
+
+    LinkedQueue_FreeNode(i);
+}
+
 /* Only the particular one thread execute the function */
 static void TimeTask_Work(void *Unused)
 {
@@ -130,20 +164,12 @@ static void TimeTask_Work(void *Unused)
     {
         static TaskInfo *New;
 
-        /* Get a task and set the time */
-        if( tv == NULL )
+        i = TimeQueue.Get(&TimeQueue);
+        if( i == NULL )
         {
-            /* Start a new round */
-            i = TimeQueue.Get(&TimeQueue);
-            if( i == NULL )
-            {
-                tv = NULL;
-            } else {
-                tv = &(i->LeftTime);
-                BeforeWaiting = *tv;
-            }
+            tv = NULL;
         } else {
-            /* Resume last unfinished round */
+            tv = &(i->LeftTime);
             BeforeWaiting = *tv;
         }
 
@@ -153,19 +179,15 @@ static void TimeTask_Work(void *Unused)
             /* Run the task */
             TimeTask_ReduceTime(BeforeWaiting - *tv);
 
-            i->Task(i->Arg1, i->Arg2);
-
-            if( i->Persistent )
+            if( i->Asynchronous )
             {
-                i->LeftTime = i->TimeOut;
-                if( TimeTask_ReallyAdd(i) != 0 )
-                {
-                    /** TODO: Show fatal error */
-                }
+                ThreadHandle t;
+                CREATE_THREAD(TimeTask_RunTack, i, t);
+                DETACH_THREAD(t);
+            } else {
+                TimeTask_RunTack(i);
             }
 
-            LinkedQueue_FreeNode(i);
-            tv = NULL;
         } else {
             /* Receive a new task from other thread */
             if( tv != NULL )
@@ -177,6 +199,16 @@ static void TimeTask_Work(void *Unused)
             {
                 /** TODO: Show fatal error */
                 break;
+            }
+
+            if( i != NULL )
+            {
+                if( TimeTask_ReallyAdd(i) != 0 )
+                {
+                    /** TODO: Show fatal error */
+                    break;
+                }
+                LinkedQueue_FreeNode(i);
             }
 
             WinMsgQue_FreeMsg(New);
@@ -194,21 +226,13 @@ static void TimeTask_Work(void *Unused)
 
     while( TRUE )
     {
-        /* Get a task and set the time */
-        if( tv == NULL )
-        {
-            /* Start a new round */
-            i = TimeQueue.Get(&TimeQueue);
+        i = TimeQueue.Get(&TimeQueue);
 
-            if( i == NULL )
-            {
-                tv = NULL;
-            } else {
-                tv = &(i->LeftTime);
-                Elapsed = *tv;
-            }
+        if( i == NULL )
+        {
+            tv = NULL;
         } else {
-            /* Resume last unfinished round */
+            tv = &(i->LeftTime);
             Elapsed = *tv;
         }
 
@@ -228,19 +252,15 @@ static void TimeTask_Work(void *Unused)
             Tv_Subtract(&Elapsed, tv);
             TimeTask_ReduceTime(&Elapsed);
 
-            i->Task(i->Arg1, i->Arg2);
-
-            if( i->Persistent )
+            if( i->Asynchronous )
             {
-                i->LeftTime = i->TimeOut;
-                if( TimeTask_ReallyAdd(i) != 0 )
-                {
-                    /** TODO: Show fatal error */
-                }
+                ThreadHandle t;
+                CREATE_THREAD(TimeTask_RunTack, i, t);
+                DETACH_THREAD(t);
+            } else {
+                TimeTask_RunTack(i);
             }
 
-            LinkedQueue_FreeNode(i);
-            tv = NULL;
             break;
 
         default:
@@ -266,6 +286,17 @@ static void TimeTask_Work(void *Unused)
                     break;
                 }
             }
+
+            if( i != NULL )
+            {
+                if( TimeTask_ReallyAdd(i) != 0 )
+                {
+                    /** TODO: Show fatal error */
+                    break;
+                }
+                LinkedQueue_FreeNode(i);
+            }
+
             break;
         }
     }
@@ -273,10 +304,12 @@ static void TimeTask_Work(void *Unused)
 }
 
 int TimeTask_Add(BOOL Persistent,
+                 BOOL Asynchronous,
                  int Milliseconds,
                  TaskFunc Func,
                  void *Arg1,
-                 void *Arg2
+                 void *Arg2,
+                 BOOL Immediate
                  )
 {
     TaskInfo i;
@@ -290,13 +323,24 @@ int TimeTask_Add(BOOL Persistent,
     i.Arg1 = Arg1;
     i.Arg2 = Arg2;
     i.Persistent = Persistent;
+    i.Asynchronous = Asynchronous;
 #ifdef WIN32
     i.TimeOut = Milliseconds;
 #else /* WIN32 */
     i.TimeOut.tv_usec = (Milliseconds % 1000) * 1000;
     i.TimeOut.tv_sec = Milliseconds / 1000;
 #endif /* WIN32 */
-    i.LeftTime = i.TimeOut;
+    if( Immediate )
+    {
+#ifdef WIN32
+        i.LeftTime = 0;
+#else /* WIN32 */
+        i.LeftTime.tv_sec = 0;
+        i.LeftTime.tv_usec = 0;
+#endif /* WIN32 */
+    } else {
+        i.LeftTime = i.TimeOut;
+    }
 
 #ifdef WIN32
     if( MsgQue.Post(&MsgQue, &i) != 0 )
@@ -319,7 +363,7 @@ static int CompareFunc(const void *One, const void *Two)
 #ifdef WIN32
     return o->LeftTime - t->LeftTime;
 #else /* WIN32 */
-    return Tv_Comapre(o, t);
+    return Tv_Comapre(&(o->LeftTime), &(t->LeftTime));
 #endif /* WIN32 */
 }
 

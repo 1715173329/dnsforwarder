@@ -15,6 +15,7 @@ struct _StringList{
     void *(*Add)(StringList *s, const char *str, const char *Delimiters);
     int (*AppendLast)(StringList *s, const char *str, const char *Delimiters);
     const char **(*ToCharPtrArray)(StringList *s);
+    void (*TrimAll)(StringList *s);
     void (*Clear)(StringList *s);
     void (*Free)(StringList *s);
 };
@@ -35,6 +36,7 @@ struct _StringListIterator{
     char                    *CurrentPosition;
 
     const char *(*Next)(StringListIterator *i);
+    const char *(*Remove)(StringListIterator *i);
     void (*Reset)(StringListIterator *i);
 };
 

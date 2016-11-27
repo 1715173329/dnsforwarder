@@ -63,7 +63,13 @@ int ConfigCloseFile(ConfigFileInfo *Info)
 	return fclose(Info -> fp);
 }
 
-int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strategy, OptionType Type, VType Initial, char *Caption)
+int ConfigAddOption(ConfigFileInfo *Info,
+                    char *KeyName,
+                    MultilineStrategy Strategy,
+                    OptionType Type,
+                    VType Initial,
+                    char *Caption
+                    )
 {
 	ConfigOption New;
 
@@ -72,6 +78,7 @@ int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strat
 	New.Strategy = Strategy;
 
 	New.Caption = StringDup(Caption);
+	New.Delimiters = ",";
 
 	switch( Type )
 	{
@@ -127,6 +134,24 @@ static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info, const char *KeyName)
 	}
 }
 
+int ConfigSetStringDelimiters(ConfigFileInfo *Info,
+                              char *KeyName,
+                              const char *Delimiters,
+                              )
+{
+    ConfigOption *Option;
+
+    Option = GetOptionOfAInfo(Info, KeyName);
+    if( Option == NULL )
+    {
+        return -147;
+    }
+
+    Option->Delimiters = StringDup(Delimiters);
+
+    return 0;
+}
+
 char *GetKeyNameAndValue(char *Line, const char *Delimiters)
 {
 	char *Delimiter = strpbrk(Line, Delimiters);
@@ -164,53 +189,6 @@ static BOOL GetBoolealValueFromString(char *str)
 	}
 
 	return FALSE;
-}
-
-static char *TrimStrings(char *Strings)
-{
-	char *PrevNonSpace;
-	char *NextNonSpace;
-	char *Delimiter;
-
-	NextNonSpace = StrNpbrk(Strings, "\t ");
-	if( NextNonSpace == NULL )
-	{
-		return Strings;
-	} else {
-		if( *NextNonSpace == ',' )
-		{
-			*Strings = ',';
-			NextNonSpace = StrNpbrk(NextNonSpace + 1, "\t ,");
-			if( NextNonSpace == NULL )
-			{
-				*(Strings + 1) = '\0';
-				return Strings;
-			}
-
-			memmove(Strings + 1, NextNonSpace, strlen(NextNonSpace) + 1);
-		} else {
-			memmove(Strings, NextNonSpace, strlen(NextNonSpace) + 1);
-		}
-	}
-
-	Delimiter = strchr(Strings + 1, ',');
-    while( Delimiter != NULL )
-    {
-		PrevNonSpace = GoToPrevNonSpace(Delimiter - 1);
-		*(PrevNonSpace + 1) = ',';
-		NextNonSpace = StrNpbrk(Delimiter + 1, "\t ,");
-		if( NextNonSpace == NULL )
-		{
-			*(PrevNonSpace + 2) = '\0';
-			return Strings;
-		} else {
-			memmove(PrevNonSpace + 2, NextNonSpace, strlen(NextNonSpace) + 1);
-		}
-
-		Delimiter = strchr(PrevNonSpace + 2, ',');
-    }
-
-	return Strings;
 }
 
 static void ParseBoolean(ConfigOption *Option, char *Value)
@@ -282,14 +260,16 @@ static void ParseInt32(ConfigOption *Option, const char *Value)
 	}
 }
 
-static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadStatus, BOOL Trim, FILE *fp, char *Buffer, int BufferLength)
+static void ParseString(ConfigOption *Option,
+                        char *Value,
+                        ReadLineStatus ReadStatus,
+                        BOOL Trim,
+                        FILE *fp,
+                        char *Buffer,
+                        int BufferLength
+                        )
 {
-	if( Trim == TRUE )
-	{
-		TrimStrings(Value);
-	}
-
-	switch (Option -> Strategy)
+	switch( Option -> Strategy )
 	{
 		case STRATEGY_APPEND_DISCARD_DEFAULT:
 			if( Option -> Status == STATUS_DEFAULT_VALUE )
@@ -301,24 +281,18 @@ static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadSt
 		case STRATEGY_DEFAULT:
 		case STRATEGY_REPLACE:
 			Option->Holder.str.Clear(&(Option->Holder.str));
-			Option->Status = STATUS_SPECIAL_VALUE;
-			if( Option->Holder.str.Add(&(Option->Holder.str), Value, ",")
-                == NULL
-                )
-			{
-				return;
-			}
-
-			break;
+			/* No break */
 
 		case STRATEGY_APPEND:
-			if( Option->Holder.str.Add(&(Option->Holder.str), Value, ",")
-                == NULL
-                )
+			if( Option->Holder.str.Add(&(Option->Holder.str),
+                                       Value,
+                                       Option->Delimiters
+                                       )
+                == NULL )
 			{
 				return;
 			}
-			Option -> Status = STATUS_SPECIAL_VALUE;
+			Option->Status = STATUS_SPECIAL_VALUE;
 			break;
 
 		default:
@@ -332,13 +306,13 @@ static void ParseString(ConfigOption *Option, char *Value, ReadLineStatus ReadSt
 		if( ReadStatus == READ_FAILED_OR_END )
 			break;
 
-		if( Trim == TRUE )
-		{
-			TrimStrings(Value);
-		}
-
-		Option->Holder.str.AppendLast(&(Option->Holder.str), Buffer, ",");
+		Option->Holder.str.AppendLast(&(Option->Holder.str), Buffer, Option->Delimiters);
 	}
+
+	if( Trim )
+    {
+        Option->Holder.str.TrimAll(&(Option->Holder.str));
+    }
 }
 
 static char *TrimPath(char *Path)
@@ -374,20 +348,20 @@ int ConfigRead(ConfigFileInfo *Info)
 	char			*KeyName;
 	ConfigOption	*Option;
 
-	char            Context_SkipReadinng[2048] = {'\0'};
+	char            Context_SkipReading[2048] = {'\0'};
 
 	while(TRUE){
 		ReadStatus = ReadLine(Info -> fp, Buffer, sizeof(Buffer));
 		if( ReadStatus == READ_FAILED_OR_END )
 			return NumOfRead;
 
-		if( Context_SkipReadinng[0] != '\0' )
+		if( Context_SkipReading[0] != '\0' )
 		{
-			if( strcmp(Context_SkipReadinng, Buffer) != 0 )
+			if( strcmp(Context_SkipReading, Buffer) != 0 )
 			{
 
 			} else {
-				Context_SkipReadinng[0] = '\0';
+				Context_SkipReading[0] = '\0';
 			}
 
 			continue;
@@ -396,8 +370,8 @@ int ConfigRead(ConfigFileInfo *Info)
         /* If it is a context begin or end */
         if( Buffer[0] == '{' && StringChunk_Match_NoWildCard(&(Info -> Contexts), Buffer + 1, NULL, NULL) == TRUE )
 		{
-			Context_SkipReadinng[0] = '}';
-			strncpy(Context_SkipReadinng + 1, Buffer + 1, sizeof(Context_SkipReadinng) - 1);
+			Context_SkipReading[0] = '}';
+			strncpy(Context_SkipReading + 1, Buffer + 1, sizeof(Context_SkipReading) - 1);
 			continue;
 		}
 

@@ -41,6 +41,10 @@ struct _StableBufferIterator{
     int32_t (*CurrentBlockUsed)(StableBufferIterator *i);
 
     void (*RemoveLastNBytesOfCurrentBlock)(StableBufferIterator *i, int n);
+    void (*RemoveNBytesOfCurrentBlock)(StableBufferIterator *i,
+                                       char *Here,
+                                       int n
+                                       );
 
     void (*Free)(StableBufferIterator *i);
 };

@@ -30,6 +30,7 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add option="-DWIN32" />
 		</Compiler>
 		<Linker>
 			<Add option="-pthread" />

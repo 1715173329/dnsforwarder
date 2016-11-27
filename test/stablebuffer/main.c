@@ -16,9 +16,9 @@ int main(void)
 
     StableBuffer_Init(&b);
 
-    for( n = 2; n < sizeof(str); ++n )
+    for( n = 2; n < 50; ++n )
     {
-        b.Add(&b, RandomString(str, n), n - 1);
+        b.Add(&b, RandomString(str, n), n);
     }
 
     StableBufferIterator_Init(&i, &b);
@@ -27,7 +27,11 @@ int main(void)
     while( bl != NULL )
     {
         printf("____________Block %d/%d\n", i.CurrentBlockUsed(&i), i.CurrentBlockSize(&i));
-        printf("%s\n\n", (char *)bl);
+        printf("%s\n", (char *)bl);
+        i.RemoveNBytesOfCurrentBlock(&i, bl + 1, 10);
+        printf("____________Block %d/%d\n", i.CurrentBlockUsed(&i), i.CurrentBlockSize(&i));
+        printf("After removing:\n%s\n\n", (char *)bl);
+
 
         bl = i.NextBlock(&i);
     }

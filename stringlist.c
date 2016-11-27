@@ -68,7 +68,7 @@ static void *StringList_Add(StringList *s,
     return Here;
 }
 
-/* Unsafe operation, it may change string positions */
+/* Unsafe operation, it may change strings' positions */
 static int StringList_AppendLast(StringList *s,
                                  const char *str,
                                  const char *Delimiters
@@ -177,7 +177,49 @@ static const char **StringList_ToCharPtrArray(StringList *s)
     return ret;
 }
 
+/* Unsafe operation, it may change strings' positions */
+static void StringList_TrimAll(StringList *s)
+{
+    StringListIterator i;
+    char *Str;
 
+    if( StringListIterator_Init(&i, s) != 0 )
+    {
+        return;
+    }
+
+    Str = (char *)i.Next(&i);
+    while( Str != NULL )
+    {
+        char *HardContent;
+        char *HardContentTail;
+
+        HardContent = StrNpbrk(Str, "\t ");
+        if( HardContent != NULL )
+        {
+            i.BufferIterator.RemoveNBytesOfCurrentBlock(&(i.BufferIterator),
+                                                        Str,
+                                                        HardContent - Str
+                                                        );
+        } else {
+            /* Str is full of tabs and\or spaces, or empty, remove it */
+            Str = i.Remove(&i);
+            continue;
+        }
+
+        HardContentTail = StrRNpbrk(Str, "\t ");
+        if( HardContentTail != NULL )
+        {
+            ++HardContentTail;
+            i.BufferIterator.RemoveNBytesOfCurrentBlock(&(i.BufferIterator),
+                                                        HardContentTail,
+                                           strlen(Str) - (HardContentTail - Str)
+                                                        );
+        }
+
+        Str = (char *)i.Next(&i);
+    }
+}
 
 static void StringList_Clear(StringList *s)
 {
@@ -212,6 +254,7 @@ int StringList_Init(__in StringList *s,
     s->Add = StringList_Add;
     s->AppendLast = StringList_AppendLast;
     s->ToCharPtrArray = StringList_ToCharPtrArray;
+    s->TrimAll = StringList_TrimAll;
     s->Clear = StringList_Clear;
     s->Free = StringList_Free;
 
@@ -244,13 +287,43 @@ static const char *StringListIterator_Next(StringListIterator *i)
         i->CurrentPosition += strlen(i->CurrentPosition) + 1;
     }
 
-    while(TRUE)
+    while( TRUE )
     {
         if( i->CurrentPosition == NULL )
         {
             return NULL;
         } else if( i->BufferIterator.IsInCurrentBlock(&(i->BufferIterator),
-                                                      i->CurrentPosition)
+                                                      i->CurrentPosition
+                                                      )
+                 )
+        {
+            return i->CurrentPosition;
+        }
+
+        i->CurrentPosition = i->BufferIterator.NextBlock(&(i->BufferIterator));
+    }
+}
+
+static const char *StringListIterator_Remove(StringListIterator *i)
+{
+    if( i->CurrentPosition == NULL )
+    {
+        return NULL;
+    }
+
+    i->BufferIterator.RemoveNBytesOfCurrentBlock(&(i->BufferIterator),
+                                                 i->CurrentPosition,
+                                                 strlen(i->CurrentPosition) + 1
+                                                 );
+
+    while( TRUE )
+    {
+        if( i->CurrentPosition == NULL )
+        {
+            return NULL;
+        } else if( i->BufferIterator.IsInCurrentBlock(&(i->BufferIterator),
+                                                      i->CurrentPosition
+                                                      )
                  )
         {
             return i->CurrentPosition;
@@ -281,6 +354,7 @@ int StringListIterator_Init(StringListIterator *i, StringList *l)
 
     i->Next = StringListIterator_Next;
     i->Reset = StringListIterator_Reset;
+    i->Remove = StringListIterator_Remove;
 
     return 0;
 }

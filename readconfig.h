@@ -9,7 +9,7 @@
 
 /* A valid line of a configuration file has the following structure:
  *  <Option> <value>
- * Which `<Option>' is the name of a option, and here we call it `KEY NAME'.
+ * Where `<Option>' is the name of a option, here we call it `KEY NAME'.
  * And `<value>' is the option's value, we just call it `value'.
  * A line started with `#' is a comment, which will be ignored when it is read.
  * A valid option can be followed a comment which will be ignored too:
@@ -43,9 +43,9 @@ typedef enum _MultilineStrategy{
 } MultilineStrategy;
 
 typedef union _VType{
-	const char	*str;
-	int32_t	INT32;
-	BOOL		boolean;
+	const char  *str;
+	int32_t     INT32;
+	BOOL        boolean;
 } VType;
 
 typedef enum _OptionStatus{
@@ -73,6 +73,8 @@ typedef struct _Option{
 		BOOL		boolean;
 	} Holder;
 
+	const char *Delimiters;
+
 	/* Caption */
 	char		*Caption;
 } ConfigOption;
@@ -98,9 +100,20 @@ int ConfigOpenFile(ConfigFileInfo *Info, const char *File);
 
 int ConfigCloseFile(ConfigFileInfo *Info);
 
-int ConfigAddOption(ConfigFileInfo *Info, char *KeyName, MultilineStrategy Strategy, OptionType Type, VType Initial, char *Caption);
+int ConfigAddOption(ConfigFileInfo *Info,
+                    char *KeyName,
+                    MultilineStrategy Strategy,
+                    OptionType Type,
+                    VType Initial,
+                    char *Caption
+                    );
 
 int ConfigAddAlias(ConfigFileInfo *Info, char *Alias, char *Target);
+
+int ConfigSetStringDelimiters(ConfigFileInfo *Info,
+                              char *KeyName,
+                              const char *Delimiters
+                              );
 
 int ConfigRead(ConfigFileInfo *Info);
 
