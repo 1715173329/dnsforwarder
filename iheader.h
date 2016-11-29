@@ -35,4 +35,6 @@ int IHeader_Fill(IHeader *h,
                  const char *Agent
                  );
 
+int IHeader_SendBack(IHeader *h /* Entity followed */, int FullLength);
+
 #endif // IHEADER_H_INCLUDED

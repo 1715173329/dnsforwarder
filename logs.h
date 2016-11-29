@@ -35,8 +35,8 @@ void ShowNormalMessage(IHeader *h,
                        );
 
 void ShowBlockedMessage(IHeader *h,
-                       int PackageLength /* Excluding IHeader */,
-                       const char *Message
-                       );
+                        int PackageLength /* Excluding IHeader */,
+                        const char *Message
+                        );
 
 #endif // LOGS_H_INCLUDED

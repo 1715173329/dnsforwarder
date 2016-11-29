@@ -244,25 +244,9 @@ static void UdpM_Works(void *Module)
         if( ContextState == 0 )
         {
             int SentState;
-            if( ci.h.ReturnHeader )
-            {
-                memcpy(Header, &(ci.h), sizeof(IHeader));
-                SentState = sendto(Header->SendBackSocket,
-                                   ReceiveBuffer,
-                                   RecvState + sizeof(IHeader),
-                                   0,
-                                   (const struct sockaddr *)&(Header->BackAddress.Addr),
-                                   GetAddressLength(Header->BackAddress.family)
-                                   );
-            } else {
-                SentState = sendto(Header->SendBackSocket,
-                                   Entity,
-                                   RecvState,
-                                   0,
-                                   (const struct sockaddr *)&(Header->BackAddress.Addr),
-                                   GetAddressLength(Header->BackAddress.family)
-                                   );
-            }
+            memcpy(Header, &(ci.h), sizeof(IHeader));
+
+            SentState = IHeader_SendBack(Header, RecvState + sizeof(IHeader));
 
             /** TODO: Error handlings, Show message, Domain statistic, add cache*/
         }

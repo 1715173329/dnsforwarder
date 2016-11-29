@@ -16,6 +16,8 @@ typedef struct _ModuleInterface {
 
     SendFunc    Send;
 
+    const char *ModuleName;
+
 } ModuleInterface;
 
 static StableBuffer Modules; /* Storing ModuleInterfaces */
@@ -82,6 +84,8 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
         return -33;
     }
 
+    NewM.ModuleName = "UDP";
+
     while( TRUE )
     {
         const char *Services;
@@ -119,7 +123,7 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
 
         if( MappingAModule(&NewM, Domains) != 0 )
         {
-            /** Show error */
+            /** TODO: Show error */
         }
     }
 
@@ -168,7 +172,7 @@ int MMgr_Send(IHeader *h, int FullLength)
 
     if( Filter_Out(h) )
     {
-        /** Show filtered message */
+        /** TODO: Show filtered message */
         return -170;
     }
 

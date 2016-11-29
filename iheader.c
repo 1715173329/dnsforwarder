@@ -89,3 +89,25 @@ int IHeader_Fill(IHeader *h,
 
     return 0;
 }
+
+int IHeader_SendBack(IHeader *h /* Entity followed */, int FullLength)
+{
+    if( h->ReturnHeader )
+    {
+        return sendto(h->SendBackSocket,
+                      (const char *)h,
+                      FullLength,
+                      0,
+                      (const struct sockaddr *)&(h->BackAddress.Addr),
+                      GetAddressLength(h->BackAddress.family)
+                      );
+    } else {
+        return sendto(h->SendBackSocket,
+                      (const char *)(h + 1),
+                      FullLength - sizeof(IHeader),
+                      0,
+                      (const struct sockaddr *)&(h->BackAddress.Addr),
+                      GetAddressLength(h->BackAddress.family)
+                      );
+    }
+}

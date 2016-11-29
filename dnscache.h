@@ -3,14 +3,21 @@
 
 #include "dnsrelated.h"
 #include "readconfig.h"
+#include "iheader.h"
 
 int DNSCache_Init(ConfigFileInfo *ConfigInfo);
 
 BOOL Cache_IsInited(void);
 
-int DNSCache_AddItemsToCache(char *DNSBody, int DNSBodyLength, time_t CurrentTime, const char *Domain);
+int DNSCache_AddItemsToCache(char *DNSBody,
+                             int DNSBodyLength,
+                             const char *Domain
+                             );
 
-int DNSCache_FetchFromCache(char *RequestContent, int RequestLength, int BufferLength);
+int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
+                            int FullLength,
+                            int BufferLength
+                            );
 
 void DNSCacheClose(ConfigFileInfo *ConfigInfo);
 
