@@ -54,7 +54,7 @@ int StringChunk_Init(StringChunk *dl, StringList *List)
 
 int StringChunk_Add(StringChunk	*dl,
 					const char	*Str,
-					const char	*AdditionalData,
+					const void	*AdditionalData,
 					int			LengthOfAdditionalData /* The length will not be stored. */
 					)
 {
@@ -111,7 +111,7 @@ int StringChunk_Add(StringChunk	*dl,
 
 int StringChunk_Add_Domain(StringChunk	*dl,
 							const char	*Domain,
-							const char	*AdditionalData,
+							const void	*AdditionalData,
 							int			LengthOfAdditionalData /* The length will not be stored. */
 							)
 {
@@ -126,7 +126,7 @@ int StringChunk_Add_Domain(StringChunk	*dl,
 BOOL StringChunk_Match_NoWildCard(StringChunk	*dl,
 								  const char	*Str,
 								  int			*HashValue,
-								  char			**Data
+								  void			**Data
 								  )
 {
     SimpleHT        *nl;
@@ -150,7 +150,7 @@ BOOL StringChunk_Match_NoWildCard(StringChunk	*dl,
 		{
 			if( Data != NULL )
 			{
-				*Data = (char *)FoundEntry->Data;
+				*Data = (void *)(FoundEntry->Data);
 			}
 
 			return TRUE;
@@ -165,7 +165,7 @@ BOOL StringChunk_Match_NoWildCard(StringChunk	*dl,
 
 BOOL StringChunk_Match_OnlyWildCard(StringChunk	*dl,
 									const char	*Str,
-									char		**Data
+									void		**Data
 									)
 {
     Array           *wl;
@@ -191,7 +191,7 @@ BOOL StringChunk_Match_OnlyWildCard(StringChunk	*dl,
 			{
 				if( Data != NULL )
 				{
-					*Data = (char *)FoundEntry->Data;
+					*Data = (void *)(FoundEntry->Data);
 				}
 				return TRUE;
 			}
@@ -204,13 +204,13 @@ BOOL StringChunk_Match_OnlyWildCard(StringChunk	*dl,
 	return FALSE;
 }
 
-BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, char **Data)
+BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, void **Data)
 {
 	return (StringChunk_Match_NoWildCard(dl, Str, HashValue, Data) ||
 		StringChunk_Match_OnlyWildCard(dl, Str, Data));
 }
 
-BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, char **Data)
+BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, void **Data)
 {
 	if( StringChunk_Match_NoWildCard(dl, Domain, HashValue, Data) == TRUE )
 	{
@@ -232,7 +232,7 @@ BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, in
 	return FALSE;
 }
 
-BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, char **Data)
+BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, void **Data)
 {
 	if( dl == NULL )
 	{

@@ -24,33 +24,33 @@ int StringChunk_Init(StringChunk *dl, StringList *List);
 
 int StringChunk_Add(StringChunk *dl,
                     const char *Str,
-                    const char *AdditionalData,
+                    const void *AdditionalData,
                     int LengthOfAdditionalData
                     );
 
 int StringChunk_Add_Domain(StringChunk    *dl,
                             const char    *Domain,
-                            const char    *AdditionalData,
+                            const void    *AdditionalData,
                             int            LengthOfAdditionalData /* The length will not be stored. */
                             );
 
 /* NOTICE : Data address returned, not offset. */
-BOOL StringChunk_Match_NoWildCard(StringChunk    *dl,
+BOOL StringChunk_Match_NoWildCard(StringChunk   *dl,
                                   const char    *Str,
-                                  int            *HashValue,
-                                  char            **Data
+                                  int           *HashValue,
+                                  void          **Data
                                   );
 
 BOOL StringChunk_Match_OnlyWildCard(StringChunk *dl,
-                                    const char *Str,
-                                    char **Data
+                                    const char  *Str,
+                                    void        **Data
                                     );
 
-BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, char **Data);
+BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, void **Data);
 
-BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, char **Data);
+BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, void **Data);
 
-BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, char **Data);
+BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, void **Data);
 
 const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **Data);
 

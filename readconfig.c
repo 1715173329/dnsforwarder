@@ -18,7 +18,7 @@ int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
         return -1;
     }
 
-    if( StringList_Init(&l, Contexts, ",") < 0 )
+    if( StringList_Init(&l, Contexts, ",") != 0 )
     {
     	StringChunk_Free(&(Info -> Contexts), TRUE);
         return -2;
@@ -53,7 +53,7 @@ int ConfigOpenFile(ConfigFileInfo *Info, const char *File)
 {
 	Info -> fp = fopen(File, "r");
 	if( Info -> fp == NULL )
-		return GET_LAST_ERROR();
+		return -56;
 	else
 		return 0;
 }
@@ -93,7 +93,7 @@ int ConfigAddOption(ConfigFileInfo *Info,
 		case TYPE_PATH:
 			New.Strategy = STRATEGY_REPLACE;
 		case TYPE_STRING:
-			if( StringList_Init(&(New.Holder.str), Initial.str, ",") < 0 )
+			if( StringList_Init(&(New.Holder.str), Initial.str, ",") != 0 )
 			{
 				return 2;
 			}
@@ -136,7 +136,7 @@ static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info, const char *KeyName)
 
 int ConfigSetStringDelimiters(ConfigFileInfo *Info,
                               char *KeyName,
-                              const char *Delimiters,
+                              const char *Delimiters
                               )
 {
     ConfigOption *Option;
@@ -504,7 +504,6 @@ void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 
 	if( Option != NULL )
 	{
-		Option -> Status = STATUS_SPECIAL_VALUE;
 		switch( Option -> Type )
 		{
 			case TYPE_INT32:
@@ -517,7 +516,10 @@ void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 
 			case TYPE_STRING:
 				Option->Holder.str.Clear(&(Option->Holder.str));
-				Option->Holder.str.Add(&(Option->Holder.str), Value.str, ",");
+				Option->Holder.str.Add(&(Option->Holder.str),
+                                       Value.str,
+                                       Option->Delimiters
+                                       );
 				break;
 
 			default:

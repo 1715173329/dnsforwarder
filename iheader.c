@@ -17,6 +17,7 @@ int IHeader_Fill(IHeader *h,
                  char *DnsEntity,
                  int EntityLength,
                  struct sockaddr *BackAddress,
+                 SOCKET SendBackSocket,
                  sa_family_t Family,
                  const char *Agent
                  )
@@ -75,6 +76,8 @@ int IHeader_Fill(IHeader *h,
         memcpy(&(h->BackAddress.Addr), BackAddress, GetAddressLength(Family));
         h->BackAddress.family = Family;
     }
+
+    h->SendBackSocket = SendBackSocket;
 
     if( Agent != NULL )
     {

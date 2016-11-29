@@ -17,11 +17,11 @@ BOOL Log_DebugOn(void);
 
 void Log_Print(const char *Type, const char *format, ...);
 
-#define	WARNING(format, ...)    Log_Print("WARN", (format), __VA_ARGS__)
-#define	INFO(format, ...)       Log_Print("INFO", (format), __VA_ARGS__)
-#define	ERRORMSG(format, ...)   Log_Print("ERROR", (format), __VA_ARGS__)
-#define	DEBUG(format, ...)      if( Log_DebugOn() ) \
-                                    Log_Print("DEBUG", (format), __VA_ARGS__);
+#define	WARNING(...)    Log_Print("WARN", __VA_ARGS__)
+#define	INFO(...)       Log_Print("INFO", __VA_ARGS__)
+#define	ERRORMSG(...)   Log_Print("ERROR", __VA_ARGS__)
+#define	DEBUG(...)      if( Log_DebugOn() ) \
+                            Log_Print("DEBUG", __VA_ARGS__);
 
 void ShowRefusingMessage(IHeader *h, const char *Message);
 

@@ -32,7 +32,6 @@ typedef struct _UdpM UdpM;
 struct _UdpM {
     /* private */
     volatile SOCKET  Departure;
-    SOCKET  SendBack;
     UdpmContext Context;
 
     EFFECTIVE_LOCK  Lock;
@@ -50,5 +49,7 @@ struct _UdpM {
     /* public */
     int (*Send)(UdpM *m, IHeader *h, /* Entity followed */ int FullLength);
 };
+
+int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel);
 
 #endif // UDPM_H_INCLUDED

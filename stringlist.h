@@ -20,7 +20,6 @@ struct _StringList{
     void (*Free)(StringList *s);
 };
 
-/* Number of strings returned. */
 int StringList_Init(__in StringList *s,
                     __in const char *ori,
                     __in const char *Delimiters

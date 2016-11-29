@@ -9,7 +9,7 @@ static int Divide(char *Str, const char *Delimiters)
 
 	if( Delimiters == NULL )
     {
-        Delimiters = "";
+        return 1;
     }
 
 	Itr = strpbrk(Str, Delimiters);
@@ -203,7 +203,7 @@ static void StringList_TrimAll(StringList *s)
                                                         );
         } else {
             /* Str is full of tabs and\or spaces, or empty, remove it */
-            Str = i.Remove(&i);
+            Str = (char *)i.Remove(&i);
             continue;
         }
 
@@ -267,10 +267,10 @@ int StringList_Init(__in StringList *s,
             return -3;
         }
 
-		return Divide(Here, Delimiters);
-	} else {
-	    return 0;
+		Divide(Here, Delimiters);
 	}
+
+    return 0;
 }
 
 /**

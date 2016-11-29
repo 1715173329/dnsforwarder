@@ -1,4 +1,5 @@
 #include <string.h>
+#include <time.h>
 #include "udpm.h"
 #include "logs.h"
 #include "utils.h"
@@ -196,16 +197,6 @@ static void UdpM_Works(void *Module)
         {
             case SOCKET_ERROR:
                 ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
                 while( TRUE )
                 {
                     SLEEP(32767);
@@ -236,7 +227,15 @@ static void UdpM_Works(void *Module)
         /** TODO: Error handlings, address advanced */
 
         /* Fill IHeader */
-        IHeader_Fill(Header, FALSE, Entity, RecvState, NULL, AF_UNSPEC, NULL);
+        IHeader_Fill(Header,
+                     FALSE,
+                     Entity,
+                     RecvState,
+                     NULL,
+                     INVALID_SOCKET,
+                     AF_UNSPEC,
+                     NULL
+                     );
 
         /* Fetch context item */
         EFFECTIVE_LOCK_GET(m->Lock);
@@ -248,7 +247,7 @@ static void UdpM_Works(void *Module)
             if( ci.h.ReturnHeader )
             {
                 memcpy(Header, &(ci.h), sizeof(IHeader));
-                SentState = sendto(m->SendBack,
+                SentState = sendto(Header->SendBackSocket,
                                    ReceiveBuffer,
                                    RecvState + sizeof(IHeader),
                                    0,
@@ -256,7 +255,7 @@ static void UdpM_Works(void *Module)
                                    GetAddressLength(Header->BackAddress.family)
                                    );
             } else {
-                SentState = sendto(m->SendBack,
+                SentState = sendto(Header->SendBackSocket,
                                    Entity,
                                    RecvState,
                                    0,
@@ -307,7 +306,6 @@ static int UdpM_Send(UdpM *m,
                 ++a;
             }
 
-            ret = !ret;
         } else {
             struct sockaddr *a;
             sa_family_t	family;
@@ -334,37 +332,35 @@ static int UdpM_Send(UdpM *m,
     }
 
     EFFECTIVE_LOCK_RELEASE(m->Lock);
-    return ret;
+    return !ret;
 }
 
-int UdpM_Init(UdpM *m, SOCKET SendBack, ConfigFileInfo *ConfigInfo)
+int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
 {
-    BOOL Parallel;
-    StringList	*Addresses;
+    StringList	Addresses;
     StringListIterator  sli;
     const char *Itr;
 
-    if( m == NULL || SendBack == INVALID_SOCKET || ConfigInfo == NULL )
+    if( m == NULL || Services == NULL )
     {
         return -141;
     }
 
     m->Departure = INVALID_SOCKET;
-    m->SendBack = SendBack;
-
-    Addresses = ConfigGetStringList(ConfigInfo, "UDPServer");
-    if( Addresses == NULL )
+    if( StringList_Init(&Addresses, Services, ",") != 0 )
     {
-        return -163;
+        return -364;
     }
 
-    if( StringListIterator_Init(&sli, Addresses) != 0 )
+    if( StringListIterator_Init(&sli, &Addresses) != 0 )
     {
+        Addresses.Free(&Addresses);
         return -169;
     }
 
     if( AddressList_Init(&(m->AddrList)) != 0 )
     {
+        Addresses.Free(&Addresses);
         return -171;
     }
 
@@ -375,7 +371,8 @@ int UdpM_Init(UdpM *m, SOCKET SendBack, ConfigFileInfo *ConfigInfo)
         Itr = sli.Next(&sli);
     }
 
-    Parallel = ConfigGetBoolean(ConfigInfo, "ParallelQuery");
+    Addresses.Free(&Addresses);
+
     if( Parallel )
     {
         if( AddressList_GetOneBySubscript(&(m->AddrList),

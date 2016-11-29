@@ -102,10 +102,6 @@
 			<Add library="libwininet.a" />
 			<Add library="libshlwapi.a" />
 		</Linker>
-		<Unit filename="../addresschunk.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../addresschunk.h" />
 		<Unit filename="../addresslist.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -127,10 +123,6 @@
 		</Unit>
 		<Unit filename="../cachettlcrtl.h" />
 		<Unit filename="../common.h" />
-		<Unit filename="../debug.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../debug.h" />
 		<Unit filename="../dnscache.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -167,10 +159,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hosts.h" />
-		<Unit filename="../internalsocket.c">
+		<Unit filename="../iheader.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../internalsocket.h" />
+		<Unit filename="../iheader.h" />
 		<Unit filename="../ipchunk.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -183,9 +175,17 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../linkedqueue.h" />
+		<Unit filename="../logs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../logs.h" />
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../mmgr.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../mmgr.h" />
 		<Unit filename="../pipes.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -227,6 +227,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../socketpool.h" />
+		<Unit filename="../socketpuller.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../socketpuller.h" />
 		<Unit filename="../stablebuffer.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -247,6 +251,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../timedtask.h" />
+		<Unit filename="../udpm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../udpm.h" />
 		<Unit filename="../utils.c">
 			<Option compilerVar="CC" />
 		</Unit>

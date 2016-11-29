@@ -57,8 +57,16 @@ int QueryDNSInterfaceInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "TCPProxy", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, NULL);
 
+    /*
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Server");
+    */
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Groups");
+    ConfigSetStringDelimiters(&ConfigInfo, "UDPGroup", "\t ");
+    TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
+    ConfigSetValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
 
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "ParallelQuery", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "UDP Parallel Query");
