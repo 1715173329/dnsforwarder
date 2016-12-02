@@ -15,16 +15,18 @@ struct _SocketPuller{
 
     PUBMENB int (*Add)(SocketPuller *p,
                        SOCKET s,
-                       const char *Data,
+                       const void *Data,
                        int DataLength
                        );
 
     PUBMENB SOCKET (*Select)(SocketPuller *p,
                              struct timeval *tv,
-                             const char **Data
+                             const void **Data
                              );
 
     PUBMENB void (*Free)(SocketPuller *p);
 };
+
+int SocketPuller_Init(SocketPuller *p);
 
 #endif // SOCKETPULLER_H_INCLUDED

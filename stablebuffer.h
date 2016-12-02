@@ -15,7 +15,7 @@ struct _StableBuffer{
     Array   MetaInfo;
     int32_t BlockSize;
 
-    void    *(*Add)(StableBuffer *s, const void *Data, int Length);
+    void    *(*Add)(StableBuffer *s, const void *Data, int Length, BOOL Align);
     void    (*Clear)(StableBuffer *s);
     void    (*Free)(StableBuffer *s);
 };

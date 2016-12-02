@@ -275,6 +275,10 @@
 #define	MSG_NOSIGNAL	0
 #endif /* MSG_NOSIGNAL */
 
+#ifndef MSG_MORE
+#define	MSG_MORE	0
+#endif /* MSG_MORE */
+
 /* Unified interfaces end */
 
 /* something is STILL on some state */

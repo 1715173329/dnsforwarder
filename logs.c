@@ -209,10 +209,7 @@ void ShowErrorMessage(IHeader *h, char Protocol)
     }
 }
 
-void ShowNormalMessage(IHeader *h,
-                       int PackageLength /* Excluding IHeader */,
-                       char Protocol
-                       )
+void ShowNormalMessage(IHeader *h, char Protocol)
 {
     if( PRINTON )
     {
@@ -220,7 +217,7 @@ void ShowNormalMessage(IHeader *h,
         char InfoBuffer[1024];
 
 		InfoBuffer[0] = '\0';
-		GetAllAnswers(Package, PackageLength, InfoBuffer, sizeof(InfoBuffer));
+		GetAllAnswers(Package, h->EntityLength, InfoBuffer, sizeof(InfoBuffer));
 
         Log_Print(NULL,
                   "[%c][%s][%s][%s] : %d bytes\n%s",
@@ -228,16 +225,13 @@ void ShowNormalMessage(IHeader *h,
                   h->Agent,
                   DNSGetTypeName(h->Type),
                   h->Domain,
-                  PackageLength,
+                  h->EntityLength,
                   InfoBuffer
                   );
     }
 }
 
-void ShowBlockedMessage(IHeader *h,
-                        int PackageLength /* Excluding IHeader */,
-                        const char *Message
-                        )
+void ShowBlockedMessage(IHeader *h, const char *Message)
 {
     if( PRINTON )
     {
@@ -245,7 +239,7 @@ void ShowBlockedMessage(IHeader *h,
         char InfoBuffer[1024];
 
 		InfoBuffer[0] = '\0';
-		GetAllAnswers(Package, PackageLength, InfoBuffer, sizeof(InfoBuffer));
+		GetAllAnswers(Package, h->EntityLength, InfoBuffer, sizeof(InfoBuffer));
 
         Log_Print(NULL,
                   "[B][%s] %s :\n%s",

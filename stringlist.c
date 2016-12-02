@@ -57,7 +57,7 @@ static void *StringList_Add(StringList *s,
 
     sb = &(s->Buffer);
 
-    void *Here = sb->Add(sb, str, strlen(str) + 1);
+    void *Here = sb->Add(sb, str, strlen(str) + 1, FALSE);
     if( Here == NULL )
     {
         return NULL;
@@ -132,7 +132,7 @@ static int StringList_AppendLast(StringList *s,
 
     i.RemoveLastNBytesOfCurrentBlock(&i, LastHalfLength);
 
-    NewlyAdded = sb->Add(sb, NewStr, StrLength + LastHalfLength - 1);
+    NewlyAdded = sb->Add(sb, NewStr, StrLength + LastHalfLength - 1, FALSE);
 
     SafeFree(NewStr);
 
@@ -178,7 +178,7 @@ static const char **StringList_ToCharPtrArray(StringList *s)
 }
 
 /* Unsafe operation, it may change strings' positions */
-static void StringList_TrimAll(StringList *s)
+static void StringList_TrimAll(StringList *s, const char *Garbage)
 {
     StringListIterator i;
     char *Str;
@@ -188,13 +188,18 @@ static void StringList_TrimAll(StringList *s)
         return;
     }
 
+    if( Garbage == NULL )
+    {
+        Garbage = "\t \r\n";
+    }
+
     Str = (char *)i.Next(&i);
     while( Str != NULL )
     {
         char *HardContent;
         char *HardContentTail;
 
-        HardContent = StrNpbrk(Str, "\t ");
+        HardContent = StrNpbrk(Str, Garbage);
         if( HardContent != NULL )
         {
             i.BufferIterator.RemoveNBytesOfCurrentBlock(&(i.BufferIterator),
@@ -202,12 +207,12 @@ static void StringList_TrimAll(StringList *s)
                                                         HardContent - Str
                                                         );
         } else {
-            /* Str is full of tabs and\or spaces, or empty, remove it */
+            /* Str is full of whitespaces or just empty, remove it */
             Str = (char *)i.Remove(&i);
             continue;
         }
 
-        HardContentTail = StrRNpbrk(Str, "\t ");
+        HardContentTail = StrRNpbrk(Str, Garbage);
         if( HardContentTail != NULL )
         {
             ++HardContentTail;
@@ -218,6 +223,22 @@ static void StringList_TrimAll(StringList *s)
         }
 
         Str = (char *)i.Next(&i);
+    }
+}
+
+static void StringList_LowercaseAll(StringList *s)
+{
+    StringListIterator i;
+    char *Str;
+
+    if( StringListIterator_Init(&i, s) != 0 )
+    {
+        return;
+    }
+
+    while( (Str = (char *)i.Next(&i)) != NULL )
+    {
+        StrToLower(Str);
     }
 }
 
@@ -255,12 +276,13 @@ int StringList_Init(__in StringList *s,
     s->AppendLast = StringList_AppendLast;
     s->ToCharPtrArray = StringList_ToCharPtrArray;
     s->TrimAll = StringList_TrimAll;
+    s->LowercaseAll = StringList_LowercaseAll;
     s->Clear = StringList_Clear;
     s->Free = StringList_Free;
 
 	if( ori != NULL )
 	{
-        void *Here = sb ->Add(sb, ori, strlen(ori) + 1);
+        void *Here = sb ->Add(sb, ori, strlen(ori) + 1, FALSE);
         if( Here == NULL )
         {
             sb->Free(sb);

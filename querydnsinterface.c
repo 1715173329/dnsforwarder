@@ -38,8 +38,16 @@ int QueryDNSInterfaceInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = TmpStr;
     ConfigAddOption(&ConfigInfo, "LogFileFolder", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
 
+    /*
     TmpTypeDescriptor.str = "127.0.0.1";
     ConfigAddOption(&ConfigInfo, "LocalInterface", STRATEGY_REPLACE, TYPE_STRING, TmpTypeDescriptor, "Local working interface");
+    */
+
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "Local working interfaces");
+    ConfigSetStringDelimiters(&ConfigInfo, "UDPLocal", ",");
+    TmpTypeDescriptor.str = "127.0.0.1";
+    ConfigSetValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
     TmpTypeDescriptor.INT32 = 53;
     ConfigAddOption(&ConfigInfo, "LocalPort", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, "Local working port");

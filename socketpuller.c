@@ -2,7 +2,7 @@
 
 PUBFUNC int SocketPuller_Add(SocketPuller *p,
                              SOCKET s,
-                             const char *Data,
+                             const void *Data,
                              int DataLength
                              )
 {
@@ -28,7 +28,7 @@ PUBFUNC int SocketPuller_Add(SocketPuller *p,
 
 PUBFUNC SOCKET SocketPuller_Select(SocketPuller *p,
                                    struct timeval *tv,
-                                   const char **Data
+                                   const void **Data
                                    )
 {
     fd_set ReadySet;

@@ -1,13 +1,9 @@
 #include "mmgr.h"
-#include "udpm.h"
 #include "stringchunk.h"
 #include "utils.h"
 #include "filter.h"
 
-typedef int (*SendFunc)(void *Module,
-                        IHeader *h, /* Entity followed */
-                        int FullLength
-                        );
+typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
 
 typedef struct _ModuleInterface {
     union {
@@ -24,28 +20,20 @@ static StableBuffer Modules; /* Storing ModuleInterfaces */
 static Array        ModuleArray; /* ModuleInterfaces' references */
 static StringChunk  Distributor; /* Domain-to-ModuleInterface mapping */
 
-static int MappingAModule(ModuleInterface *m, const char *Domains)
+static int MappingAModule(ModuleInterface *Stored, const char *Domains)
 {
-    ModuleInterface *Added;
     StringList  DomainList;
     StringListIterator  i;
 
     const char *OneDomain;
-
-    Added = Modules.Add(&Modules, m, sizeof(ModuleInterface));
-    if( Added == NULL )
-    {
-        return -30;
-    }
-
-    Array_PushBack(&ModuleArray, &Added, NULL);
 
     if( StringList_Init(&DomainList, Domains, ",") != 0 )
     {
         return -38;
     }
 
-    DomainList.TrimAll(&DomainList);
+    DomainList.TrimAll(&DomainList, "\t .");
+    DomainList.LowercaseAll(&DomainList);
 
     if( StringListIterator_Init(&i, &DomainList) != 0 )
     {
@@ -56,7 +44,7 @@ static int MappingAModule(ModuleInterface *m, const char *Domains)
     {
         StringChunk_Add_Domain(&Distributor,
                                OneDomain,
-                               &Added,
+                               &Stored,
                                sizeof(ModuleInterface *)
                                );
     }
@@ -66,9 +54,29 @@ static int MappingAModule(ModuleInterface *m, const char *Domains)
     return 0;
 }
 
+static ModuleInterface *StoreAModule(void)
+{
+    ModuleInterface *Added;
+
+    Added = Modules.Add(&Modules, NULL, sizeof(ModuleInterface), TRUE);
+    if( Added == NULL )
+    {
+        return NULL;
+    }
+
+    if( Array_PushBack(&ModuleArray, &Added, NULL) < 0 )
+    {
+        return NULL;
+    }
+
+    Added->ModuleName = "Unknown";
+
+    return Added;
+}
+
 static int Udp_Init(ConfigFileInfo *ConfigInfo)
 {
-    ModuleInterface NewM;
+    ModuleInterface *NewM;
 
     StringList  *UDPGroups;
     StringListIterator  i;
@@ -84,7 +92,13 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
         return -33;
     }
 
-    NewM.ModuleName = "UDP";
+    NewM = StoreAModule();
+    if( NewM == NULL )
+    {
+        return -101;
+    }
+
+    NewM->ModuleName = "UDP";
 
     while( TRUE )
     {
@@ -94,6 +108,7 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
         char ParallelOnOff[8];
         BOOL ParallelQuery;
 
+        /* Initializing parameters */
         Services = i.Next(&i);
         Domains = i.Next(&i);
         Parallel = i.Next(&i);
@@ -114,14 +129,15 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
             ParallelQuery = FALSE;
         }
 
-        if( UdpM_Init(&(NewM.ModuleUnion.Udp), Services, ParallelQuery) != 0 )
+        /* Initializing module */
+        if( UdpM_Init(&(NewM->ModuleUnion.Udp), Services, ParallelQuery) != 0 )
         {
             continue;
         }
 
-        NewM.Send = (SendFunc)(NewM.ModuleUnion.Udp.Send);
+        NewM->Send = (SendFunc)(NewM->ModuleUnion.Udp.Send);
 
-        if( MappingAModule(&NewM, Domains) != 0 )
+        if( MappingAModule(NewM, Domains) != 0 )
         {
             /** TODO: Show error */
         }
@@ -166,13 +182,14 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
     return !ret;
 }
 
-int MMgr_Send(IHeader *h, int FullLength)
+int MMgr_Send(IHeader *h, int BufferLength)
 {
     ModuleInterface *i;
 
+    /* Determine whether to discard the query */
     if( Filter_Out(h) )
     {
-        /** TODO: Show filtered message */
+        /** TODO: Send back filtered dns message, Show filtered message */
         return -170;
     }
 
@@ -183,10 +200,12 @@ int MMgr_Send(IHeader *h, int FullLength)
                                  )
        )
     {
-    } else {
+    } else if( Array_GetUsed(&ModuleArray) > 0 ){
         i = Array_GetBySubscript(&ModuleArray,
-                                 FullLength % Array_GetUsed(&ModuleArray)
+                                 h->EntityLength % Array_GetUsed(&ModuleArray)
                                  );
+    } else {
+        i = NULL;
     }
 
     if( i == NULL )
@@ -194,5 +213,5 @@ int MMgr_Send(IHeader *h, int FullLength)
         return -190;
     }
 
-    return i->Send(&(i->ModuleUnion), h, FullLength);
+    return i->Send(&(i->ModuleUnion), h);
 }

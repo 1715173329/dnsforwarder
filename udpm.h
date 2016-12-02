@@ -1,38 +1,17 @@
 #ifndef UDPM_H_INCLUDED
 #define UDPM_H_INCLUDED
 
-#include "iheader.h"
-#include "bst.h"
 #include "common.h"
 #include "addresslist.h"
 #include "readconfig.h"
-
-typedef struct _UdpmContextItem{
-    IHeader     h;
-    uint32_t	i; /* Query identifier */
-    time_t		t; /* Time added */
-} UdpmContextItem;
-
-typedef struct _UdpmContext UdpmContext;
-
-struct _UdpmContext{
-    /* private */
-    Bst	d;
-
-    /* public */
-    int (*Add)(UdpmContext *c, IHeader *h /* Entity followed */);
-    int (*FindAndRemove)(UdpmContext *c,
-                         IHeader *h, /* Entity followed */
-                         UdpmContextItem *i
-                         );
-};
+#include "mcontext.h"
 
 typedef struct _UdpM UdpM;
 
 struct _UdpM {
     /* private */
     volatile SOCKET  Departure;
-    UdpmContext Context;
+    ModuleContext Context;
 
     EFFECTIVE_LOCK  Lock;
 
@@ -47,7 +26,7 @@ struct _UdpM {
     } Parallels;
 
     /* public */
-    int (*Send)(UdpM *m, IHeader *h, /* Entity followed */ int FullLength);
+    int (*Send)(UdpM *m, IHeader *h /* Entity followed */);
 };
 
 int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel);

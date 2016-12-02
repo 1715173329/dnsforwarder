@@ -15,7 +15,8 @@ struct _StringList{
     void *(*Add)(StringList *s, const char *str, const char *Delimiters);
     int (*AppendLast)(StringList *s, const char *str, const char *Delimiters);
     const char **(*ToCharPtrArray)(StringList *s);
-    void (*TrimAll)(StringList *s);
+    void (*TrimAll)(StringList *s, const char *Garbage);
+    void (*LowercaseAll)(StringList *s);
     void (*Clear)(StringList *s);
     void (*Free)(StringList *s);
 };

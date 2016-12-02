@@ -14,10 +14,7 @@ int DNSCache_AddItemsToCache(char *DNSBody,
                              const char *Domain
                              );
 
-int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
-                            int FullLength,
-                            int BufferLength
-                            );
+int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength);
 
 void DNSCacheClose(ConfigFileInfo *ConfigInfo);
 

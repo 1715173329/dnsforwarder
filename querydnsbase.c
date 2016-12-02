@@ -17,27 +17,6 @@
 #include "domainstatistic.h"
 #include "request_response.h"
 
-void ShowBlockedMessage(const char *RequestingDomain, char *Package, int PackageLength, const char *Message)
-{
-	char DateAndTime[32];
-	char InfoBuffer[1024];
-
-	if( ShowMessages == TRUE || PRINTON )
-	{
-		GetCurDateAndTime(DateAndTime, sizeof(DateAndTime));
-
-		InfoBuffer[0] = '\0';
-		GetAllAnswers(Package, PackageLength, InfoBuffer, sizeof(InfoBuffer));
-	}
-
-	if( ShowMessages == TRUE )
-	{
-		printf("%s[B][%s] %s :\n%s", DateAndTime, RequestingDomain, Message == NULL ? "" : Message, InfoBuffer);
-	}
-
-	DEBUG_FILE("%s[B][%s] %s :\n%s", DateAndTime, RequestingDomain, Message == NULL ? "" : Message, InfoBuffer);
-}
-
 void ShowFatalMessage(const char *Message, int ErrorCode)
 {
 	char	ErrorMessage[320];

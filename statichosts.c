@@ -94,7 +94,7 @@ static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrC
 
 	IPv6AddressToNum(IPOrCName, NumericIP);
 
-    r.Position = sb->Add(sb, NumericIP, 16);
+    r.Position = sb->Add(sb, NumericIP, 16, TRUE);
 
     if( r.Position == NULL )
     {
@@ -123,7 +123,7 @@ static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrC
 
 	IPv4AddressToNum(IPOrCName, NumericIP);
 
-    r.Position = sb->Add(sb, NumericIP, 4);
+    r.Position = sb->Add(sb, NumericIP, 4, TRUE);
 
     if( r.Position == NULL )
     {
@@ -155,7 +155,7 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
 
     sb = &(Container->IPs);
 
-    r.Position = sb->Add(sb, IPOrCName, strlen(IPOrCName) + 1);
+    r.Position = sb->Add(sb, IPOrCName, strlen(IPOrCName) + 1, TRUE);
 
     if( r.Position == NULL )
     {
@@ -190,7 +190,7 @@ static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *L
     sb = &(Container->IPs);
 
     sscanf(ListName, "<%127[^>]", Trimed);
-    r.Position = sb->Add(sb, Trimed, strlen(Trimed) + 1);
+    r.Position = sb->Add(sb, Trimed, strlen(Trimed) + 1, TRUE);
 
     if( r.Position == NULL )
     {
@@ -334,7 +334,7 @@ HostsRecordType Hosts_LoadFromMetaLine(HostsContainer *Container, char *MetaLine
 		return HOSTS_TYPE_UNKNOWN;
 	}
 
-	Domain = GetKeyNameAndValue(IPOrCName, "\t ");
+	Domain = GetKeyNameAndValue((char *)IPOrCName, "\t ");
 	if( Domain == NULL )
 	{
 		INFO("Unrecognisable hosts : %s\n", MetaLine);

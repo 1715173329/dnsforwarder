@@ -783,21 +783,15 @@ static int DNSCache_GetByQuestion(__inout DnsGenerator *g,
 }
 
 /* Content length returned */
-int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
-                            int FullLength,
-                            int BufferLength
-                            )
+int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength)
 {
     char *RequestContent = (char *)(h + 1);
-    int RequestLength = FullLength - sizeof(IHeader);
 
     DnsSimpleParser p;
-    BOOL	HasEdns;
-
     DnsGenerator g;
 
-    char *HereToGenerate = RequestContent + RequestLength;
-    int LeftBufferLength = BufferLength - RequestLength;
+    char *HereToGenerate = RequestContent + h->EntityLength;
+    int LeftBufferLength = BufferLength - sizeof(IHeader) - h->EntityLength;
 
     int ResultLength;
 
@@ -806,22 +800,16 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
 		return -792;
 	}
 
-    if( DnsSimpleParser_Init(&p, RequestContent, RequestLength, FALSE) != 0 )
+    if( DnsSimpleParser_Init(&p, RequestContent, h->EntityLength, FALSE) != 0 )
     {
         return -1;
     }
-
-    HasEdns = p.HasType(&p,
-                        DNS_RECORD_PURPOSE_ADDITIONAL,
-                        DNS_CLASS_UNKNOWN,
-                        DNS_TYPE_OPT
-                        );
 
     if( DnsGenerator_Init(&g,
                           HereToGenerate,
                           LeftBufferLength,
                           RequestContent,
-                          RequestLength,
+                          h->EntityLength,
                           TRUE
                           )
        != 0)
@@ -845,7 +833,7 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
     g.Header->Flags.ResponseCode = 0;
     g.Header->Flags.Type = 0;
 
-    if( HasEdns )
+    if( h->EDNSEnabled )
     {
         while( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ADDITIONAL );
         if( g.EDns(&g, 1280) != 0 )
@@ -863,7 +851,7 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */,
 
     memmove(RequestContent, HereToGenerate, ResultLength);
 
-    if( IHeader_SendBack(h, ResultLength + sizeof(IHeader)) < 0 )
+    if( IHeader_SendBack(h) < 0 )
     {
         /** TODO: Error handling*/
         return -861;

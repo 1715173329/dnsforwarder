@@ -127,6 +127,7 @@ int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName);
 
 BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName);
 
+/* Won't change the Option's status */
 void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName);
 
 void ConfigDisplay(ConfigFileInfo *Info);

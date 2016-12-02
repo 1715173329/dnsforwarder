@@ -2,6 +2,7 @@
 #define IHEADER_H_INCLUDED
 
 #include "dnsrelated.h"
+#include "utils.h"
 
 typedef struct _IHeader IHeader;
 
@@ -18,7 +19,12 @@ struct _IHeader{
 	BOOL            ReturnHeader;
 	BOOL		    EDNSEnabled;
 
-	char            Agent[LENGTH_OF_IPV6_ADDRESS_ASCII + 1];
+	int             EntityLength;
+
+	char            Agent[ROUND_UP(LENGTH_OF_IPV6_ADDRESS_ASCII + 1,
+                                   sizeof(void *)
+                                   )
+                          ];
 };
 
 #define IHEADER_TAIL(ptr)   (void *)((IHeader *)(ptr) + 1)
@@ -35,6 +41,6 @@ int IHeader_Fill(IHeader *h,
                  const char *Agent
                  );
 
-int IHeader_SendBack(IHeader *h /* Entity followed */, int FullLength);
+int IHeader_SendBack(IHeader *h /* Entity followed */);
 
 #endif // IHEADER_H_INCLUDED

@@ -78,7 +78,11 @@ int StringChunk_Add(StringChunk	*dl,
 
 	if( AdditionalData != NULL && LengthOfAdditionalData > 0 )
 	{
-	    NewEntry.Data = sb->Add(sb, AdditionalData, LengthOfAdditionalData);
+	    NewEntry.Data = sb->Add(sb,
+                             AdditionalData,
+                             LengthOfAdditionalData,
+                             TRUE
+                             );
 	    if( NewEntry.Data == NULL )
         {
             return -1;

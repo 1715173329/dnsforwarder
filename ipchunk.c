@@ -54,7 +54,7 @@ int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t D
 
 	if( Data != NULL )
 	{
-		New.Data = sb->Add(sb, Data, DataLength);
+		New.Data = sb->Add(sb, Data, DataLength, TRUE);
 	}
 
 	return Bst_Add(&(ic -> Chunk), &New);
@@ -86,7 +86,7 @@ int IpChunk_Add6(IpChunk *ic, const char *Ipv6, int Type, const char *Data, uint
 
 	if( Data != NULL )
 	{
-		New.Data = sb->Add(sb, Data, DataLength);
+		New.Data = sb->Add(sb, Data, DataLength, TRUE);
 	}
 
 	return Bst_Add(&(ic -> Chunk), &New);

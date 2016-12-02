@@ -29,14 +29,8 @@ void ShowTimeOutMessage(IHeader *h, char Protocol);
 
 void ShowErrorMessage(IHeader *h, char Protocol);
 
-void ShowNormalMessage(IHeader *h,
-                       int PackageLength /* Excluding IHeader */,
-                       char Protocol
-                       );
+void ShowNormalMessage(IHeader *h, char Protocol);
 
-void ShowBlockedMessage(IHeader *h,
-                        int PackageLength /* Excluding IHeader */,
-                        const char *Message
-                        );
+void ShowBlockedMessage(IHeader *h, const char *Message);
 
 #endif // LOGS_H_INCLUDED

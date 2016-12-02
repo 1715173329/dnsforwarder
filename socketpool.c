@@ -4,7 +4,7 @@
 
 static int SocketPool_Add(SocketPool *sp,
                           SOCKET Sock,
-                          const char *Data,
+                          const void *Data,
                           int DataLength
                           )
 {
@@ -14,7 +14,8 @@ static int SocketPool_Add(SocketPool *sp,
 
     if( Data != NULL )
     {
-        su.Data = sp->d.Add(&(sp->d), Data, DataLength);
+        su.Data = sp->d.Add(&(sp->d), Data, DataLength, TRUE);
+
     } else {
         su.Data = NULL;
     }
@@ -29,7 +30,7 @@ static int SocketPool_Add(SocketPool *sp,
 
 static SOCKET SocketPool_FetchOnSet(SocketPool *sp,
                                     fd_set *fs,
-                                    const char **Data
+                                    const void **Data
                                     )
 {
 	SocketUnit	*sup;

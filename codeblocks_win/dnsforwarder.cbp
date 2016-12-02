@@ -182,6 +182,10 @@
 		<Unit filename="../main.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="../mcontext.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../mcontext.h" />
 		<Unit filename="../mmgr.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -251,6 +255,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../timedtask.h" />
+		<Unit filename="../udpfrontend.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../udpfrontend.h" />
 		<Unit filename="../udpm.c">
 			<Option compilerVar="CC" />
 		</Unit>

@@ -13,8 +13,6 @@ typedef enum _DnsQuaryProtocol{
 #include "common.h"
 #include "dnscache.h"
 #include "readconfig.h"
-#include "internalsocket.h"
-
 
 #define QUERY_RESULT_SUCCESS		(0)
 #define QUERY_RESULT_DISABLE	(-1)

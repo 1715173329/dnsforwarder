@@ -121,7 +121,7 @@ static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info, const char *KeyName)
 {
 	ConfigOption *Option;
 
-	if( StringChunk_Match_NoWildCard(&(Info -> Options), KeyName, NULL, (char **)&Option) == TRUE )
+	if( StringChunk_Match_NoWildCard(&(Info -> Options), KeyName, NULL, (void **)&Option) == TRUE )
 	{
 		if( Option -> Status == STATUS_ALIAS )
 		{
@@ -311,7 +311,7 @@ static void ParseString(ConfigOption *Option,
 
 	if( Trim )
     {
-        Option->Holder.str.TrimAll(&(Option->Holder.str));
+        Option->Holder.str.TrimAll(&(Option->Holder.str), NULL);
     }
 }
 
@@ -498,6 +498,7 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 	}
 }
 
+/* Won't change the Option's status */
 void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 {
 	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName);

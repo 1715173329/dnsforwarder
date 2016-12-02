@@ -21,13 +21,13 @@ struct _SocketPool{
 	/* public */
     int (*Add)(SocketPool *sp,
                SOCKET Sock,
-               const char *Data,
+               const void *Data,
                int DataLength
                );
 
     SOCKET (*FetchOnSet)(SocketPool *sp,
                          fd_set *fs,
-                         const char **Data
+                         const void **Data
                          );
 
     void (*CloseAll)(SocketPool *sp);

@@ -1,7 +1,7 @@
 #include <string.h>
 #include "iheader.h"
 #include "dnsparser.h"
-#include "utils.h"
+#include "common.h"
 
 void IHeader_Reset(IHeader *h)
 {
@@ -13,12 +13,12 @@ void IHeader_Reset(IHeader *h)
 }
 
 int IHeader_Fill(IHeader *h,
-                 BOOL ReturnHeader,
+                 BOOL ReturnHeader, /* For tcp, this will be ignored */
                  char *DnsEntity,
                  int EntityLength,
-                 struct sockaddr *BackAddress,
+                 struct sockaddr *BackAddress, /* NULL for tcp */
                  SOCKET SendBackSocket,
-                 sa_family_t Family,
+                 sa_family_t Family, /* For tcp, this will be ignored */
                  const char *Agent
                  )
 {
@@ -75,6 +75,8 @@ int IHeader_Fill(IHeader *h,
     {
         memcpy(&(h->BackAddress.Addr), BackAddress, GetAddressLength(Family));
         h->BackAddress.family = Family;
+    } else {
+        h->BackAddress.family = AF_UNSPEC;
     }
 
     h->SendBackSocket = SendBackSocket;
@@ -87,27 +89,65 @@ int IHeader_Fill(IHeader *h,
         h->Agent[0] = '\0';
     }
 
+    h->EntityLength = EntityLength;
+
     return 0;
 }
 
-int IHeader_SendBack(IHeader *h /* Entity followed */, int FullLength)
+int IHeader_SendBack(IHeader *h /* Entity followed */)
 {
-    if( h->ReturnHeader )
+    if( h->BackAddress.family == AF_UNSPEC )
     {
-        return sendto(h->SendBackSocket,
-                      (const char *)h,
-                      FullLength,
-                      0,
-                      (const struct sockaddr *)&(h->BackAddress.Addr),
-                      GetAddressLength(h->BackAddress.family)
-                      );
+        /* TCP */
+        uint16_t TcpLength = htons(h->EntityLength);
+        if( send(h->SendBackSocket,
+                 (const char *)&TcpLength,
+                 2,
+                 MSG_MORE | MSG_NOSIGNAL
+                 )
+            != 2 )
+        {
+            /** TODO: Show error */
+            return -105;
+        }
+
+        if( send(h->SendBackSocket,
+                 IHEADER_TAIL(h),
+                 h->EntityLength,
+                 MSG_NOSIGNAL
+                 )
+            != h->EntityLength )
+        {
+            /** TODO: Show error */
+            return -112;
+        }
     } else {
-        return sendto(h->SendBackSocket,
-                      (const char *)(h + 1),
-                      FullLength - sizeof(IHeader),
-                      0,
-                      (const struct sockaddr *)&(h->BackAddress.Addr),
-                      GetAddressLength(h->BackAddress.family)
-                      );
+        /* UDP */
+        const char *Content;
+        int Length;
+
+        if( h->ReturnHeader )
+        {
+            Content = (const char *)h;
+            Length = h->EntityLength + sizeof(IHeader);
+        } else {
+            Content = IHEADER_TAIL(h);
+            Length = h->EntityLength;
+        }
+
+        if( sendto(h->SendBackSocket,
+                   Content,
+                   Length,
+                   MSG_NOSIGNAL,
+                   (const struct sockaddr *)&(h->BackAddress.Addr),
+                   GetAddressLength(h->BackAddress.family)
+                   )
+           != Length )
+        {
+            /** TODO: Show error */
+            return -138;
+        }
     }
+
+    return 0;
 }

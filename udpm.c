@@ -4,122 +4,6 @@
 #include "logs.h"
 #include "utils.h"
 
-/** Context handling */
-static void UdpmContext_Swep(UdpmContext *c, int TimeOut)
-{
-	int32_t Start = -1;
-	int		Number = 1;
-
-	UdpmContextItem *i;
-
-	time_t	Now = time(NULL);
-
-	i = Bst_Enum(&(c->d), &Start);
-	while( i != NULL )
-    {
-		if( Now - i->t > TimeOut )
-		{
-            /** TODO: Show timeout message, domain statistic, address advanced */
-			Bst_Delete_ByNumber(&(c->d), Start);
-
-			++Number;
-		}
-
-		i = Bst_Enum(&(c->d), &Start);
-    }
-}
-
-static int UdpmContext_Add(UdpmContext *c, IHeader *h /* Entity followed */)
-{
-    UdpmContextItem n;
-    const char *e = (const char *)(h + 1);
-    int ret;
-
-    if( h == NULL )
-    {
-        return -21;
-    }
-
-    memcpy(&(n.h), h, sizeof(UdpmContextItem));
-    n.i = *(uint16_t *)e;
-    n.t = time(NULL);
-
-    ret = Bst_Add(&(c->d), &n);
-
-    if( ret != 0 )
-    {
-        return 0;
-    } else {
-        return -83;
-    }
-}
-
-static int UdpmContext_FindAndRemove(UdpmContext *c,
-                                     IHeader *h, /* Entity followed */
-                                     UdpmContextItem *i
-                                     )
-{
-    UdpmContextItem k;
-    const char *e = (const char *)(h + 1);
-
-    int r;
-    const char *ri;
-
-    k.i = *(uint16_t *)e;
-    k.h.HashValue = h->HashValue;
-
-    r = Bst_Search(&(c->d), &k, NULL);
-    if( r < 0 )
-    {
-        return -60;
-    }
-
-    ri = Bst_GetDataByNumber(&(c->d), r);
-    memcpy(i, ri, sizeof(UdpmContextItem));
-
-    Bst_Delete_ByNumber(&(c->d), r);
-
-    return 0;
-}
-
-static int UdpmContextCompare(const void *_1, const void *_2)
-{
-    const UdpmContextItem *One = (UdpmContextItem *)_1;
-    const UdpmContextItem *Two = (UdpmContextItem *)_2;
-
-	if( One->i != Two->i )
-	{
-		return (int)(One->i) - (int)(Two->i);
-	} else {
-		return (One->h.HashValue) - (int)(Two->h.HashValue);
-	}
-}
-
-static int UdpmContext_Init(UdpmContext *c)
-{
-    if( c == NULL )
-    {
-        return -86;
-    }
-
-    c->Add = UdpmContext_Add;
-    c->FindAndRemove = UdpmContext_FindAndRemove;
-
-    if( Bst_Init(&(c->d),
-                    NULL,
-                    sizeof(UdpmContextItem),
-                    UdpmContextCompare
-                    )
-       != 0
-       )
-    {
-        return -106;
-    }
-
-    return 0;
-}
-
-/** Module handling */
 static void UdpM_Works(void *Module)
 {
     UdpM *m = (UdpM *)Module;
@@ -153,7 +37,6 @@ static void UdpM_Works(void *Module)
     while( TRUE )
     {
         int RecvState;
-        UdpmContextItem ci;
         int ContextState;
 
         /* Set up socket */
@@ -204,7 +87,10 @@ static void UdpM_Works(void *Module)
                 break;
 
             case 0:
-                UdpmContext_Swep(&(m->Context), 10);
+                EFFECTIVE_LOCK_GET(m->Lock);
+                m->Context.Swep(&(m->Context), 10);
+                EFFECTIVE_LOCK_RELEASE(m->Lock);
+
                 TimeLimit = LongTime;
                 continue;
                 break;
@@ -239,14 +125,16 @@ static void UdpM_Works(void *Module)
 
         /* Fetch context item */
         EFFECTIVE_LOCK_GET(m->Lock);
-        ContextState = m->Context.FindAndRemove(&(m->Context), Header, &ci);
+        ContextState = m->Context.FindAndRemove(&(m->Context),
+                                                Header,
+                                                Header
+                                                );
         EFFECTIVE_LOCK_RELEASE(m->Lock);
         if( ContextState == 0 )
         {
             int SentState;
-            memcpy(Header, &(ci.h), sizeof(IHeader));
 
-            SentState = IHeader_SendBack(Header, RecvState + sizeof(IHeader));
+            SentState = IHeader_SendBack(Header);
 
             /** TODO: Error handlings, Show message, Domain statistic, add cache*/
         }
@@ -255,10 +143,7 @@ static void UdpM_Works(void *Module)
     SafeFree(ReceiveBuffer);
 }
 
-static int UdpM_Send(UdpM *m,
-                     IHeader *h, /* Entity followed */
-                     int FullLength
-                     )
+static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
 {
     int ret;
     EFFECTIVE_LOCK_GET(m->Lock);
@@ -281,8 +166,8 @@ static int UdpM_Send(UdpM *m,
             {
                 ret |= (sendto(m->Departure,
                               (const void *)(h + 1),
-                              FullLength - sizeof(IHeader),
-                              0,
+                              h->EntityLength,
+                              MSG_NOSIGNAL,
                               *a,
                               m->Parallels.addrlen) > 0
                        );
@@ -303,8 +188,8 @@ static int UdpM_Send(UdpM *m,
 
             ret = (sendto(m->Departure,
                           (const void *)(h + 1),
-                          FullLength - sizeof(IHeader),
-                          0,
+                          h->EntityLength,
+                          MSG_NOSIGNAL,
                           a,
                           GetAddressLength(family)
                           ) > 0
@@ -381,7 +266,7 @@ int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
         m->Parallels.addrlen = 0;
     }
 
-    if( UdpmContext_Init(&(m->Context)) != 0 )
+    if( ModuleContext_Init(&(m->Context)) != 0 )
     {
         return -143;
     }
