@@ -59,7 +59,7 @@ static int DynamicHosts_Load(void)
 		return -1;
 	}
 
-	if( Hosts_InitContainer(TempContainer) != 0 )
+	if( HostsContainer_Init(TempContainer) != 0 )
 	{
 		fclose(fp);
 
@@ -73,7 +73,7 @@ static int DynamicHosts_Load(void)
 		if( Status == READ_FAILED_OR_END )
 			break;
 
-		switch( Hosts_LoadFromMetaLine(TempContainer, Buffer) )
+		switch( HostsContainer_Load(TempContainer, Buffer) )
 		{
 			case HOSTS_TYPE_AAAA:
 				++IPv6Count;

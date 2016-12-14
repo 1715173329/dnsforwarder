@@ -10,6 +10,9 @@
 #define ROUND(val, base)		ROUND_DOWN((val) + (base) / 2, base)
 #define ROUND_UP(val, base)		ROUND_DOWN((val) + (base) - 1, base)
 
+#define STRINGIZING(val)        # val
+#define STRINGIZINGINT(val)     STRINGIZING(val)
+
 typedef int offset_t;
 
 #define CURRENT_THREAD_ID	(GET_THREAD_ID())

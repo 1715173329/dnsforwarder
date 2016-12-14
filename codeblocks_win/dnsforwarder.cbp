@@ -159,6 +159,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hosts.h" />
+		<Unit filename="../hostscontainer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hostscontainer.h" />
 		<Unit filename="../iheader.c">
 			<Option compilerVar="CC" />
 		</Unit>
