@@ -183,50 +183,6 @@ static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
 	SafeFree(URLs);
 }
 
-static const char *Hosts_FindFromContainer(HostsContainer *Container, StringChunk *SubContainer, const char *Name)
-{
-	HostsPosition *IP;
-
-	if( StringChunk_Match(SubContainer, Name, NULL, (char **)&IP) == TRUE )
-	{
-		return IP->Position;
-	} else {
-		return NULL;
-	}
-}
-
-static const char *Hosts_FindIPv4(HostsContainer *Container, const char *Name)
-{
-	return Hosts_FindFromContainer(Container, &(Container -> Ipv4Hosts), Name);
-}
-
-static const char *Hosts_FindIPv6(HostsContainer *Container, const char *Name)
-{
-	return Hosts_FindFromContainer(Container, &(Container -> Ipv6Hosts), Name);
-}
-
-static const char *Hosts_FindCName(HostsContainer *Container, const char *Name)
-{
-	return Hosts_FindFromContainer(Container, &(Container -> CNameHosts), Name);
-}
-
-static const char *Hosts_FindGoodIPList(HostsContainer *Container, const char *Name)
-{
-	const char *Result = Hosts_FindFromContainer(Container, &(Container -> GoodIpLists), Name);
-
-	if( Result == NULL )
-	{
-		return NULL;
-	}
-
-	return GoodIpList_Get(Result);
-}
-
-static BOOL Hosts_IsExcludedDomain(HostsContainer *Container, const char *Name)
-{
-	return StringChunk_Match((StringChunk *)&(Container -> ExcludedDomains), Name, NULL, NULL);
-}
-
 static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
 {
 	if( Container == NULL )

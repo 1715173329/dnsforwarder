@@ -2,10 +2,11 @@
 #include "logs.h"
 
 typedef struct _HostsPosition{
+    HostsRecordType Type;
 	void    *Position;
 } HostsPosition;
 
-static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
+PRIFUNC HostsRecordType HostsContainer_DetermineType(const char *IPOrCName)
 {
 	if( IPOrCName == NULL )
 	{
@@ -22,11 +23,6 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 	if( *IPOrCName == '@' && *(IPOrCName + 1) == '@' )
 	{
 		return HOSTS_TYPE_EXCLUEDE;
-	}
-
-	if( *IPOrCName == '@' && !isspace(*(IPOrCName + 1)) )
-	{
-		return HOSTS_TYPE_CNAME_EXCLUEDE;
 	}
 
 	if( isxdigit(*IPOrCName) )
@@ -76,16 +72,43 @@ static HostsRecordType Hosts_DetermineIPTypes(const char *IPOrCName)
 	}
 }
 
-static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+PUBFUNC const char *HostsContainer_Find(HostsContainer  *Container,
+                                        const char      *Name,
+                                        HostsRecordType *Type
+                                        )
+{
+	HostsPosition *IP;
+
+	if( StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&IP) )
+	{
+	    if( Type == NULL )
+        {
+            return IP->Position;
+        } else if( *Type == HOSTS_TYPE_UNKNOWN )
+        {
+            *Type = IP->Type;
+            return IP->Position;
+        } else if( *Type == IP->Type ){
+            return IP->Position;
+        }
+	}
+
+    return NULL;
+}
+
+PRIFUNC int HostsContainer_AddIPV6(HostsContainer *Container,
+                                   const char *IPOrCName,
+                                   const char *Domain
+                                   )
 {
 	HostsPosition	r;
 	char			NumericIP[16];
 
 	StableBuffer    *sb;
 
-	if( StringChunk_Match_NoWildCard(&(Container -> Ipv6Hosts), Domain, NULL, NULL) == TRUE )
+	if( HostsContainer_Find(Container, Domain, NULL) )
 	{
-		INFO("IPv6 Host is duplicated : %s, take only the first occurrence.\n", Domain);
+		INFO("Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 		return -1;
 	}
 
@@ -100,21 +123,26 @@ static int Hosts_AddIPV6ToContainer(HostsContainer *Container, const char *IPOrC
         return -1;
     }
 
-	StringChunk_Add(&(Container -> Ipv6Hosts), Domain, (const char *)&r, sizeof(HostsPosition));
+    r.Type = HOSTS_TYPE_AAAA;
+
+	StringChunk_Add(&(Container -> Mappings), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
-static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+PRIFUNC int HostsContainer_AddIPV4(HostsContainer *Container,
+                                   const char *IPOrCName,
+                                   const char *Domain
+                                   )
 {
 	HostsPosition	r;
 	char			NumericIP[4];
 
 	StableBuffer    *sb;
 
-	if( StringChunk_Match_NoWildCard(&(Container -> Ipv4Hosts), Domain, NULL, NULL) == TRUE )
+	if( HostsContainer_Find(Container, Domain, NULL) )
 	{
-		INFO("IPv4 Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		INFO("Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 		return -1;
 	}
 
@@ -129,12 +157,17 @@ static int Hosts_AddIPV4ToContainer(HostsContainer *Container, const char *IPOrC
         return -1;
     }
 
-	StringChunk_Add(&(Container -> Ipv4Hosts), Domain, (const char *)&r, sizeof(HostsPosition));
+    r.Type = HOSTS_TYPE_A;
+
+	StringChunk_Add(&(Container -> Mappings), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
-static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+PRIFUNC int HostsContainer_AddCName(HostsContainer *Container,
+                                    const char *IPOrCName,
+                                    const char *Domain
+                                    )
 {
 	HostsPosition	r;
 
@@ -142,13 +175,13 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
 
 	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
 	{
-		ERRORMSG("Hosts is too long : %s %s\n", IPOrCName, Domain);
+		ERRORMSG("Host is too long : %s %s\n", IPOrCName, Domain);
 		return -1;
 	}
 
-	if( StringChunk_Match_NoWildCard(&(Container -> CNameHosts), Domain, NULL, NULL) == TRUE )
+	if( HostsContainer_Find(Container, Domain, NULL) )
 	{
-		INFO("CName redirection domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		INFO("Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 		return -1;
 	}
 
@@ -161,13 +194,17 @@ static int Hosts_AddCNameContainer(HostsContainer *Container, const char *IPOrCN
         return -1;
     }
 
-	StringChunk_Add(&(Container -> CNameHosts), Domain, (const char *)&r, sizeof(HostsPosition));
+    r.Type = HOSTS_TYPE_CNAME;
+
+	StringChunk_Add(&(Container -> Mappings), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
-
-static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *ListName, const char *Domain)
+PRIFUNC int HostsContainer_AddGoodIpList(HostsContainer *Container,
+                                         const char *ListName,
+                                         const char *Domain
+                                         )
 {
 	HostsPosition	r;
 
@@ -176,13 +213,13 @@ static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *L
 
 	if( strlen(Domain) > DOMAIN_NAME_LENGTH_MAX )
 	{
-		ERRORMSG("Hosts is too long : %s %s\n", ListName, Domain);
+		ERRORMSG("Host is too long : %s %s\n", ListName, Domain);
 		return -1;
 	}
 
-	if( StringChunk_Match_NoWildCard(&(Container -> GoodIpLists), Domain, NULL, NULL) == TRUE )
+	if( HostsContainer_Find(Container, Domain, NULL) )
 	{
-		INFO("Good IP list domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		INFO("Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 		return -1;
 	}
 
@@ -196,30 +233,43 @@ static int Hosts_AddGoodIpListContainer(HostsContainer *Container, const char *L
         return -1;
     }
 
-	StringChunk_Add(&(Container -> GoodIpLists), Domain, (const char *)&r, sizeof(HostsPosition));
+    r.Type = HOSTS_TYPE_GOOD_IP_LIST;
+
+	StringChunk_Add(&(Container -> Mappings), Domain, (const char *)&r, sizeof(HostsPosition));
 
 	return 0;
 }
 
-static int Hosts_AddExcludedContainer(HostsContainer *Container, const char *Domain)
+PRIFUNC int HostsContainer_AddExcluded(HostsContainer *Container,
+                                       const char *Domain
+                                       )
 {
-	if( StringChunk_Match_NoWildCard(&(Container -> ExcludedDomains), Domain, NULL, NULL) == TRUE )
+    HostsPosition	r = { HOSTS_TYPE_EXCLUEDE, NULL };
+
+	if( HostsContainer_Find(Container, Domain, NULL) )
 	{
-		INFO("Excluded Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
+		INFO("Host domain is duplicated : %s, take only the first occurrence.\n", Domain);
 		return -1;
 	}
 
-	StringChunk_Add(&(Container -> ExcludedDomains), Domain, NULL, 0);
+	StringChunk_Add(&(Container -> Mappings),
+                    Domain,
+                    (const char *)&r,
+                    sizeof(HostsPosition)
+                    );
 
 	return 0;
 }
 
-static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const char *IPOrCName, const char *Domain)
+PRIFUNC HostsRecordType HostsContainer_Add(HostsContainer *Container,
+                                           const char *IPOrCName,
+                                           const char *Domain
+                                           )
 {
-	switch( Hosts_DetermineIPTypes(IPOrCName) )
+	switch( HostsContainer_DetermineType(IPOrCName) )
 	{
 		case HOSTS_TYPE_AAAA:
-			if( Hosts_AddIPV6ToContainer(Container, IPOrCName, Domain) != 0)
+			if( HostsContainer_AddIPV6(Container, IPOrCName, Domain) != 0)
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
@@ -228,7 +278,7 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			break;
 
 		case HOSTS_TYPE_A:
-			if( Hosts_AddIPV4ToContainer(Container, IPOrCName, Domain) != 0 )
+			if( HostsContainer_AddIPV4(Container, IPOrCName, Domain) != 0 )
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
@@ -236,24 +286,8 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			}
 			break;
 
-		case HOSTS_TYPE_CNAME_EXCLUEDE:
-			++IPOrCName;
-
-			if( Hosts_AddExcludedContainer(Container, IPOrCName) != 0 )
-			{
-				return HOSTS_TYPE_UNKNOWN;
-			}
-
-			if( Hosts_AddCNameContainer(Container, IPOrCName, Domain) != 0 )
-			{
-				return HOSTS_TYPE_UNKNOWN;
-			} else {
-				return HOSTS_TYPE_CNAME_EXCLUEDE;
-			}
-			break;
-
 		case HOSTS_TYPE_CNAME:
-			if( Hosts_AddCNameContainer(Container, IPOrCName, Domain) != 0 )
+			if( HostsContainer_AddCName(Container, IPOrCName, Domain) != 0 )
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
@@ -262,7 +296,7 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			break;
 
 		case HOSTS_TYPE_EXCLUEDE:
-			if( Hosts_AddExcludedContainer(Container, Domain) != 0 )
+			if( HostsContainer_AddExcluded(Container, Domain) != 0 )
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
@@ -271,7 +305,7 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			break;
 
 		case HOSTS_TYPE_GOOD_IP_LIST:
-			if( Hosts_AddGoodIpListContainer(Container, IPOrCName, Domain) != 0 )
+			if( HostsContainer_AddGoodIpList(Container, IPOrCName, Domain) != 0 )
 			{
 				return HOSTS_TYPE_UNKNOWN;
 			} else {
@@ -280,15 +314,15 @@ static HostsRecordType Hosts_AddToContainer(HostsContainer *Container, const cha
 			break;
 
 		default:
-			INFO("Unrecognisable hosts : %s %s\n", IPOrCName, Domain);
+			INFO("Unrecognisable host : %s %s\n", IPOrCName, Domain);
 			return HOSTS_TYPE_UNKNOWN;
 			break;
 	}
 }
 
-PRIFUNC HostsRecordType HostsContainer_Load(HostsContainer *Container,
-                                    const char *MetaLine
-                                    )
+PUBFUNC HostsRecordType HostsContainer_Load(HostsContainer *Container,
+                                            const char *MetaLine
+                                            )
 {
 	char IPOrCName[DOMAIN_NAME_LENGTH_MAX + 1];
 	char Domain[DOMAIN_NAME_LENGTH_MAX + 1];
@@ -304,52 +338,29 @@ PRIFUNC HostsRecordType HostsContainer_Load(HostsContainer *Container,
 		return HOSTS_TYPE_UNKNOWN;
     }
 
-	return Hosts_AddToContainer(Container, IPOrCName, Domain);
+	return HostsContainer_Add(Container, IPOrCName, Domain);
 }
 
-PRIFUNC void HostsContainer_Free(HostsContainer *Container)
+PUBFUNC void HostsContainer_Free(HostsContainer *Container)
 {
-	StringChunk_Free(&(Container -> Ipv4Hosts), FALSE);
-	StringChunk_Free(&(Container -> Ipv6Hosts), FALSE);
-	StringChunk_Free(&(Container -> CNameHosts), FALSE);
-	StringChunk_Free(&(Container -> ExcludedDomains), FALSE);
-    Container->Domains.Free(&(Container -> Domains));
+	StringChunk_Free(&(Container -> Mappings), TRUE);
 	Container->IPs.Free(&(Container->IPs));
 }
 
 int HostsContainer_Init(HostsContainer *Container)
 {
-	if( StringList_Init(&(Container -> Domains), NULL, NULL) != 0 )
-	{
-		return -1;
-	}
-
-	if( StringChunk_Init(&(Container -> Ipv4Hosts), &(Container -> Domains)) != 0 )
+	if( StringChunk_Init(&(Container -> Mappings), NULL) != 0 )
 	{
 		return -2;
 	}
-	if( StringChunk_Init(&(Container -> Ipv6Hosts), &(Container -> Domains)) != 0 )
-	{
-		return -3;
-	}
-	if( StringChunk_Init(&(Container -> CNameHosts), &(Container -> Domains)) != 0 )
-	{
-		return -4;
-	}
-	if( StringChunk_Init(&(Container -> ExcludedDomains), &(Container -> Domains)) != 0 )
-	{
-		return -4;
-	}
-	if( StringChunk_Init(&(Container -> GoodIpLists), &(Container -> Domains)) != 0 )
-	{
-		return -5;
-	}
+
 	if( StableBuffer_Init(&(Container -> IPs)) != 0 )
 	{
 		return -6;
 	}
 
 	Container->Load = HostsContainer_Load;
+	Container->Find = HostsContainer_Find;
 	Container->Free = HostsContainer_Free;
 
 	return 0;
