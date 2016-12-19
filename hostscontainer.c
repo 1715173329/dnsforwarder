@@ -366,7 +366,7 @@ PUBFUNC HostsRecordType HostsContainer_Load(HostsContainer *Container,
                )
      != 2 )
     {
-		INFO("Unrecognisable hosts : %s\n", MetaLine);
+		INFO("Unrecognisable hosts : %s, it may be too long.\n", MetaLine);
 		return HOSTS_TYPE_UNKNOWN;
     }
 

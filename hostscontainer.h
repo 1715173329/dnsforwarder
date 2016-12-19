@@ -20,27 +20,27 @@ typedef enum _HostsRecordType{
 typedef struct _HostsContainer HostsContainer;
 
 struct _HostsContainer{
-	PRIMENB StringChunk     Mappings;
-	PRIMENB StableBuffer    Table;
+	PRIMEMB StringChunk     Mappings;
+	PRIMEMB StableBuffer    Table;
 
-	PUBMENB HostsRecordType (*Load)(HostsContainer *Container,
+	PUBMEMB HostsRecordType (*Load)(HostsContainer *Container,
                                     const char *MetaLine
                                     );
 
-    PUBMENB const void *(*Find)(HostsContainer  *Container,
+    PUBMEMB const void *(*Find)(HostsContainer  *Container,
                                 const char      *Name,
                                 HostsRecordType *Type,
                                 const void      **DataPosition
                                 );
 
-    PUBMENB const void *(*FindNext)(HostsContainer  *Container,
+    PUBMEMB const void *(*FindNext)(HostsContainer  *Container,
                                     const char      *Name,
                                     HostsRecordType *Type,
                                     const void      **DataPosition,
                                     const void      *Start
                                     );
 
-    PUBMENB void (*Free)(HostsContainer *Container);
+    PUBMEMB void (*Free)(HostsContainer *Container);
 
 };
 

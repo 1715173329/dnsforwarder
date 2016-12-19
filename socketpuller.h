@@ -9,22 +9,22 @@
 typedef struct _SocketPuller SocketPuller;
 
 struct _SocketPuller{
-    PRIMENB SocketPool  p;
-    PRIMENB fd_set  s;
-    PRIMENB SOCKET  Max;
+    PRIMEMB SocketPool  p;
+    PRIMEMB fd_set  s;
+    PRIMEMB SOCKET  Max;
 
-    PUBMENB int (*Add)(SocketPuller *p,
+    PUBMEMB int (*Add)(SocketPuller *p,
                        SOCKET s,
                        const void *Data,
                        int DataLength
                        );
 
-    PUBMENB SOCKET (*Select)(SocketPuller *p,
+    PUBMEMB SOCKET (*Select)(SocketPuller *p,
                              struct timeval *tv,
                              const void **Data
                              );
 
-    PUBMENB void (*Free)(SocketPuller *p);
+    PUBMEMB void (*Free)(SocketPuller *p);
 };
 
 int SocketPuller_Init(SocketPuller *p);

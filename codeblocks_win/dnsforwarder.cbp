@@ -194,6 +194,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../mmgr.h" />
+		<Unit filename="../oo.h" />
 		<Unit filename="../pipes.c">
 			<Option compilerVar="CC" />
 		</Unit>

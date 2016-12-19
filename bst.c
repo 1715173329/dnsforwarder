@@ -4,60 +4,83 @@
 
 #define printf(...)
 
-int Bst_Init(Bst *t, Array *Nodes, int ElementLength, int (*Compare)(const void *, const void *))
+typedef struct _Bst_NodeHead{
+	void	*Parent;
+	void	*Left;
+	void	*Right;
+} Bst_NodeHead;
+
+int Bst_Init(Bst *t, int ElementLength, CompareFunc Compare)
 {
 	t -> Compare = Compare;
-	t -> Root = -1;
-	t -> FreeList = -1;
+	t -> Root = NULL;
+	t -> FreeList = NULL;
+	t->ElementLength = ElementLength;
 
-	if( Nodes == NULL )
-	{
-		t -> Nodes = (Array *)SafeMalloc(sizeof(Array));
-		if( t -> Nodes == NULL )
-		{
-			return -1;
-		}
-
-		t -> PrivateNodes = TRUE;
-		return Bst_NodesInit(t -> Nodes, ElementLength);
-
-	} else {
-		t -> PrivateNodes = FALSE;
-		t -> Nodes = Nodes;
-
-		return 0;
-	}
+	return StableBuffer_Init(&(t->Nodes));
 }
 
-int Bst_NodesInit(Array *Nodes, int ElementLength)
+static Bst_NodeHead *GetUnusedNode(Bst *t)
 {
-	return Array_Init(Nodes, ElementLength + sizeof(Bst_NodeHead), 0, FALSE, NULL);
+    if( t->FreeList == NULL )
+    {
+        return t->Nodes.Add(&(t->Nodes),
+                            NULL,
+                            sizeof(Bst_NodeHead) + t->ElementLength,
+                            TRUE
+                            );
+    } else {
+        Bst_NodeHead *ret = t->FreeList;
+
+        t->FreeList = ret->Right;
+
+        return ret;
+    }
 }
 
-static int32_t GetUnusedNode(Bst *t)
+static const void *InsertNode(Bst *t,
+                              Bst_NodeHead *ParentNode,
+                              int CompareResult,
+                              const void *Data
+                              )
 {
-	if( t -> FreeList >= 0 )
-	{
-		int32_t ReturnValue = t -> FreeList;
-		const Bst_NodeHead *NextNode;
+    Bst_NodeHead *NewNode = GetUnusedNode(t);
 
-		NextNode = Array_GetBySubscript(t -> Nodes, t -> FreeList);
+    if( NewNode == NULL )
+    {
+        return NULL;
+    }
 
-		t -> FreeList = NextNode -> Right;
+    /* Set parent node */
+    if( ParentNode == NULL )
+    {
+        /* Insert as root */
+        t->Root = NewNode;
+    } else {
+        /* Non-root */
+        if( CompareResult <= 0 )
+        {
+            ParentNode->Left = NewNode;
+        } else {
+            ParentNode->Parent = NewNode;
+        }
+    }
 
-		return ReturnValue;
-	} else {
-		return Array_PushBack(t -> Nodes, NULL, NULL);
-	}
-}
+    /* Set the new child node */
+    NewNode->Parent = ParentNode;
+    NewNode->Left = NULL;
+    NewNode->Right = NULL;
 
-static int Add(Bst *t, int ParentNode, BOOL IsLeft, const void *Data)
-{
+    /* Copy the data */
+    memcpy(NewNode + 1, Data, t->ElementLength);
+
+    /* Return the data position */
+    return (const void *)(NewNode + 1);
+
+/*
 	static const Bst_NodeHead	NewHead = {-1, -1, -1};
 
 	int32_t	NewElement = GetUnusedNode(t);
-	printf("\n----------%x-------%s\n", t, __FUNCTION__);
-	printf("NewElement : %d\n", NewElement);
 
 	if( NewElement >= 0 )
 	{
@@ -70,19 +93,16 @@ static int Add(Bst *t, int ParentNode, BOOL IsLeft, const void *Data)
             Bst_NodeHead *Parent = Array_GetBySubscript(t -> Nodes, ParentNode);
 
 			NewZone -> Parent = ParentNode;
-			printf("Parent : %d, Left : %d, Right : %d\n", ParentNode, Parent -> Left, Parent -> Right);
             if( IsLeft == TRUE )
             {
                 Parent -> Left = NewElement;
             } else {
                 Parent -> Right = NewElement;
             }
-            printf("Parent : %d, Left : %d, Right : %d\n", ParentNode, Parent -> Left, Parent -> Right);
+
         } else {
-			printf("Root : %d\n", t -> Root);
 			NewZone -> Parent = -1;
             t -> Root = NewElement;
-            printf("Root : %d\n", t -> Root);
         }
 
 		memcpy(NewZone + 1, Data, t -> Nodes -> DataLength - sizeof(Bst_NodeHead));
@@ -90,16 +110,48 @@ static int Add(Bst *t, int ParentNode, BOOL IsLeft, const void *Data)
 	} else {
 		return -1;
 	}
+*/
 }
 
-int Bst_Add(Bst *t, const void *Data)
+const void *Bst_Add(Bst *t, const void *Data)
 {
-	printf("\n----------%x-------%s\n", t, __FUNCTION__);
-
-    if( t -> Root == -1 )
+    if( t -> Root == NULL )
     {
-		return Add(t, -1, FALSE, Data);
+        /* Insert as root */
+		return InsertNode(t, NULL, 0, Data);
     } else {
+        /* Non-root, finding the currect place to insert */
+        Bst_NodeHead *Current = t->Root;
+
+        while( TRUE )
+        {
+            int CompareResult = (t->Compare)(Data, (const void *)(Current + 1));
+
+            if( CompareResult <= 0 )
+            {
+                /* Left branch */
+                Bst_NodeHead *Left = Current->Left;
+                if( Left == NULL )
+                {
+                    /* Insert here */
+                    return InsertNode(t, Current, CompareResult, Data);
+                }
+
+                Current = Left;
+            } else {
+                /* Right branch */
+                Bst_NodeHead *Right = Current->Right;
+                if( Right == NULL )
+                {
+                    /* Insert here */
+                    return InsertNode(t, Current, CompareResult, Data);
+                }
+
+                Current = Right;
+            }
+        }
+    }
+/*
 		int32_t CurrentNode = t -> Root;
 
 		Bst_NodeHead *Current;
@@ -107,7 +159,6 @@ int Bst_Add(Bst *t, const void *Data)
 		while( TRUE )
 		{
 			Current = Array_GetBySubscript(t -> Nodes, CurrentNode);
-			printf("CurrentNode : %d, Left : %d, Right : %d\n", CurrentNode, Current -> Left, Current -> Right);
 			if( (t -> Compare)(Data, ((char *)Current) + sizeof(Bst_NodeHead)) <= 0 )
 			{
 				if( Current -> Left == -1 )
@@ -120,7 +171,6 @@ int Bst_Add(Bst *t, const void *Data)
 			} else {
 				if( Current -> Right == -1 )
 				{
-					printf("Add to CurrentNode Right.\n");
 					return Add(t, CurrentNode, FALSE, Data);
 				} else {
 					CurrentNode = Current -> Right;
@@ -128,10 +178,38 @@ int Bst_Add(Bst *t, const void *Data)
 			}
 		}
     }
+*/
 }
 
-int32_t Bst_Search(Bst *t, const void *Data, const void *Start)
+const void *Bst_Search(Bst *t, const void *Data, const void *Last)
 {
+    Bst_NodeHead *Current;
+
+    /* Set the starting point */
+    if( Last == NULL )
+    {
+        /* root as the starting point */
+        Current = t->Root;
+    } else {
+        Current = (((Bst_NodeHead *)Last) - 1)->Left;
+    }
+
+    while( Current != NULL )
+    {
+        int CompareResult = (t->Compare)(Data, (const void *)(Current + 1));
+
+        if( CompareResult == 0 )
+        {
+            return (const void *)(Current + 1);
+        } else if( CompareResult < 0 ){
+            Current = Current->Left;
+        } else /** CompareResult > 0 */{
+            Current = Current->Right;
+        }
+    }
+
+    return NULL;
+/*
 	int32_t				CurrentNode;
 	const Bst_NodeHead	*Current;
 	int					CompareResult;
@@ -165,39 +243,55 @@ int32_t Bst_Search(Bst *t, const void *Data, const void *Start)
 	}
 
 	return -1;
+*/
 }
 
-void *Bst_Enum(Bst *t, int32_t *Start)
+static void Bst_Enum_Inner(Bst *t,
+                           Bst_NodeHead *n,
+                           Bst_Enum_Callback cb,
+                           void *Arg
+                           )
 {
-	const Bst_NodeHead	*Node;
+    if( n == NULL )
+    {
+        return;
+    }
 
-	if( *Start < 0 )
-	{
-		*Start = 0;
-	} else {
-		++(*Start);
-	}
-
-	while( TRUE )
-	{
-		Node = Array_GetBySubscript(t -> Nodes, *Start);
-		if( Node == NULL )
-		{
-			return NULL;
-		}
-
-		if( Node -> Parent > -2 )
-		{
-			return (void *)(Node + 1);
-		}
-
-		++(*Start);
-	}
-
+    Bst_Enum_Inner(n->Left);
+    cb(t, n + 1, Arg);
+    Bst_Enum_Inner(n->Right);
 }
 
-int32_t Bst_Minimum_ByNumber(Bst *t, int32_t SubTree)
+void Bst_Enum(Bst *t, Bst_Enum_Callback cb, void *Arg)
 {
+    Bst_Enum_Inner(t, t->Root, cb, Arg);
+}
+
+const void *Bst_Minimum(Bst *t, const void *Subtree)
+{
+    Bst_NodeHead *Current;
+
+    if( Subtree == NULL )
+    {
+        /* Starting with the root */
+        if( t->Root == NULL )
+        {
+            /* Empty tree */
+            return NULL;
+        }
+
+        Current = t->Root;
+    } else {
+        Current = ((Bst_NodeHead *)Subtree) - 1;
+    }
+
+    while( Current->Left != NULL )
+    {
+        Current = Current->Left;
+    }
+
+    return (const void *)(Current + 1);
+/*
 	int32_t Left = SubTree;
 	const Bst_NodeHead	*Node;
 
@@ -212,10 +306,28 @@ int32_t Bst_Minimum_ByNumber(Bst *t, int32_t SubTree)
 	}
 
 	return SubTree;
+*/
 }
 
-int32_t Bst_Successor_ByNumber(Bst *t, int32_t NodeNumber)
+const void *Bst_Successor(Bst *t, const void *Last)
 {
+    Bst_NodeHead *Current = ((Bst_NodeHead *)Last) - 1;
+
+    if( Current->Right != NULL )
+    {
+        return Bst_Minimum(t, (Current->Right) + 1);
+    } else {
+        Bst_NodeHead *Parent = Current->Parent;
+
+        while( Parent != NULL && Parent->Left != Current )
+        {
+            Current = Parent;
+            Parent = Parent->Parent;
+        }
+
+        return Parent == NULL ? NULL : (const void *)(Parent + 1);
+    }
+/*
 	int32_t ParentNum;
 	const Bst_NodeHead	*ParentNode;
 	const Bst_NodeHead	*Node = Array_GetBySubscript(t -> Nodes, NodeNumber);
@@ -240,10 +352,71 @@ int32_t Bst_Successor_ByNumber(Bst *t, int32_t NodeNumber)
 	}
 
 	return ParentNum;
+*/
 }
 
-int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber)
+void Bst_Delete(Bst *t, const void *Node)
 {
+    Bst_NodeHead *Current = ((Bst_NodeHead *)Node) - 1;
+    Bst_NodeHead *ActuallyRemoved, *Child;
+
+    /* Finding the node that will be actually removed. */
+    if( Current->Left == NULL || Current->Right == NULL )
+    {
+        /* If Current has one or no child */
+        ActuallyRemoved = Current;
+    } else {
+        /* If Current has two child */
+        ActuallyRemoved = ((Bst_NodeHead *)Bst_Successor(t, Current + 1)) - 1;
+    }
+
+    /* If ActuallyRemoved:
+        has two child, impossible case,
+        has only one child, get the child,
+        or no child, set it to NULL
+    */
+    if( ActuallyRemoved->Left != NULL )
+    {
+        Child = ActuallyRemoved->Left;
+    } else {
+        Child = ActuallyRemoved->Right;
+    }
+
+    /* If ActuallyRemoved has one child ( Child != NULL ) */
+    if( Child != NULL )
+    {
+        /* Set the child's parent to its parent's parent */
+        Child->Parent = ActuallyRemoved->Parent;
+    }
+
+    if( ActuallyRemoved->Parent == NULL )
+    {
+        /* If ActuallyRemoved is the root */
+
+        t->Root = Child;
+    } else {
+        /* Or not the root */
+
+        if( ActuallyRemoved->Parent->Left == ActuallyRemoved )
+        {
+            /* If ActuallyRemoved is a left child */
+            ActuallyRemoved->Parent->Left = Child;
+        } else {
+            /* Or a right child */
+            ActuallyRemoved->Parent->Right = Child;
+        }
+    }
+
+    if( ActuallyRemoved != Current )
+    {
+        memcpy(Current + 1, ActuallyRemoved + 1, t->ElementLength);
+    }
+
+    ActuallyRemoved->Right = t->FreeList;
+    t->FreeList = ActuallyRemoved;
+
+    return;
+/*
 	Bst_NodeHead *Node = Array_GetBySubscript(t -> Nodes, NodeNumber);
 
 	if( t -> PrivateNodes == FALSE )
@@ -315,6 +488,7 @@ int32_t Bst_Delete_ByNumber(Bst *t, int32_t NodeNumber)
 
         return DeletedNum;
 	}
+*/
 }
 
 int Bst_Reset(Bst *t)

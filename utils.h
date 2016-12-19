@@ -15,6 +15,8 @@
 
 typedef int offset_t;
 
+typedef int (*CompareFunc)(const void *, const void *);
+
 #define CURRENT_THREAD_ID	(GET_THREAD_ID())
 
 /* void *SafeMalloc(size_t Bytes);
