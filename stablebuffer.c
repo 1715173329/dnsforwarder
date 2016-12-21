@@ -30,7 +30,7 @@ static StableBuffer_MetaInfo *Realloc(Array *MetaInfo, int DataLength)
     int s;
     StableBuffer_MetaInfo   m;
 
-    #define BLOCK_ORDER 10
+    int BLOCK_ORDER = Array_GetUsed(MetaInfo) + 1;
 
     m.Amount = ROUND_UP(DataLength * BLOCK_ORDER, sizeof(void *));
     m.Used = 0;
@@ -47,6 +47,7 @@ static StableBuffer_MetaInfo *Realloc(Array *MetaInfo, int DataLength)
     }
 
     return Array_GetBySubscript(MetaInfo, s);
+
 }
 
 static void *WriteHere(Array *MetaInfo, int DataLength)

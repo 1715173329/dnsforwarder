@@ -22,7 +22,12 @@ typedef struct _IpChunk{
 
 int IpChunk_Init(IpChunk *ic);
 
-int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t DataLength);
+int IpChunk_Add(IpChunk *ic,
+                uint32_t Ip,
+                int Type,
+                const void *Data,
+                uint32_t DataLength
+                );
 
 int IpChunk_AddFromString(IpChunk *ic,
                           const char *Ip,

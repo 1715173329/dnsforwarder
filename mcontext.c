@@ -8,28 +8,53 @@ typedef struct _ModuleContextItem{
     time_t      t; /* Time of addition */
 } ModuleContextItem;
 
-static void ModuleContext_Swep(ModuleContext *c, int TimeOut)
+static int ModuleContext_Swep_Collect(Bst *t,
+                                      const ModuleContextItem *Context,
+                                      Array *Pending
+                                      )
 {
-	int32_t Start = -1;
-	int		Number = 1;
+    time_t	Now = time(NULL);
 
-	ModuleContextItem *i;
-
-	time_t	Now = time(NULL);
-
-	i = Bst_Enum(&(c->d), &Start);
-	while( i != NULL )
+    if( Now - Context->t > 2 )
     {
-		if( Now - i->t > TimeOut )
-		{
-            /** TODO: Show timeout message, domain statistic, address advanced */
-			Bst_Delete_ByNumber(&(c->d), Start);
-
-			++Number;
-		}
-
-		i = Bst_Enum(&(c->d), &Start);
+        Array_PushBack(Pending, &Context, NULL);
     }
+
+    return 0;
+}
+
+static void ModuleContext_Swep(ModuleContext *c)
+{
+    Array Pending;
+    int i;
+
+    if( Array_Init(&Pending,
+                   sizeof(const ModuleContextItem *),
+                   10,
+                   FALSE,
+                   NULL
+                   )
+       != 0
+       )
+    {
+        return;
+    }
+
+    c->d.Enum(&(c->d),
+              (Bst_Enum_Callback)ModuleContext_Swep_Collect,
+              &Pending
+              );
+
+    for( i = 0; i < Array_GetUsed(&Pending); ++i )
+    {
+        const ModuleContextItem **Context;
+
+        Context = Array_GetBySubscript(&Pending, i);
+
+        c->d.Delete(&(c->d), *Context);
+    }
+
+    Array_Free(&Pending);
 }
 
 static int ModuleContext_Add(ModuleContext *c,
@@ -38,20 +63,17 @@ static int ModuleContext_Add(ModuleContext *c,
 {
     ModuleContextItem n;
     const char *e = (const char *)(h + 1);
-    int ret;
 
     if( h == NULL )
     {
         return -21;
     }
 
-    memcpy(&(n.h), h, sizeof(ModuleContextItem));
+    memcpy(&(n.h), h, sizeof(IHeader));
     n.i = *(uint16_t *)e;
     n.t = time(NULL);
 
-    ret = Bst_Add(&(c->d), &n);
-
-    if( ret != 0 )
+    if( c->d.Add(&(c->d), &n) != NULL )
     {
         return 0;
     } else {
@@ -67,22 +89,20 @@ static int ModuleContext_FindAndRemove(ModuleContext *c,
     ModuleContextItem k;
     const char *e = (const char *)(Input + 1);
 
-    int r;
-    ModuleContextItem *ri;
+    const ModuleContextItem *ri;
 
     k.i = *(uint16_t *)e;
     k.h.HashValue = Input->HashValue;
 
-    r = Bst_Search(&(c->d), &k, NULL);
-    if( r < 0 )
+    ri = c->d.Search(&(c->d), &k, NULL);
+    if( ri == NULL )
     {
         return -60;
     }
 
-    ri = Bst_GetDataByNumber(&(c->d), r);
     memcpy(Output, &(ri->h), sizeof(IHeader));
 
-    Bst_Delete_ByNumber(&(c->d), r);
+    c->d.Delete(&(c->d), ri);
 
     return 0;
 }
@@ -95,8 +115,10 @@ static int ModuleContextCompare(const void *_1, const void *_2)
 	if( One->i != Two->i )
 	{
 		return (int)(One->i) - (int)(Two->i);
+	} else if( One->h.HashValue != Two->h.HashValue ){
+		return One->h.HashValue - Two->h.HashValue;
 	} else {
-		return (One->h.HashValue) - (int)(Two->h.HashValue);
+	    return strcmp(One->h.Domain, Two->h.Domain);
 	}
 }
 
@@ -108,10 +130,9 @@ int ModuleContext_Init(ModuleContext *c)
     }
 
     if( Bst_Init(&(c->d),
-                    NULL,
-                    sizeof(ModuleContextItem),
-                    ModuleContextCompare
-                    )
+                 sizeof(ModuleContextItem),
+                 ModuleContextCompare
+                 )
        != 0
        )
     {

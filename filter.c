@@ -68,11 +68,7 @@ static int InitBst(Bst **t, int (*CompareFunc)(const void *, const void *))
 		return -93;
 	}
 
-	if( Bst_Init(*t,
-                 NULL,
-                 sizeof(int),
-                 CompareFunc)
-        != 0 )
+	if( Bst_Init(*t, sizeof(int), CompareFunc) != 0 )
 	{
 		return -102;
 	}
@@ -132,7 +128,7 @@ static int FilterType_Init(ConfigFileInfo *ConfigInfo)
 	while( OneTypePendingToAdd_Str != NULL )
 	{
 		sscanf(OneTypePendingToAdd_Str, "%d", &OneTypePendingToAdd);
-		Bst_Add(DisabledTypes, &OneTypePendingToAdd);
+		DisabledTypes->Add(DisabledTypes, &OneTypePendingToAdd);
 
 		OneTypePendingToAdd_Str = sli.Next(&sli);
 	}
@@ -163,7 +159,8 @@ int Filter_Init(ConfigFileInfo *ConfigInfo)
 
 static BOOL IsDisabledType(int Type)
 {
-	if( DisabledTypes != NULL && Bst_Search(DisabledTypes, &Type, NULL) >= 0 )
+	if( DisabledTypes != NULL &&
+        DisabledTypes->Search(DisabledTypes, &Type, NULL) != NULL )
 	{
 		return TRUE;
 	} else {

@@ -22,27 +22,30 @@ int IpChunk_Init(IpChunk *ic)
 	IpElement	Root;
 	Root.IpLength = 10; /* 4 < 10 < 16 */
 
-	if( Bst_Init(&(ic -> Chunk),
-                 NULL,
-                 sizeof(IpElement),
-                 (int (*)(const void *, const void *))Compare
-                )
-       != 0
-       )
+	if( Bst_Init(&(ic->Chunk), sizeof(IpElement), (CompareFunc)Compare) != 0 )
 	{
 		return -1;
 	}
 
-	if( StableBuffer_Init(&(ic -> Datas)) != 0 )
+	if( StableBuffer_Init(&(ic->Datas)) != 0 )
 	{
-        Array_Free(ic -> Chunk.Nodes);
 		return -1;
 	}
 
-	return Bst_Add(&(ic -> Chunk), &Root);
+	if( ic->Chunk.Add(&(ic->Chunk), &Root) == NULL )
+    {
+        return -37;
+    }
+
+	return 0;
 }
 
-int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t DataLength)
+int IpChunk_Add(IpChunk *ic,
+                uint32_t Ip,
+                int Type,
+                const void *Data,
+                uint32_t DataLength
+                )
 {
     StableBuffer *sb = &(ic->Datas);
 
@@ -57,7 +60,7 @@ int IpChunk_Add(IpChunk *ic, uint32_t Ip, int Type, const char *Data, uint32_t D
 		New.Data = sb->Add(sb, Data, DataLength, TRUE);
 	}
 
-	return Bst_Add(&(ic -> Chunk), &New);
+	return ic->Chunk.Add(&(ic->Chunk), &New) == NULL;
 }
 
 int IpChunk_AddFromString(IpChunk *ic,
@@ -89,7 +92,7 @@ int IpChunk_Add6(IpChunk *ic, const char *Ipv6, int Type, const char *Data, uint
 		New.Data = sb->Add(sb, Data, DataLength, TRUE);
 	}
 
-	return Bst_Add(&(ic -> Chunk), &New);
+	return ic->Chunk.Add(&(ic->Chunk), &New) == NULL;
 }
 
 int IpChunk_Add6FromString(IpChunk *ic,
@@ -124,7 +127,7 @@ int IpChunk_AddAnyFromString(IpChunk *ic,
 BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data)
 {
 	IpElement	Key;
-	int32_t		Result;
+	const IpElement	*Result;
 
 	if( ic == NULL )
 	{
@@ -136,28 +139,21 @@ BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data)
 	Key.Type = 0;
 	Key.Data = NULL;
 
-	Result = Bst_Search(&(ic -> Chunk), &Key, NULL);
+	Result = ic->Chunk.Search(&(ic->Chunk), &Key, NULL);
 
-	if( Result < 0 )
+	if( Result == NULL )
 	{
 		return FALSE;
 	} else {
-		IpElement *IpResult;
+        if( Type != NULL )
+        {
+            *Type = Result->Type;
+        }
 
-		if( Type != NULL || Data != NULL )
-		{
-			IpResult = Bst_GetDataByNumber(&(ic -> Chunk), Result);
-
-			if( Type != NULL )
-			{
-				*Type = IpResult -> Type;
-			}
-
-			if( Data != NULL )
-			{
-                *Data = IpResult->Data;
-			}
-		}
+        if( Data != NULL )
+        {
+            *Data = Result->Data;
+        }
 
 		return TRUE;
 	}
@@ -166,7 +162,7 @@ BOOL IpChunk_Find(IpChunk *ic, uint32_t Ip, int *Type, const char **Data)
 BOOL IpChunk_Find6(IpChunk *ic, const char *Ipv6, int *Type, const char **Data)
 {
 	IpElement	Key;
-	int32_t		Result;
+	const IpElement	*Result;
 
 	if( ic == NULL )
 	{
@@ -178,28 +174,21 @@ BOOL IpChunk_Find6(IpChunk *ic, const char *Ipv6, int *Type, const char **Data)
 	Key.Type = 0;
 	Key.Data = NULL;
 
-	Result = Bst_Search(&(ic -> Chunk), &Key, NULL);
+	Result = ic->Chunk.Search(&(ic->Chunk), &Key, NULL);
 
-	if( Result < 0 )
+	if( Result == NULL )
 	{
 		return FALSE;
 	} else {
-		IpElement *IpResult;
+        if( Type != NULL )
+        {
+            *Type = Result -> Type;
+        }
 
-		if( Type != NULL || Data != NULL )
-		{
-			IpResult = Bst_GetDataByNumber(&(ic -> Chunk), Result);
-
-			if( Type != NULL )
-			{
-				*Type = IpResult -> Type;
-			}
-
-			if( Data != NULL )
-			{
-                *Data = IpResult->Data;
-			}
-		}
+        if( Data != NULL )
+        {
+            *Data = Result->Data;
+        }
 
 		return TRUE;
 	}

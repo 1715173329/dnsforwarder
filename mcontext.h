@@ -20,7 +20,7 @@ struct _ModuleContext{
                          IHeader *Output
                          );
 
-    void (*Swep)(ModuleContext *c, int TimeOut);
+    void (*Swep)(ModuleContext *c);
 };
 
 int ModuleContext_Init(ModuleContext *c);

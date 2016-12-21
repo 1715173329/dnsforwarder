@@ -144,5 +144,4 @@ char *ReplaceStr_WithLengthChecking(char *Src,
                                     const char *DesSubstr,
                                     int SrcBufferLength
                                     );
-
 #endif /* _UTILS_ */
