@@ -5,6 +5,7 @@
 #include "dnsparser.h"
 #include "array.h"
 #include "stringlist.h"
+#include "common.h"
 
 #define SET_16_BIT_U_INT(here, val)	(*(uint16_t *)(here) = htons((uint16_t)(val)))
 #define SET_32_BIT_U_INT(here, val)	(*(uint32_t *)(here) = htonl((uint32_t)(val)))

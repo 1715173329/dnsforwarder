@@ -9,10 +9,10 @@
 typedef struct _StringChunk{
     StringList  *List;
 
-    /* Positions of every domain in `List', offsets */
+    /* Positions of every domain in `List' */
     SimpleHT    List_Pos;
 
-    /* Positions of every domain in `List_W', offsets */
+    /* Positions of every domain in `List_W' */
     Array       List_W_Pos;
 
     /* Chunk of all additional datas */
