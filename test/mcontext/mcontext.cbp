@@ -31,6 +31,9 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Linker>
+			<Add library="libws2_32.a" />
+		</Linker>
 		<Unit filename="../../array.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -52,6 +55,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../../mcontext.h" />
+		<Unit filename="../../stablebuffer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../stablebuffer.h" />
 		<Unit filename="../../utils.c">
 			<Option compilerVar="CC" />
 		</Unit>

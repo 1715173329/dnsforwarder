@@ -31,19 +31,19 @@ int main(void)
 
     a = *(HH *)MakeOne();
 
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
+    c.Add(&c, MakeOne());
     c.Add(&c, (IHeader *)&a);
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
-    c.Add(&c, MakeOne());
     c.Add(&c, MakeOne());
     c.Add(&c, MakeOne());
     c.Add(&c, MakeOne());
