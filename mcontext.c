@@ -30,7 +30,7 @@ static void ModuleContext_Swep(ModuleContext *c)
 
     if( Array_Init(&Pending,
                    sizeof(const ModuleContextItem *),
-                   10,
+                   4,
                    FALSE,
                    NULL
                    )

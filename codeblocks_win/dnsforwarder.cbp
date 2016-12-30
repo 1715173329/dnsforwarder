@@ -155,6 +155,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../goodiplist.h" />
+		<Unit filename="../hcontext.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hcontext.h" />
 		<Unit filename="../hosts.c">
 			<Option compilerVar="CC" />
 		</Unit>
