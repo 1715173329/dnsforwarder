@@ -9,6 +9,12 @@ int f(int *o, int *t)
     return *o - *t;
 }
 
+int print(Bst *t, const void *Data, void *Arg)
+{
+    printf("int : %d\n", *(int *)Data);
+    return 0;
+}
+
 int testify(Bst *t, const void *Data, void *Arg)
 {
     Bst_NodeHead *n = ((Bst_NodeHead *)Data) - 1;
@@ -23,7 +29,7 @@ int testify(Bst *t, const void *Data, void *Arg)
     if( l != NULL ) il = *(int *)(l + 1);
     if( r != NULL ) ir = *(int *)(r + 1);
 
-    printf("Node %#010x %d\n", (unsigned int)n, in);
+    /*printf("Node %#010x %d\n", (unsigned int)n, in);*/
 
     if( il <= in && ir >= in ){}
     else
@@ -39,64 +45,131 @@ int testify(Bst *t, const void *Data, void *Arg)
     return 0;
 }
 
+int add(Bst *t, int n, int *min, int *max)
+{
+    int a = *(int *)t->Add(t, &n);
+    if( a > *max ) *max = a;
+    if( a < *min ) *min = a;
+    printf("Add : %d\n", a);
+    return a;
+}
+
+void del(Bst *t, int n)
+{
+    const void *Node = t->Search(t, &n, NULL);
+
+    if( Node != NULL )
+    {
+        t->Delete(t, Node);
+    }
+}
+
 int main(void)
 {
     Bst t;
-    int i;
     int loop;
-    int a;
-    const void *Node;
+
+    int max = -1,min = INT_MAX;
 
     srand(time(NULL));
 
     Bst_Init(&t, sizeof(int), f);
-/*
+
+    printf("==>>> Delete a node with no child\n");
+
+    add(&t, INT_MAX - 1, &min, &max);
+    add(&t, INT_MAX - 2, &min, &max);
+    add(&t, INT_MAX - 3, &min, &max);
+    add(&t, INT_MAX - 4, &min, &max);
+    add(&t, INT_MAX - 5, &min, &max);
+    del(&t, INT_MAX - 5);
+    t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
+    printf("==>>> Delete a node with one child\n");
+
+    add(&t, INT_MAX - 1, &min, &max);
+    add(&t, INT_MAX - 2, &min, &max);
+    add(&t, INT_MAX - 3, &min, &max);
+    add(&t, INT_MAX - 4, &min, &max);
+    add(&t, INT_MAX - 5, &min, &max);
+    del(&t, INT_MAX - 4);
+    t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
+    printf("==>>> Delete a node with two children\n");
+
+    add(&t, INT_MAX - 3, &min, &max);
+    add(&t, INT_MAX - 2, &min, &max);
+    add(&t, INT_MAX - 1, &min, &max);
+    add(&t, INT_MAX - 4, &min, &max);
+    add(&t, INT_MAX - 5, &min, &max);
+    del(&t, INT_MAX - 3);
+    t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
+    printf("==>>> Minimum\n");
+
     for( loop = 0; loop != 100; ++loop )
     {
-        int a;
-        i = rand();
-        a = *(int *)t.Add(&t, &i);
-        printf("i : %d, a : %d\n", i, a);
+        add(&t, rand(), &min, &max);
     }
-*/
-    i = INT_MAX - 1;
-    a = *(int *)t.Add(&t, &i);
-    printf("i : %d, a : %d\n", i, a);
 
-    i = INT_MAX - 2;
-    a = *(int *)t.Add(&t, &i);
-    printf("i : %d, a : %d\n", i, a);
-
-    i = INT_MAX - 3;
-    a = *(int *)t.Add(&t, &i);
-    printf("i : %d, a : %d\n", i, a);
-
-    i = INT_MAX - 4;
-    a = *(int *)t.Add(&t, &i);
-    printf("i : %d, a : %d\n", i, a);
-
-    i = INT_MAX - 5;
-    a = *(int *)t.Add(&t, &i);
-    printf("i : %d, a : %d\n", i, a);
-/*
-    for( loop = 0; loop != 100; ++loop )
+    if( min != *(int *)t.Minimum(&t, NULL) )
     {
-        i = rand();
-        a = *(int *)t.Add(&t, &i);
-        printf("i : %d, a : %d\n", i, a);
+        printf("Test failed.\n");
     }
-*/
-    printf("\n\n");
 
     t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
 
-    printf("\n\n");
+    printf("==>>> Del and add\n");
 
-    i = INT_MAX - 5;
-    Node = t.Search(&t, &i, NULL);
-    t.Delete(&t, Node);
-
+    add(&t, INT_MAX - 1, &min, &max);
+    add(&t, INT_MAX - 2, &min, &max);
+    add(&t, INT_MAX - 3, &min, &max);
+    add(&t, INT_MAX - 4, &min, &max);
+    add(&t, INT_MAX - 5, &min, &max);
+    del(&t, INT_MAX - 5);
+    del(&t, INT_MAX - 4);
+    del(&t, INT_MAX - 3);
     t.Enum(&t, testify, NULL);
+    add(&t, INT_MAX - 5, &min, &max);
+    add(&t, INT_MAX - 4, &min, &max);
+    add(&t, INT_MAX - 3, &min, &max);
+    add(&t, INT_MAX - 6, &min, &max);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
+    printf("==>>> Del root and add\n");
+    add(&t, 0, &min, &max);
+    del(&t, 0);
+    t.Enum(&t, testify, NULL);
+    add(&t, 1, &min, &max);
+    t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
+    printf("==>>> Del\n");
+    add(&t, 10, &min, &max);
+    add(&t, 5, &min, &max);
+    add(&t, 18, &min, &max);
+    add(&t, 6, &min, &max);
+    add(&t, 15, &min, &max);
+    t.Enum(&t, print, NULL);
+    del(&t, 5);
+    del(&t, 15);
+    del(&t, 10);
+    printf("> After Del\n");
+    t.Enum(&t, print, NULL);
+    t.Enum(&t, testify, NULL);
+    t.Reset(&t);
+    max = -1;min = INT_MAX;
+
 
     return 0;
 }
