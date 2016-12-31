@@ -1,5 +1,5 @@
-#ifndef HOSTS_H_INCLUDED
-#define HOSTS_H_INCLUDED
+#ifndef DYNAMICHOSTS_H_INCLUDED
+#define DYNAMICHOSTS_H_INCLUDED
 
 #include "statichosts.h"
 #include "querydnsbase.h"
@@ -15,4 +15,4 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo);
 int Hosts_Try(char *Content, int *ContentLength, int BufferLength);
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo);
-#endif // HOSTS_H_INCLUDED
+#endif // DYNAMICHOSTS_H_INCLUDED

@@ -6,7 +6,7 @@
 #include "querydnslistenudp.h"
 #include "request_response.h"
 #include "readconfig.h"
-#include "hosts.h"
+#include "dynamichosts.h"
 #include "filter.h"
 #include "utils.h"
 #include "domainstatistic.h"

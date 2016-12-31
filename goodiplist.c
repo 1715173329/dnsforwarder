@@ -4,13 +4,13 @@
 #include "goodiplist.h"
 #include "request_response.h"
 #include "utils.h"
+#include "timedtask.h"
 #include "logs.h"
 
-typedef struct _CountDownMeta{
-	int	TimeLeft;
-	int	Interval;
-	Array	List;
-} CountDownMeta;
+typedef struct _ListInfo{
+	int     Interval;
+	Array   List;
+} ListInfo;
 
 static StringChunk	*GoodIpList = NULL;
 
@@ -38,10 +38,9 @@ static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
 		return -3;
 	}
 
-	Itr = sli.Next(&sli);
-    while( Itr != NULL )
+    while( (Itr = sli.Next(&sli)) != NULL )
     {
-		CountDownMeta	m = {0, 0, Array_Init_Static(sizeof(struct sockaddr_in))};
+		CountDownMeta	m = {0, Array_Init_Static(sizeof(struct sockaddr_in))};
 		char n[128];
 		int i;
 
@@ -49,13 +48,11 @@ static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
 
 		if( i <= 0 )
 		{
-			ERRORMSG("List is invalid : %s\n", Itr);
+			ERRORMSG("GoodIpList is invalid : %s\n", Itr);
 			continue;
 		}
         m.Interval = i;
 		StringChunk_Add(GoodIpList, n, (const char *)&m, sizeof(CountDownMeta));
-
-		Itr = sli.Next(&sli);
     }
 
     return 0;
@@ -79,8 +76,7 @@ static int AddToLists(ConfigFileInfo *ConfigInfo)
         return -2;
     }
 
-	Itr = sli.Next(&sli);
-    while( Itr != NULL )
+    while( (Itr = sli.Next(&sli)) != NULL )
     {
 		CountDownMeta	*m = NULL;
 		char n[128], ip_str[LENGTH_OF_IPV4_ADDRESS_ASCII];
@@ -95,14 +91,11 @@ static int AddToLists(ConfigFileInfo *ConfigInfo)
 
 		if( StringChunk_Match_NoWildCard(GoodIpList, n, NULL, (char **)&m) == FALSE)
 		{
-			ERRORMSG("List is not found : %s\n", Itr);
-			Itr = sli.Next(&sli);
+			ERRORMSG("GoodIpList is not found : %s\n", Itr);
 			continue;
 		}
 
 		Array_PushBack(&(m -> List), &ip, NULL);
-
-		Itr = sli.Next(&sli);
     }
 
     return 0;
@@ -286,8 +279,6 @@ static void ThreadLoop(void)
 
 int GoodIpList_Init(ConfigFileInfo *ConfigInfo)
 {
-	ThreadHandle	t;
-
 	if( InitListsAndTimes(ConfigInfo) != 0 )
 	{
 		return -1;
@@ -297,6 +288,7 @@ int GoodIpList_Init(ConfigFileInfo *ConfigInfo)
 	{
 		return -2;
 	}
+
 
 	CREATE_THREAD(ThreadLoop, NULL, t);
 	DETACH_THREAD(t);

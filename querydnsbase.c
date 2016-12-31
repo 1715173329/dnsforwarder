@@ -10,7 +10,7 @@
 #include "querydnsbase.h"
 #include "dnsparser.h"
 #include "dnsgenerator.h"
-#include "hosts.h"
+#include "dynamichosts.h"
 #include "utils.h"
 #include "filter.h"
 #include "stringlist.h"

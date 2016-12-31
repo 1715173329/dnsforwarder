@@ -1,14 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include "hosts.h"
+#include "dynamichosts.h"
 #include "dnsrelated.h"
 #include "dnsgenerator.h"
 #include "common.h"
 #include "utils.h"
 #include "downloader.h"
 #include "readline.h"
-#include "internalsocket.h"
 #include "goodiplist.h"
 #include "rwlock.h"
 
