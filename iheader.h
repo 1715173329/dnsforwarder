@@ -29,6 +29,8 @@ struct _IHeader{
 
 #define IHEADER_TAIL(ptr)   (void *)((IHeader *)(ptr) + 1)
 
+#define IHEADER_CONTAINING_HEADER(ptr)  (((IHeader *)(ptr))->_Pad == 0)
+
 void IHeader_Reset(IHeader *h);
 
 int IHeader_Fill(IHeader *h,

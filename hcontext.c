@@ -8,21 +8,24 @@ struct _HostsContextItem{
 
     IHeader     oh; /* Original header */
     uint32_t    i; /* Query identifier */
+    uint32_t    oi; /* Original identifier */
     time_t      t; /* Time of addition */
 
 	char	    RecursedDomain[256];
 	int         RecursedHashValue;
 };
 
-PUBFUNC int HostsContext_Add(HostsContext    *c,
-                             IHeader         *Original, /* Entity followed */
-                             const char      *RecursedDomain
+PUBFUNC int HostsContext_Add(HostsContext   *c,
+                             IHeader        *Original, /* Entity followed */
+                             const char     *RecursedDomain,
+                             uint16_t       NewIdentifier
                              )
 {
     HostsContextItem    n;
 
     memcpy(&(n.oh), Original, sizeof(IHeader));
-    n.i = *(uint16_t *)(Original + 1);
+    n.i = NewIdentifier;
+    n.oi = *(uint16_t *)(Original + 1);
     n.t = time(NULL);
 
     strncpy(n.RecursedDomain, RecursedDomain, sizeof(n.RecursedDomain));
@@ -43,6 +46,7 @@ PUBFUNC int HostsContext_FindAndRemove(HostsContext *c,
                                        /* Entity followed */
                                        IHeader      *Input,
 
+                                       /* Entity followed */
                                        IHeader      *Output
                                        )
 {
@@ -62,6 +66,7 @@ PUBFUNC int HostsContext_FindAndRemove(HostsContext *c,
     }
 
     memcpy(Output, &(ri->oh), sizeof(IHeader));
+    *(uint16_t *)(Output + 1) = ri->oi;
 
     c->t.Delete(&(c->t), ri);
 

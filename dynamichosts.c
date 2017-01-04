@@ -10,9 +10,12 @@
 #include "readline.h"
 #include "goodiplist.h"
 #include "timedtask.h"
+#include "hcontext.h"
+#include "udpfrontend.h"
+#include "socketpuller.h"
 #include "rwlock.h"
 
-static BOOL			StaticHostsInited = FALSE;
+static HostsContainer   *MainStaticContainer = NULL;
 static BOOL			DisableIpv6WhenIpv4Exists = FALSE;
 static const char 	*File = NULL;
 static RWLock		HostsLock;
@@ -143,7 +146,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 	StringList  *Hosts;
 	int          UpdateInterval;
 
-	StaticHostsInited = ( StaticHosts_Init(ConfigInfo) >= 0 );
+	MainStaticContainer = StaticHosts_Init(ConfigInfo);
 
 	DisableIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
                                                  "DisableIpv6WhenIpv4Exists"
@@ -215,184 +218,91 @@ int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
 	return 0;
 }
 
-static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
-{
-	if( Container == NULL )
-	{
-		return MATCH_STATE_NONE;
-	}
-
-	if( Hosts_IsExcludedDomain(Container, Name) == TRUE )
-	{
-		return MATCH_STATE_DISABLED;
-	}
-
-	switch( Type )
-	{
-		case DNS_TYPE_A:
-			*Result = Hosts_FindIPv4(Container, Name);
-			if( *Result == NULL )
-			{
-				*Result = Hosts_FindGoodIPList(Container, Name);
-				if( *Result == NULL )
-				{
-					break;
-				}
-			}
-
-			return MATCH_STATE_PERFECT;
-			break;
-
-		case DNS_TYPE_AAAA:
-			if( DisableIpv6WhenIpv4Exists == TRUE && (Hosts_FindIPv4(Container, Name) != NULL || Hosts_FindGoodIPList(Container, Name) != NULL) )
-			{
-				return MATCH_STATE_DISABLE_IPV6;
-			}
-
-			*Result = Hosts_FindIPv6(Container, Name);
-			if( *Result == NULL )
-			{
-				break;
-			}
-
-			return MATCH_STATE_PERFECT;
-			break;
-
-		case DNS_TYPE_CNAME:
-			*Result = Hosts_FindCName(Container, Name);
-			if( *Result == NULL )
-			{
-				return MATCH_STATE_NONE;
-			}
-
-			return MATCH_STATE_PERFECT;
-			break;
-
-		default:
-			return MATCH_STATE_NONE;
-			break;
-	}
-
-	*Result = Hosts_FindCName(Container, Name);
-	if( *Result == NULL )
-	{
-		return MATCH_STATE_NONE;
-	}
-
-	return MATCH_STATE_ONLY_CNAME;
-}
-
-static int GetAnswersByName(SOCKET Socket, Address_Type *BackAddress, int Identifier, const char *Name, DNSRecordType Type)
-{
-	static struct _RequestEntity {
-		ControlHeader	Header;
-		char			Entity[384];
-	} RequestEntity = {
-		{CONTROLHEADER__PAD},
-		{
-			00, 00, /* QueryIdentifier */
-			01, 00, /* Flags */
-			00, 01, /* QuestionCount */
-			00, 00, /* AnswerCount */
-			00, 00, /* NameServerCount */
-			00, 00, /* AdditionalCount */
-			/* DNS Header end */
-		}
-	};
-
-	static char *DNSEntity = RequestEntity.Entity;
-
-	DnsGenerator g;
-
-	*(uint16_t *)DNSEntity = Identifier;
-	DNSEntity[4] = 0;
-	DNSEntity[5] = 0;
-
-	if( DnsGenerator_Init(&g,
-                          DNSEntity,
-                          sizeof(RequestEntity.Entity),
-                          DNSEntity,
-                          DNS_HEADER_LENGTH,
-                          FALSE
-                       ) != 0
-      )
-    {
-        return -1;
-    }
-
-    if( g.Question(&g, Name, Type, DNS_CLASS_IN) != 0 )
-    {
-        return -2;
-    }
-
-	RequestEntity.Header.NeededHeader = TRUE;
-	strncpy(RequestEntity.Header.Agent,
-            "CNameRedirect",
-            sizeof(RequestEntity.Header.Agent)
-            );
-    RequestEntity.Header.Agent[sizeof(RequestEntity.Header.Agent) -1 ] = '\0';
-	memcpy(&(RequestEntity.Header.BackAddress), BackAddress, sizeof(Address_Type));
-	strncpy(RequestEntity.Header.RequestingDomain,
-            Name,
-            sizeof(RequestEntity.Header.RequestingDomain)
-            );
-    RequestEntity.Header.RequestingDomain[sizeof(RequestEntity.Header.RequestingDomain) - 1] = '\0';
-	RequestEntity.Header.RequestingType = Type;
-	RequestEntity.Header.RequestingDomainHashValue = ELFHash(Name, 0);
-
-    return InternalInterface_SendTo(INTERNAL_INTERFACE_UDP_LOOPBACK_LOCAL,
-                                    Socket,
-                                    (char *)&RequestEntity,
-                                    g.Length(&g) + sizeof(ControlHeader)
-                                    );
-
-}
-
 int DynamicHosts_SocketLoop(void)
 {
 	static uint16_t	NewIdentifier;
 
-	static QueryContext	Context;
+	static HostsContext	Context;
+	static SocketPuller Puller;
 
-    SOCKET	HostsIncomeSocket;
-    SOCKET	HostsOutcomeSocket;
-    Address_Type	OutcomeAddress;
-    SOCKET	SendBackSocket;
-
-	static fd_set	ReadSet, ReadySet;
+    static SOCKET	IncomeSocket;
+    static SOCKET	OutcomeSocket;
+    static Address_Type	OutcomeAddress;
 
 	static const struct timeval	LongTime = {3600, 0};
 	static const struct timeval	ShortTime = {10, 0};
 
-	struct timeval	TimeLimit = LongTime;
+	static struct timeval	TimeLimit = LongTime;
 
-	int		MaxFd;
+	#define LEFT_LENGTH_SL (sizeof(RequestBuffer) - sizeof(IHeader));
+	static char		RequestBuffer[2048];
+	static IHeader	*Header = (IHeader *)RequestBuffer;
+	static char		RequestEntity = RequestBuffer + sizeof(IHeader);
 
-	static char		RequestEntity[2048];
-	ControlHeader	*Header = (ControlHeader *)RequestEntity;
+	IncomeSocket = TryBindLocal(Ipv6_Aviliable(), 10200, NULL);
+	OutcomeSocket = TryBindLocal(Ipv6_Aviliable(), 10300, &OutcomeAddress);
 
-    HostsIncomeSocket = InternalInterface_TryOpenLocal(10200, INTERNAL_INTERFACE_HOSTS);
-    HostsOutcomeSocket = InternalInterface_TryBindAddress(MAIN_WORKING_ADDRESS, 10225, &(OutcomeAddress));
-
-	if( HostsOutcomeSocket == INVALID_SOCKET )
+	if( IncomeSocket == INVALID_SOCKET || OutcomeSocket == INVALID_SOCKET )
 	{
-		return -1;
+		return -416;
 	}
 
-	SendBackSocket = InternalInterface_GetSocket(INTERNAL_INTERFACE_UDP_INCOME);
+    if( SocketPuller_Init(&Puller) != 0 )
+    {
+        return -423;
+    }
 
-	MaxFd = HostsIncomeSocket > HostsOutcomeSocket ? HostsIncomeSocket : HostsOutcomeSocket;
-	FD_ZERO(&ReadSet);
-	FD_ZERO(&ReadySet);
-	FD_SET(HostsIncomeSocket, &ReadSet);
-	FD_SET(HostsOutcomeSocket, &ReadSet);
+    Puller.Add(&Puller, IncomeSocket, NULL, 0);
+    Puller.Add(&Puller, OutcomeSocket, NULL, 0);
 
-	InternalInterface_InitQueryContext(&Context);
+    if( HostsContext_Init(&Context) != 0 )
+    {
+        return -431;
+    }
 
-	NewIdentifier = rand();
+    srand(time(NULL));
 
 	while( TRUE )
 	{
+	    SOCKET  Pulled;
+
+	    Pulled = Puller.Select(&Puller, &TimeLimit, NULL, TRUE, FALSE);
+	    switch( Pulled )
+	    {
+        case INVALID_SOCKET:
+            Context.Swep(&Context);
+            TimeLimit = LongTime
+            break;
+
+        case IncomeSocket:
+            TimeLimit = ShortTime;
+            /* Recursive query */
+            {
+                int State;
+
+                State = recvfrom(IncomeSocket,
+                                 RequestEntity,
+                                 LEFT_LENGTH_SL,
+								 0,
+								 NULL,
+								 NULL
+								 );
+
+                if( State < 1 )
+                {
+                    break;
+                }
+
+                /** TODO: Go on */
+            }
+            break;
+
+        case OutcomeSocket:
+            TimeLimit = ShortTime;
+            /** TODO: Go on */
+            break;
+	    }
+
 		ReadySet = ReadSet;
 
 		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
@@ -692,202 +602,4 @@ int DynamicHosts_SocketLoop(void)
 				}
 		}
 	}
-}
-
-int Hosts_Try(char *Content, int *ContentLength, int BufferLength)
-{
-	ControlHeader	*Header = (ControlHeader *)Content;
-	char			*RequestEntity = Content + sizeof(ControlHeader);
-
-	int			MatchState;
-	const char	*MatchResult;
-	BOOL		GotLock = FALSE;
-
-	/** TODO: You should also check the queried class */
-    if( Header->RequestingType != DNS_TYPE_CNAME &&
-        Header->RequestingType != DNS_TYPE_A &&
-        Header->RequestingType != DNS_TYPE_AAAA
-        )
-    {
-        return MATCH_STATE_NONE;
-    }
-
-	/* Matching stage */
-	MatchState = Hosts_Match(&MainStaticContainer,
-                             Header -> RequestingDomain,
-                             Header -> RequestingType,
-                             &MatchResult
-                             );
-	if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
-	{
-		RWLock_WrLock(HostsLock);
-		MatchState = Hosts_Match((HostsContainer *)MainDynamicContainer,
-                                 Header -> RequestingDomain,
-                                 Header -> RequestingType,
-                                 &MatchResult
-                                 );
-		GotLock = TRUE;
-	}
-    /* Matching done */
-
-	if( MatchState == MATCH_STATE_PERFECT )
-	{
-	    DnsSimpleParser p;
-
-	    BOOL HasEdns;
-
-        DnsGenerator g;
-
-        char *HereToGenerate = Content + *ContentLength;
-        int LeftBufferLength = BufferLength - *ContentLength;
-
-        int ResultLength;
-
-	    if( DnsSimpleParser_Init(&p,
-                                 RequestEntity,
-                                 *ContentLength - sizeof(ControlHeader),
-                                 FALSE
-                                 )
-            != 0 )
-        {
-            if( GotLock == TRUE )
-            {
-                RWLock_UnWLock(HostsLock);
-            }
-
-            return MATCH_STATE_NONE;
-        }
-
-        HasEdns = p.HasType(&p,
-                            DNS_RECORD_PURPOSE_ADDITIONAL,
-                            DNS_CLASS_UNKNOWN,
-                            DNS_TYPE_OPT
-                            );
-
-        if( DnsGenerator_Init(&g,
-                              HereToGenerate,
-                              LeftBufferLength,
-                              RequestEntity,
-                              *ContentLength - sizeof(ControlHeader),
-                              TRUE
-                              )
-           != 0)
-        {
-            if( GotLock == TRUE )
-            {
-                RWLock_UnWLock(HostsLock);
-            }
-            return MATCH_STATE_NONE;
-        }
-
-        g.Header->Flags.Direction = 1;
-        g.Header->Flags.AuthoritativeAnswer = 0;
-        g.Header->Flags.RecursionAvailable = 1;
-        g.Header->Flags.ResponseCode = 0;
-        g.Header->Flags.Type = 0;
-
-        if( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ANSWER )
-        {
-            if( GotLock == TRUE )
-            {
-                RWLock_UnWLock(HostsLock);
-            }
-            return MATCH_STATE_NONE;
-        }
-
-        switch( Header->RequestingType )
-        {
-        case DNS_TYPE_CNAME:
-            if( g.CName(&g, "a", MatchResult, 60) != 0 )
-            {
-                if( GotLock == TRUE )
-                {
-                    RWLock_UnWLock(HostsLock);
-                }
-
-                return MATCH_STATE_NONE;
-            }
-            break;
-
-        case DNS_TYPE_A:
-            if( g.RawData(&g,
-                          "a",
-                          Header->RequestingType,
-                          DNS_CLASS_IN,
-                          MatchResult,
-                          4,
-                          60
-                          )
-                != 0 )
-            {
-                if( GotLock == TRUE )
-                {
-                    RWLock_UnWLock(HostsLock);
-                }
-                return MATCH_STATE_NONE;
-            }
-            break;
-
-        case DNS_TYPE_AAAA:
-            if( g.RawData(&g,
-                          "a",
-                          Header->RequestingType,
-                          DNS_CLASS_IN,
-                          MatchResult,
-                          16,
-                          60
-                          )
-                != 0 )
-            {
-                if( GotLock == TRUE )
-                {
-                    RWLock_UnWLock(HostsLock);
-                }
-                return MATCH_STATE_NONE;
-            }
-            break;
-
-        default:
-            if( GotLock == TRUE )
-            {
-                RWLock_UnWLock(HostsLock);
-            }
-            return MATCH_STATE_NONE;
-            break;
-        }
-
-        if( HasEdns )
-        {
-            while( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ADDITIONAL );
-            if( g.EDns(&g, 1280) != 0 )
-            {
-                if( GotLock == TRUE )
-                {
-                    RWLock_UnWLock(HostsLock);
-                }
-                return MATCH_STATE_NONE;
-            }
-        }
-
-        /* g will no longer be needed, and can be crapped */
-        ResultLength = DNSCompress(HereToGenerate, g.Length(&g));
-        if( ResultLength < 0 )
-        {
-            if( GotLock == TRUE )
-            {
-                RWLock_UnWLock(HostsLock);
-            }
-            return MATCH_STATE_NONE;
-        }
-
-        memmove(RequestEntity, HereToGenerate, ResultLength);
-        *ContentLength = ResultLength + sizeof(ControlHeader);
-	}
-
-	if( GotLock == TRUE )
-	{
-		RWLock_UnWLock(HostsLock);
-	}
-
-	return MatchState;
 }

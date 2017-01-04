@@ -1,9 +1,10 @@
 #include "udpfrontend.h"
-#include "readconfig.h"
 #include "socketpuller.h"
 #include "addresslist.h"
 #include "utils.h"
 #include "mmgr.h"
+
+static BOOL Ipv6_Enabled = FALSE;
 
 static SocketPuller Frontend;
 
@@ -43,7 +44,12 @@ static void UdpFrontend_Work(void)
 
         char Agent[sizeof(Header->Agent)];
 
-        sock = Frontend.Select(&Frontend, NULL, (const void **)&f);
+        sock = Frontend.Select(&Frontend,
+                               NULL,
+                               (void **)&f,
+                               TRUE,
+                               FALSE
+                               );
         if( sock == INVALID_SOCKET )
         {
             continue;
@@ -128,6 +134,11 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
             continue;
         }
 
+        if( f == AF_INET6 )
+        {
+            Ipv6_Enabled = TRUE;
+        }
+
         if( bind(sock,
                  (const struct sockaddr *)&(a.Addr),
                  GetAddressLength(f)
@@ -144,4 +155,9 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
     UDPLocal->Free(UDPLocal);
 
     return 0;
+}
+
+BOOL Ipv6_Aviliable(void)
+{
+    return Ipv6_Enabled;
 }

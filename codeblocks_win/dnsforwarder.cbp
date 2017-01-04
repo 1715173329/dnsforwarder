@@ -167,6 +167,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hostscontainer.h" />
+		<Unit filename="../hostsutils.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hostsutils.h" />
 		<Unit filename="../iheader.c">
 			<Option compilerVar="CC" />
 		</Unit>

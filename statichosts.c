@@ -4,7 +4,7 @@
 
 static HostsContainer	MainStaticContainer;
 
-int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
+HostsContainer *StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	StringList *AppendHosts = ConfigGetStringList(ConfigInfo, "AppendHosts");
 	StringListIterator  sli;
@@ -13,17 +13,17 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	if( HostsContainer_Init(&MainStaticContainer) != 0 )
 	{
-		return -1;
+		return NULL;
 	}
 
 	if( AppendHosts == NULL )
 	{
-		return -2; /* Important */
+		return NULL; /* Important */
 	}
 
 	if( StringListIterator_Init(&sli, AppendHosts) != 0 )
     {
-        return -3;
+        return NULL;
     }
 
 	Itr = sli.Next(&sli);
@@ -36,5 +36,5 @@ int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	INFO("Loading Appendhosts completed.\n");
 
-	return 0;
+	return &MainStaticContainer;
 }

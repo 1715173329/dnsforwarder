@@ -3,6 +3,6 @@
 
 #include "readconfig.h"
 
-int StaticHosts_Init(ConfigFileInfo *ConfigInfo);
+HostsContainer *StaticHosts_Init(ConfigFileInfo *ConfigInfo);
 
 #endif // STATICHOSTS_H_INCLUDED

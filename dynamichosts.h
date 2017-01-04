@@ -7,11 +7,9 @@
 
 int DynamicHosts_Init(ConfigFileInfo *ConfigInfo);
 
-#define	MATCH_STATE_PERFECT			0
-#define	MATCH_STATE_ONLY_CNAME		1
-#define	MATCH_STATE_NONE			(-1)
-#define	MATCH_STATE_DISABLED		(-2)
-#define	MATCH_STATE_DISABLE_IPV6	(-3)
+#define HOSTS_TRY_OK			0
+#define	HOSTS_TRY_RECURSED		1
+#define	HOSTS_TRY_NONE			(-1)
 int Hosts_Try(char *Content, int *ContentLength, int BufferLength);
 
 int DynamicHosts_Start(ConfigFileInfo *ConfigInfo);

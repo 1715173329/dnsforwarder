@@ -11,9 +11,10 @@ struct _HostsContext
 {
     Bst t;
 
-    int (*Add)(HostsContext    *c,
-               IHeader         *Original, /* Entity followed */
-               const char      *RecursedDomain
+    int (*Add)(HostsContext *c,
+               IHeader      *Original, /* Entity followed */
+               const char   *RecursedDomain,
+               uint16_t     NewIdentifier
                );
 
     int (*FindAndRemove)(HostsContext *c,
@@ -21,6 +22,7 @@ struct _HostsContext
                          /* Entity followed */
                          IHeader      *Input,
 
+                         /* Entity followed */
                          IHeader      *Output
                          );
 
