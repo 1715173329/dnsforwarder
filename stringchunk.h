@@ -52,7 +52,7 @@ BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, in
 
 BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, void **Data);
 
-const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **Data);
+const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, void **Data);
 
 void StringChunk_Free(StringChunk *dl, BOOL FreeStringList);
 

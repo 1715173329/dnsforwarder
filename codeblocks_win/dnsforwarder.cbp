@@ -147,6 +147,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../downloader.h" />
+		<Unit filename="../dynamichosts.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../dynamichosts.h" />
 		<Unit filename="../filter.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -159,10 +163,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hcontext.h" />
-		<Unit filename="../hosts.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../hosts.h" />
 		<Unit filename="../hostscontainer.c">
 			<Option compilerVar="CC" />
 		</Unit>

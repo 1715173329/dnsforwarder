@@ -5,6 +5,7 @@
 #include "request_response.h"
 #include "utils.h"
 #include "timedtask.h"
+#include "socketpuller.h"
 #include "logs.h"
 
 typedef struct _ListInfo{
@@ -14,96 +15,54 @@ typedef struct _ListInfo{
 
 static StringChunk	*GoodIpList = NULL;
 
-/* GoodIPList list1 1000 */
-static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
-{
-	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPList");
-	StringListIterator  sli;
-
-	const char	*Itr	=	NULL;
-
-	if( l == NULL )
-	{
-		return -1;
-	}
-
-	if( StringListIterator_Init(&sli, l) != 0 )
-    {
-        return -2;
-    }
-
-	GoodIpList = SafeMalloc(sizeof(StringChunk));
-	if( GoodIpList != NULL && StringChunk_Init(GoodIpList, NULL) != 0 )
-	{
-		return -3;
-	}
-
-    while( (Itr = sli.Next(&sli)) != NULL )
-    {
-		CountDownMeta	m = {0, Array_Init_Static(sizeof(struct sockaddr_in))};
-		char n[128];
-		int i;
-
-		sscanf(Itr, "%127s%d", n, &i);
-
-		if( i <= 0 )
-		{
-			ERRORMSG("GoodIpList is invalid : %s\n", Itr);
-			continue;
-		}
-        m.Interval = i;
-		StringChunk_Add(GoodIpList, n, (const char *)&m, sizeof(CountDownMeta));
-    }
-
-    return 0;
-}
-
-/* GoodIPListAddIP list1 ip:port */
-static int AddToLists(ConfigFileInfo *ConfigInfo)
-{
-	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPListAddIP");
-	StringListIterator  sli;
-
-	const char	*Itr	=	NULL;
-
-	if( l == NULL )
-	{
-		return -1;
-	}
-
-	if( StringListIterator_Init(&sli, l) != 0 )
-    {
-        return -2;
-    }
-
-    while( (Itr = sli.Next(&sli)) != NULL )
-    {
-		CountDownMeta	*m = NULL;
-		char n[128], ip_str[LENGTH_OF_IPV4_ADDRESS_ASCII];
-		int Port;
-		struct sockaddr_in	ip;
-
-		sscanf(Itr, "%127s%*[^0123456789]%15[^:]:%d", n, ip_str, &Port);
-		ip.sin_port = htons(Port);
-		ip.sin_family = AF_INET; /* IPv4 only */
-
-		IPv4AddressToNum(ip_str, &(ip.sin_addr));
-
-		if( StringChunk_Match_NoWildCard(GoodIpList, n, NULL, (char **)&m) == FALSE)
-		{
-			ERRORMSG("GoodIpList is not found : %s\n", Itr);
-			continue;
-		}
-
-		Array_PushBack(&(m -> List), &ip, NULL);
-    }
-
-    return 0;
-}
-
 /* The fastest returned */
 static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 {
+    SocketPuller    p;
+    int i;
+    struct timeval	Time	=	{5, 0};
+    struct sockaddr_in *Fastest = NULL;
+
+    if( SocketPuller_Init(&p) != 0 )
+    {
+        return NULL;
+    }
+
+	for( i = 0; i != Count; ++i )
+    {
+		SOCKET	skt;
+		struct sockaddr *a;
+
+		skt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		if( skt == INVALID_SOCKET )
+		{
+			continue;
+		}
+		SetSocketNonBlock(skt, TRUE);
+
+		a = (struct sockaddr *)&(Ips[i]);
+
+		if( connect(skt, a, sizeof(struct sockaddr_in)) != 0 &&
+            FatalErrorDecideding(GET_LAST_ERROR()) != 0
+            )
+		{
+			CLOSE_SOCKET(skt);
+			continue;
+		}
+
+		p.Add(&p, skt, &a, sizeof(struct sockaddr *));
+    }
+
+    if( p.Select(&p, &Time, (void *)&Fastest, FALSE, TRUE) == INVALID_SOCKET )
+    {
+        p.Free(&p);
+        return NULL;
+    }
+
+    p.Free(&p);
+    return Fastest;
+
+/*
 	static Array	SocketsA	=	Array_Init_Static(sizeof(SOCKET));
 	static const SOCKET	InvalidSocket	=	INVALID_SOCKET;
 
@@ -113,7 +72,7 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 
 	struct sockaddr_in *Fastest = NULL;
 
-	int	i; /* For loop use */
+	int	i;
 
 	Array_Clear(&SocketsA);
 	Array_Fill(&SocketsA, Count, &InvalidSocket);
@@ -130,7 +89,13 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 		}
 		SetSocketNonBlock(skt, TRUE);
 
-		if( connect(skt, (const struct sockaddr *)&(Ips[i]), sizeof(struct sockaddr_in)) != 0 && FatalErrorDecideding(GET_LAST_ERROR()) != 0 )
+		if( connect(skt,
+                    (const struct sockaddr *)&(Ips[i]),
+                    sizeof(struct sockaddr_in))
+            != 0
+            &&
+            FatalErrorDecideding(GET_LAST_ERROR()) != 0
+            )
 		{
 			CLOSE_SOCKET(skt);
 			continue;
@@ -184,97 +149,164 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 	}
 
 	return Fastest;
+*/
 }
 
-static int GetMinTime(void)
+static int ThreadJod(const char *Domain, ListInfo *inf)
 {
-	int32_t i = 0;
-	int Min = INT_MAX;
-	const char  *str = NULL;
+    struct sockaddr_in *Fastest, *First;
 
-	const CountDownMeta	*m;
+    if( inf == NULL )
+    {
+        return -159;
+    }
 
-    str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-    while( str != NULL )
+    Fastest = CheckAList((struct sockaddr_in *)Array_GetRawArray(&(inf -> List)),
+                         Array_GetUsed(&(inf -> List))
+                         );
+
+    if( Fastest != NULL )
+    {
+        struct sockaddr_in *t;
+
+        INFO("The fastest ip for `%s' is %s\n",
+             Domain,
+             inet_ntoa(Fastest->sin_addr)
+             );
+
+        First = Array_GetBySubscript(&(inf -> List), 0);
+        if( First == NULL )
+        {
+            return -178;
+        }
+
+        memcpy(&t, Fastest, sizeof(struct sockaddr_in));
+        memcpy(Fastest, First, sizeof(struct sockaddr_in));
+        memcpy(First, &t, sizeof(struct sockaddr_in));
+    } else {
+        INFO("Checking list `%s' timeout.\n", Domain);
+    }
+
+    return 0;
+}
+
+/* GoodIPList list1 1000 */
+static int InitListsAndTimes(ConfigFileInfo *ConfigInfo)
+{
+	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPList");
+	StringListIterator  sli;
+
+	const char	*Itr	=	NULL;
+
+	if( l == NULL )
 	{
-		if( m != NULL && Min > (m -> TimeLeft) )
+		return -1;
+	}
+
+	if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -2;
+    }
+
+	GoodIpList = SafeMalloc(sizeof(StringChunk));
+	if( GoodIpList != NULL && StringChunk_Init(GoodIpList, NULL) != 0 )
+	{
+		return -3;
+	}
+
+    while( (Itr = sli.Next(&sli)) != NULL )
+    {
+		ListInfo	m = {0, Array_Init_Static(sizeof(struct sockaddr_in))};
+		char n[128];
+
+		sscanf(Itr, "%127s%d", n, &(m.Interval));
+
+		if( m.Interval <= 0 )
 		{
-			Min = (m -> TimeLeft);
+			ERRORMSG("GoodIpList is invalid : %s\n", Itr);
+			continue;
 		}
-		str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-	}
 
-	return Min;
+		StringChunk_Add(GoodIpList, n, (const char *)&m, sizeof(ListInfo));
+    }
+
+    return 0;
 }
 
-static void BatchMinus(int Min)
+/* GoodIPListAddIP list1 ip:port */
+static int AddToLists(ConfigFileInfo *ConfigInfo)
 {
-	int32_t i = 0;
-	const char  *str;
+	StringList	*l	=	ConfigGetStringList(ConfigInfo, "GoodIPListAddIP");
+	StringListIterator  sli;
 
-	CountDownMeta	*m;
+	const char	*Itr	=	NULL;
 
-    str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-    while( str != NULL )
+	if( l == NULL )
 	{
-		if( m != NULL)
+		return -1;
+	}
+
+	if( StringListIterator_Init(&sli, l) != 0 )
+    {
+        return -2;
+    }
+
+    while( (Itr = sli.Next(&sli)) != NULL )
+    {
+		ListInfo	*m = NULL;
+		char n[128], ip_str[LENGTH_OF_IPV4_ADDRESS_ASCII];
+		int Port;
+		struct sockaddr_in	ip;
+
+		sscanf(Itr, "%127s%*[^0123456789]%15[^:]:%d", n, ip_str, &Port);
+		ip.sin_port = htons(Port);
+		ip.sin_family = AF_INET; /* IPv4 only */
+
+		IPv4AddressToNum(ip_str, &(ip.sin_addr));
+
+		if( StringChunk_Match_NoWildCard(GoodIpList,
+                                         n,
+                                         NULL,
+                                         (void **)&m)
+            == FALSE
+            )
 		{
-			if( m -> TimeLeft != Min)
-			{
-				m -> TimeLeft -= Min;
-			} else {
-                m -> TimeLeft = m -> Interval;
-			}
-
+			ERRORMSG("GoodIpList is not found : %s\n", Itr);
+			continue;
 		}
-		str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-	}
+
+		Array_PushBack(&(m->List), &ip, NULL);
+    }
+
+    return 0;
 }
 
-static void ThreadJod(int Min)
+static int AddTask(void)
 {
-    int32_t i = 0; /* For enum use */
-    const char  *str;
-	const CountDownMeta *m;
+    ListInfo *m;
+    const char *Domain;
 
-    str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-    while( str != NULL )
-	{
-		if( m != NULL && m -> TimeLeft == Min )
-		{
-			struct sockaddr_in *Fastest, *First;
+    int32_t Start = 0;
 
-			Fastest = CheckAList((struct sockaddr_in *)Array_GetRawArray(&(m -> List)), Array_GetUsed(&(m -> List)));
-			if( Fastest != NULL )
-			{
-                INFO("The fastest ip for `%s' is %s\n", str, inet_ntoa(Fastest -> sin_addr));
-				First = Array_GetBySubscript(&(m -> List), 0);
-				if( First != NULL )
-				{
-					struct sockaddr_in t;
-					memcpy(&t, Fastest, sizeof(struct sockaddr_in));
-					memcpy(Fastest, First, sizeof(struct sockaddr_in));
-					memcpy(First, &t, sizeof(struct sockaddr_in));
+    Domain = StringChunk_Enum_NoWildCard(GoodIpList, &Start, (void **)&m);
+    while( Domain != NULL )
+    {
+        if( m != NULL )
+        {
+            TimedTask_Add(TRUE,
+                          FALSE,
+                          m->Interval,
+                          (TaskFunc)ThreadJod,
+                          (void *)Domain,
+                          (void *)m,
+                          TRUE
+                          );
+        }
 
-				}
-			} else {
-			    INFO("Checking list `%s' timeout.\n", str);
-			}
-		}
-		str = StringChunk_Enum_NoWildCard(GoodIpList, &i, (char **)&m);
-	}
-}
+        Domain = StringChunk_Enum_NoWildCard(GoodIpList, &Start, (void **)&m);
+    }
 
-static void ThreadLoop(void)
-{
-	int Min = 0;
-	while(TRUE)
-	{
-		ThreadJod(Min);
-		BatchMinus(Min);
-		Min = GetMinTime();
-		SLEEP(Min);
-	}
+    return 0;
 }
 
 int GoodIpList_Init(ConfigFileInfo *ConfigInfo)
@@ -289,17 +321,23 @@ int GoodIpList_Init(ConfigFileInfo *ConfigInfo)
 		return -2;
 	}
 
-
-	CREATE_THREAD(ThreadLoop, NULL, t);
-	DETACH_THREAD(t);
+	if( AddTask() != 0 )
+	{
+		return -270;
+	}
 
 	return 0;
 }
 
 const char *GoodIpList_Get(const char *List)
 {
-    CountDownMeta   *m;
-    if( StringChunk_Match_NoWildCard(GoodIpList, List, NULL, (char **)&m) == TRUE )
+    ListInfo   *m;
+    if( StringChunk_Match_NoWildCard(GoodIpList,
+                                     List,
+                                     NULL,
+                                     (void **)&m
+                                     )
+       == TRUE )
     {
         return (const char *)&(((const struct sockaddr_in *)Array_GetBySubscript(&(m -> List), 0)) -> sin_addr);
     } else {

@@ -303,7 +303,7 @@ static void TimeTask_Work(void *Unused)
 #endif /* WIN32 */
 }
 
-int TimeTask_Add(BOOL Persistent,
+int TimedTask_Add(BOOL Persistent,
                  BOOL Asynchronous,
                  int Milliseconds,
                  TaskFunc Func,
@@ -367,7 +367,7 @@ static int CompareFunc(const void *One, const void *Two)
 #endif /* WIN32 */
 }
 
-int TimeTask_Init(void)
+int TimedTask_Init(void)
 {
     ThreadHandle t;
 

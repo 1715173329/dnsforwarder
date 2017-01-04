@@ -248,7 +248,7 @@ BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValu
 }
 
 /* Start by 0 */
-const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **Data)
+const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, void **Data)
 {
 	EntryForString *Result;
 
@@ -265,7 +265,7 @@ const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, char **
 
 	if( Data != NULL )
 	{
-		*Data = (char *)Result->Data;
+		*Data = (void *)Result->Data;
 	}
 
 	return Result->str;

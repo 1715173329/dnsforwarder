@@ -49,7 +49,7 @@ static int SocketPool_Fetch_Inner(Bst *t,
 
 static SOCKET SocketPool_FetchOnSet(SocketPool *sp,
                                     fd_set *fs,
-                                    const void **Data
+                                    void **Data
                                     )
 {
     SocketPool_Fetch_Arg ret = {INVALID_SOCKET, fs};

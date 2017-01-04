@@ -9,39 +9,20 @@
 #include "downloader.h"
 #include "readline.h"
 #include "goodiplist.h"
+#include "timedtask.h"
 #include "rwlock.h"
 
 static BOOL			StaticHostsInited = FALSE;
-
-static int			UpdateInterval;
-static int			HostsRetryInterval;
-
 static BOOL			DisableIpv6WhenIpv4Exists = FALSE;
-
 static const char 	*File = NULL;
-
-static ThreadHandle	GetHosts_Thread;
 static RWLock		HostsLock;
-
 static volatile HostsContainer	*MainDynamicContainer = NULL;
-
-static void DynamicHosts_FreeHostsContainer(HostsContainer *Container)
-{
-	StringChunk_Free(&(Container -> Ipv4Hosts), FALSE);
-	StringChunk_Free(&(Container -> Ipv6Hosts), FALSE);
-	StringChunk_Free(&(Container -> CNameHosts), FALSE);
-	StringChunk_Free(&(Container -> ExcludedDomains), FALSE);
-    Container->Domains.Free(&(Container -> Domains));
-	Container->IPs.Free(&(Container->IPs));
-}
 
 static int DynamicHosts_Load(void)
 {
 	FILE			*fp;
 	char			Buffer[320];
 	ReadLineStatus	Status;
-
-	int		IPv4Count = 0, IPv6Count = 0, CNameCount = 0, ExcludedCount = 0;
 
 	HostsContainer *TempContainer;
 
@@ -70,116 +51,168 @@ static int DynamicHosts_Load(void)
 	{
 		Status = ReadLine(fp, Buffer, sizeof(Buffer));
 		if( Status == READ_FAILED_OR_END )
-			break;
-
-		switch( HostsContainer_Load(TempContainer, Buffer) )
-		{
-			case HOSTS_TYPE_AAAA:
-				++IPv6Count;
-				break;
-
-			case HOSTS_TYPE_A:
-				++IPv4Count;
-				break;
-
-			case HOSTS_TYPE_CNAME:
-				++CNameCount;
-				break;
-
-			case HOSTS_TYPE_EXCLUEDE:
-				++ExcludedCount;
-				break;
-
-			case HOSTS_TYPE_CNAME_EXCLUEDE:
-				++CNameCount;
-				++ExcludedCount;
-				break;
-
-			default:
-				break;
-		}
+        {
+            ERRORMSG("Loading hosts failed.\n", Buffer);
+            fclose(fp);
+            TempContainer->Free(TempContainer);
+            SafeFree(TempContainer);
+            return -66;
+        }
 
 		if( Status == READ_TRUNCATED )
 		{
 			ERRORMSG("Hosts is too long : %s\n", Buffer);
 			ReadLine_GoToNextLine(fp);
+			continue;
 		}
+
+        TempContainer->Load(TempContainer, Buffer)
 	}
 
 	RWLock_WrLock(HostsLock);
 	if( MainDynamicContainer != NULL )
 	{
-		DynamicHosts_FreeHostsContainer((HostsContainer *)MainDynamicContainer);
+	    MainDynamicContainer->Free(MainDynamicContainer);
 		SafeFree((void *)MainDynamicContainer);
 	}
 	MainDynamicContainer = TempContainer;
 
 	RWLock_UnWLock(HostsLock);
 
-	INFO("Loading hosts file completed, %d IPv4 Hosts, %d IPv6 Hosts, %d CName Redirections, %d items are excluded.\n",
-		IPv4Count,
-		IPv6Count,
-		CNameCount,
-		ExcludedCount);
+	INFO("Loading hosts completed.\n");
 
 	fclose(fp);
 	return 0;
 }
 
-static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File)
+/* Arguments for updating  */
+static int          HostsRetryInterval;
+static const char   *Script;
+static const char	**HostsURLs;
+
+static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File1)
 {
-	ERRORMSG("Getting Hosts %s failed. Waiting %d second(s) to try again.\n", URL, HostsRetryInterval);
+	ERRORMSG("Getting Hosts %s failed. Waiting %d second(s) to try again.\n",
+             URL,
+             HostsRetryInterval
+             );
 }
 
-static void GetHostsFromInternet_Succeed(const char *URL, const char *File)
+static void GetHostsFromInternet_Succeed(const char *URL, const char *File1)
 {
 	INFO("Hosts %s saved.\n", URL);
 }
 
-static void GetHostsFromInternet_Thread(ConfigFileInfo *ConfigInfo)
+static void GetHostsFromInternet_Thread(void *Unused1, void *Unused2)
 {
-	const char	*Script = ConfigGetRawString(ConfigInfo, "HostsScript");
 	int			DownloadState;
-	const char	**URLs;
 
-	StringList  *Hosts = ConfigGetStringList(ConfigInfo, "Hosts");
+    if( HostsURLs[1] == NULL )
+    {
+        INFO("Getting hosts from %s ...\n", HostsURLs[0]);
+    } else {
+        INFO("Getting hosts from various places ...\n");
+    }
 
-	URLs = Hosts->ToCharPtrArray(Hosts);
+    DownloadState = GetFromInternet_MultiFiles(HostsURLs,
+                                               File,
+                                               HostsRetryInterval,
+                                               -1,
+                                               GetHostsFromInternet_Failed,
+                                               GetHostsFromInternet_Succeed
+                                               );
 
-	while(1)
+    if( DownloadState == 0 )
+    {
+        INFO("Hosts saved at %s.\n", File);
+
+        if( Script != NULL )
+        {
+            INFO("Running script ...\n");
+            system(Script);
+        }
+
+        DynamicHosts_Load();
+    } else {
+        ERRORMSG("Getting hosts file(s) failed.\n");
+    }
+}
+
+int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
+{
+	StringList  *Hosts;
+	int          UpdateInterval;
+
+	StaticHostsInited = ( StaticHosts_Init(ConfigInfo) >= 0 );
+
+	DisableIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
+                                                 "DisableIpv6WhenIpv4Exists"
+                                                 );
+
+	Hosts = ConfigGetStringList(ConfigInfo, "Hosts");
+	if( Path == NULL )
 	{
-		if( URLs[1] == NULL )
-		{
-			INFO("Getting hosts from %s ...\n", URLs[0]);
-		} else {
-			INFO("Getting hosts from various places ...\n");
-		}
-
-		DownloadState = GetFromInternet_MultiFiles(URLs, File, HostsRetryInterval, -1, GetHostsFromInternet_Failed, GetHostsFromInternet_Succeed);
-		if( DownloadState == 0 )
-		{
-			INFO("Hosts saved at %s.\n", File);
-
-			if( Script != NULL )
-			{
-				INFO("Running script ...\n");
-				system(Script);
-			}
-
-			DynamicHosts_Load();
-
-			if( UpdateInterval < 0 )
-			{
-				break;
-			}
-		} else {
-			ERRORMSG("Getting hosts file(s) failed.\n");
-		}
-
-		SLEEP(UpdateInterval * 1000);
+		File = NULL;
+		return 0;
 	}
 
-	SafeFree(URLs);
+    HostsURLs = Hosts->ToCharPtrArray(Hosts);
+	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
+	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
+	Script = ConfigGetRawString(ConfigInfo, "HostsScript");
+
+	RWLock_Init(HostsLock);
+
+	File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
+
+	if( HostsRetryInterval < 0 )
+	{
+		ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
+		File = NULL;
+		return 1;
+	}
+
+	INFO("Local hosts file : \"%s\"\n", File);
+
+	if( FileIsReadable(File) )
+	{
+		INFO("Loading the existing hosts file ...\n");
+		DynamicHosts_Load();
+	} else {
+		INFO("Hosts file is unreadable, this may cause some failures.\n");
+	}
+
+	if( UpdateInterval <= 0 )
+    {
+        TimedTask_Add(FALSE,
+                      TRUE,
+                      0,
+                      GetHostsFromInternet_Thread,
+                      NULL,
+                      NULL,
+                      TRUE);
+    } else {
+        TimedTask_Add(TRUE,
+                      TRUE,
+                      UpdateInterval,
+                      GetHostsFromInternet_Thread,
+                      NULL,
+                      NULL,
+                      TRUE);
+    }
+
+	return 0;
+}
+
+int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
+{
+	if( StaticHostsInited == TRUE || File != NULL )
+	{
+		CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
+		DETACH_THREAD(t);
+	}
+
+	return 0;
 }
 
 static int Hosts_Match(HostsContainer *Container, const char *Name, DNSRecordType Type, const char **Result)
@@ -857,65 +890,4 @@ int Hosts_Try(char *Content, int *ContentLength, int BufferLength)
 	}
 
 	return MatchState;
-}
-
-int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
-{
-	const char	*Path;
-
-	StaticHostsInited = ( StaticHosts_Init(ConfigInfo) >= 0 );
-
-	DisableIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo, "DisableIpv6WhenIpv4Exists");
-	Path = ConfigGetRawString(ConfigInfo, "Hosts");
-
-	if( Path == NULL )
-	{
-		File = NULL;
-		return 0;
-	}
-
-	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
-	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
-
-	RWLock_Init(HostsLock);
-
-	File = ConfigGetRawString(ConfigInfo, "HostsDownloadPath");
-
-	if( HostsRetryInterval < 0 )
-	{
-		ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
-		File = NULL;
-		return 1;
-	}
-
-	INFO("Local hosts file : \"%s\"\n", File);
-
-	if( FileIsReadable(File) )
-	{
-		INFO("Loading the existing hosts file ...\n");
-		DynamicHosts_Load();
-	} else {
-		INFO("Hosts file is unreadable, this may cause some failures.\n");
-	}
-
-	return 0;
-
-}
-
-int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
-{
-	if( StaticHostsInited == TRUE || File != NULL )
-	{
-		ThreadHandle	t;
-
-		CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
-		DETACH_THREAD(t);
-
-		if( File != NULL )
-		{
-			CREATE_THREAD(GetHostsFromInternet_Thread, ConfigInfo, GetHosts_Thread);
-		}
-	}
-
-	return 0;
 }

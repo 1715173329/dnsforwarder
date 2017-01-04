@@ -28,14 +28,21 @@ PUBFUNC int SocketPuller_Add(SocketPuller *p,
 
 PUBFUNC SOCKET SocketPuller_Select(SocketPuller *p,
                                    struct timeval *tv,
-                                   const void **Data
+                                   void **Data,
+                                   BOOL Reading,
+                                   BOOL Writing
                                    )
 {
     fd_set ReadySet;
 
     ReadySet = p->s;
 
-    switch( select(p->Max, &ReadySet, NULL, NULL, tv) )
+    switch( select(p->Max,
+                   Reading ? &ReadySet : NULL,
+                   Writing ? &ReadySet : NULL,
+                   NULL,
+                   tv)
+            )
     {
     case SOCKET_ERROR:
         /** TODO: Show fatal error */

@@ -27,7 +27,7 @@ struct _SocketPool{
 
     SOCKET (*FetchOnSet)(SocketPool *sp,
                          fd_set *fs,
-                         const void **Data
+                         void **Data
                          );
 
     void (*CloseAll)(SocketPool *sp);

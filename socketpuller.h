@@ -1,6 +1,6 @@
 #ifndef SOCKETPULLER_H_INCLUDED
 #define SOCKETPULLER_H_INCLUDED
-/** Non-thread-safe socket puller for reading */
+/** Non-thread-safe socket puller */
 
 #include "socketpool.h"
 #include "common.h"
@@ -21,7 +21,9 @@ struct _SocketPuller{
 
     PUBMEMB SOCKET (*Select)(SocketPuller *p,
                              struct timeval *tv,
-                             const void **Data
+                             void **Data,
+                             BOOL Reading,
+                             BOOL Writing
                              );
 
     PUBMEMB void (*Free)(SocketPuller *p);
