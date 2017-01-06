@@ -134,11 +134,6 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
             continue;
         }
 
-        if( f == AF_INET6 )
-        {
-            Ipv6_Enabled = TRUE;
-        }
-
         if( bind(sock,
                  (const struct sockaddr *)&(a.Addr),
                  GetAddressLength(f)
@@ -147,6 +142,11 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
         {
             CLOSE_SOCKET(sock);
             continue;
+        }
+
+        if( f == AF_INET6 )
+        {
+            Ipv6_Enabled = TRUE;
         }
 
         Frontend.Add(&Frontend, sock, &f, sizeof(sa_family_t));

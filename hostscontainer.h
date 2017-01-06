@@ -19,6 +19,13 @@ typedef enum _HostsRecordType{
 
 typedef struct _HostsContainer HostsContainer;
 
+/* Return 0 : continue; Otherwise : break;  */
+typedef int (*HostsFindFunc)(int                Number, /* Start with 1 */
+                             HostsRecordType    Type,
+                             const void         *Data,
+                             void               *Arg
+                             );
+
 struct _HostsContainer{
 	PRIMEMB StringChunk     Mappings;
 	PRIMEMB StableBuffer    Table;
@@ -29,16 +36,10 @@ struct _HostsContainer{
 
     PUBMEMB const void *(*Find)(HostsContainer  *Container,
                                 const char      *Name,
-                                HostsRecordType *Type,
-                                const void      **DataPosition
+                                HostsRecordType Type,
+                                HostsFindFunc   Func,
+                                void            *Arg
                                 );
-
-    PUBMEMB const void *(*FindNext)(HostsContainer  *Container,
-                                    const char      *Name,
-                                    HostsRecordType *Type,
-                                    const void      **DataPosition,
-                                    const void      *Start
-                                    );
 
     PUBMEMB void (*Free)(HostsContainer *Container);
 

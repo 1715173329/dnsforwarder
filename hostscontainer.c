@@ -77,77 +77,54 @@ PRIFUNC HostsRecordType HostsContainer_DetermineType(const char *IPOrCName)
 	}
 }
 
-PRIFUNC const TableNode *HostsContainer_FindFirst(HostsContainer   *Container,
-                                                  const char       *Name
-                                                  )
-{
-	const TableNode *IP;
+/*
+ If Func == NULL:
+    Return NULL : No match found;
+    Otherwise : A match found;
 
-	if( StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&IP) )
+ If Func != NULL:
+    Return NULL : Func returned non-zero at a call or no match found;
+    Otherwise : Func returned zero at every call and at least one match found;
+*/
+PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
+                                        const char      *Name,
+                                        HostsRecordType Type,
+                                        HostsFindFunc   Func,
+                                        void            *Arg
+                                        )
+{
+    int Number = 1;
+
+	const TableNode *IP;
+	const TableNode *ret;
+
+	if( !StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&IP) )
 	{
-        return IP;
+        return NULL;
 	}
 
-	return NULL;
-}
-
-PUBFUNC const void *HostsContainer_FindNext(HostsContainer  *Container,
-                                            const char      *Name,
-                                            HostsRecordType *Type,
-                                            const void      **DataPosition,
-                                            const void      *Start
-                                            )
-{
-    const TableNode *IP = (TableNode *)Start;
-    const void *Data = NULL;
+	ret = IP;
 
     while( IP != NULL )
     {
-        if( Type == NULL )
+        if( Type == HOSTS_TYPE_UNKNOWN || IP->Type == Type )
         {
-            Data = IP->Data;
-        } else if( *Type == HOSTS_TYPE_UNKNOWN ){
-            *Type = IP->Type;
-            Data = IP->Data;
-        } else if( *Type == IP->Type )
-        {
-            Data = IP->Data;
-        }
+            if( Func != NULL )
+            {
+                if( Func(Number++, IP->Type, IP->Data, Arg) != 0 )
+                {
+                    return NULL;
+                }
 
-        if( Data != NULL )
-        {
-            break;
+            } else {
+                break;
+            }
         }
 
         IP = IP->Next;
     }
 
-    if( DataPosition != NULL )
-    {
-        *DataPosition = Data;
-    }
-
-    if( Data == NULL )
-    {
-        return NULL;
-    } else {
-        return IP;
-    }
-
-}
-
-PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
-                                        const char      *Name,
-                                        HostsRecordType *Type,
-                                        const void      **DataPosition
-                                        )
-{
-    return HostsContainer_FindNext(Container,
-                                   Name,
-                                   Type,
-                                   DataPosition,
-                                   HostsContainer_FindFirst(Container, Name)
-                                   );
+    return ret;
 }
 
 PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
@@ -176,7 +153,12 @@ PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
 
     n.Type = Type;
 
-    Exist = (TableNode *)HostsContainer_Find(Container, Name, NULL, NULL);
+    Exist = (TableNode *)HostsContainer_Find(Container,
+                                             Name,
+                                             HOSTS_TYPE_UNKNOWN,
+                                             NULL,
+                                             NULL
+                                             );
     if( Exist == NULL )
     {
         n.Next = NULL;
@@ -393,7 +375,6 @@ int HostsContainer_Init(HostsContainer *Container)
 
 	Container->Load = HostsContainer_Load;
 	Container->Find = HostsContainer_Find;
-	Container->FindNext = HostsContainer_FindNext;
 	Container->Free = HostsContainer_Free;
 
 	return 0;

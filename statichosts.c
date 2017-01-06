@@ -3,8 +3,9 @@
 #include "logs.h"
 
 static HostsContainer	MainStaticContainer;
+static BOOL             Inited = FALSE;
 
-HostsContainer *StaticHosts_Init(ConfigFileInfo *ConfigInfo)
+int StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	StringList *AppendHosts = ConfigGetStringList(ConfigInfo, "AppendHosts");
 	StringListIterator  sli;
@@ -13,17 +14,17 @@ HostsContainer *StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 
 	if( HostsContainer_Init(&MainStaticContainer) != 0 )
 	{
-		return NULL;
+		return -17;
 	}
 
 	if( AppendHosts == NULL )
 	{
-		return NULL; /* Important */
+		return -22;
 	}
 
 	if( StringListIterator_Init(&sli, AppendHosts) != 0 )
     {
-        return NULL;
+        return -27;
     }
 
 	Itr = sli.Next(&sli);
@@ -34,7 +35,39 @@ HostsContainer *StaticHosts_Init(ConfigFileInfo *ConfigInfo)
 		Itr = sli.Next(&sli);
 	}
 
+	Inited = TRUE;
+
 	INFO("Loading Appendhosts completed.\n");
 
-	return &MainStaticContainer;
+	return 0;
+}
+
+int StaticHosts_GetCName(const char *Domain, char *Buffer)
+{
+    if( !Inited )
+    {
+        return -49;
+    }
+
+    return HostsUtils_GetCName(Domain, Buffer, &MainStaticContainer);
+}
+
+BOOL StaticHosts_TypeExisting(const char *Domain, HostsRecordType Type)
+{
+    if( !Inited )
+    {
+        return FALSE;
+    }
+
+    return HostsUtils_TypeExisting(&MainStaticContainer, Domain, Type);
+}
+
+HostsUtilsTryResult StaticHosts_Try(IHeader *Header, int BufferLength)
+{
+    if( !Inited )
+    {
+        return HOSTSUTILS_TRY_NONE;
+    }
+
+    return HostsUtils_Try(Header, BufferLength, &MainStaticContainer);
 }

@@ -163,6 +163,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hcontext.h" />
+		<Unit filename="../hosts.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hosts.h" />
 		<Unit filename="../hostscontainer.c">
 			<Option compilerVar="CC" />
 		</Unit>

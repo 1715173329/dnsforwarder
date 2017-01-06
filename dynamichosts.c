@@ -1,23 +1,13 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
 #include "dynamichosts.h"
-#include "dnsrelated.h"
-#include "dnsgenerator.h"
 #include "common.h"
-#include "utils.h"
 #include "downloader.h"
 #include "readline.h"
 #include "goodiplist.h"
 #include "timedtask.h"
-#include "hcontext.h"
-#include "udpfrontend.h"
-#include "socketpuller.h"
 #include "rwlock.h"
+#include "logs.h"
 
-static HostsContainer   *MainStaticContainer = NULL;
-static BOOL			DisableIpv6WhenIpv4Exists = FALSE;
-static const char 	*File = NULL;
+static const char   *File = NULL;
 static RWLock		HostsLock;
 static volatile HostsContainer	*MainDynamicContainer = NULL;
 
@@ -69,13 +59,13 @@ static int DynamicHosts_Load(void)
 			continue;
 		}
 
-        TempContainer->Load(TempContainer, Buffer)
+        TempContainer->Load(TempContainer, Buffer);
 	}
 
 	RWLock_WrLock(HostsLock);
 	if( MainDynamicContainer != NULL )
 	{
-	    MainDynamicContainer->Free(MainDynamicContainer);
+	    MainDynamicContainer->Free((HostsContainer *)MainDynamicContainer);
 		SafeFree((void *)MainDynamicContainer);
 	}
 	MainDynamicContainer = TempContainer;
@@ -146,17 +136,11 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 	StringList  *Hosts;
 	int          UpdateInterval;
 
-	MainStaticContainer = StaticHosts_Init(ConfigInfo);
-
-	DisableIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
-                                                 "DisableIpv6WhenIpv4Exists"
-                                                 );
-
 	Hosts = ConfigGetStringList(ConfigInfo, "Hosts");
-	if( Path == NULL )
+	if( Hosts == NULL )
 	{
 		File = NULL;
-		return 0;
+		return -151;
 	}
 
     HostsURLs = Hosts->ToCharPtrArray(Hosts);
@@ -172,7 +156,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 	{
 		ERRORMSG("`HostsRetryInterval' is too small (< 0).\n");
 		File = NULL;
-		return 1;
+		return -167;
 	}
 
 	INFO("Local hosts file : \"%s\"\n", File);
@@ -190,7 +174,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
         TimedTask_Add(FALSE,
                       TRUE,
                       0,
-                      GetHostsFromInternet_Thread,
+                      (TaskFunc)GetHostsFromInternet_Thread,
                       NULL,
                       NULL,
                       TRUE);
@@ -198,7 +182,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
         TimedTask_Add(TRUE,
                       TRUE,
                       UpdateInterval,
-                      GetHostsFromInternet_Thread,
+                      (TaskFunc)GetHostsFromInternet_Thread,
                       NULL,
                       NULL,
                       TRUE);
@@ -207,399 +191,65 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 	return 0;
 }
 
-int DynamicHosts_Start(ConfigFileInfo *ConfigInfo)
+int DynamicHosts_GetCName(const char *Domain, char *Buffer)
 {
-	if( StaticHostsInited == TRUE || File != NULL )
-	{
-		CREATE_THREAD(DynamicHosts_SocketLoop, NULL, t);
-		DETACH_THREAD(t);
-	}
+    int ret;
 
-	return 0;
+    if( MainDynamicContainer == NULL )
+    {
+        return -198;
+    }
+
+    RWLock_RdLock(HostsLock);
+
+    ret = HostsUtils_GetCName(Domain,
+                              Buffer,
+                              (HostsContainer *)MainDynamicContainer
+                              );
+
+    RWLock_UnRLock(HostsLock);
+
+    return ret;
 }
 
-int DynamicHosts_SocketLoop(void)
+BOOL DynamicHosts_TypeExisting(const char *Domain, HostsRecordType Type)
 {
-	static uint16_t	NewIdentifier;
+    BOOL ret;
 
-	static HostsContext	Context;
-	static SocketPuller Puller;
-
-    static SOCKET	IncomeSocket;
-    static SOCKET	OutcomeSocket;
-    static Address_Type	OutcomeAddress;
-
-	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {10, 0};
-
-	static struct timeval	TimeLimit = LongTime;
-
-	#define LEFT_LENGTH_SL (sizeof(RequestBuffer) - sizeof(IHeader));
-	static char		RequestBuffer[2048];
-	static IHeader	*Header = (IHeader *)RequestBuffer;
-	static char		RequestEntity = RequestBuffer + sizeof(IHeader);
-
-	IncomeSocket = TryBindLocal(Ipv6_Aviliable(), 10200, NULL);
-	OutcomeSocket = TryBindLocal(Ipv6_Aviliable(), 10300, &OutcomeAddress);
-
-	if( IncomeSocket == INVALID_SOCKET || OutcomeSocket == INVALID_SOCKET )
-	{
-		return -416;
-	}
-
-    if( SocketPuller_Init(&Puller) != 0 )
+    if( MainDynamicContainer == NULL )
     {
-        return -423;
+        return FALSE;
     }
 
-    Puller.Add(&Puller, IncomeSocket, NULL, 0);
-    Puller.Add(&Puller, OutcomeSocket, NULL, 0);
+    RWLock_RdLock(HostsLock);
 
-    if( HostsContext_Init(&Context) != 0 )
+    ret = HostsUtils_TypeExisting((HostsContainer *)MainDynamicContainer,
+                                  Domain,
+                                  Type
+                                  );
+
+    RWLock_UnRLock(HostsLock);
+
+    return ret;
+}
+
+HostsUtilsTryResult DynamicHosts_Try(IHeader *Header, int BufferLength)
+{
+    HostsUtilsTryResult ret;
+
+    if( MainDynamicContainer == NULL )
     {
-        return -431;
+        return HOSTSUTILS_TRY_NONE;
     }
 
-    srand(time(NULL));
+    RWLock_RdLock(HostsLock);
 
-	while( TRUE )
-	{
-	    SOCKET  Pulled;
+    ret = HostsUtils_Try(Header,
+                         BufferLength,
+                         (HostsContainer *)MainDynamicContainer
+                         );
 
-	    Pulled = Puller.Select(&Puller, &TimeLimit, NULL, TRUE, FALSE);
-	    switch( Pulled )
-	    {
-        case INVALID_SOCKET:
-            Context.Swep(&Context);
-            TimeLimit = LongTime
-            break;
+    RWLock_UnRLock(HostsLock);
 
-        case IncomeSocket:
-            TimeLimit = ShortTime;
-            /* Recursive query */
-            {
-                int State;
-
-                State = recvfrom(IncomeSocket,
-                                 RequestEntity,
-                                 LEFT_LENGTH_SL,
-								 0,
-								 NULL,
-								 NULL
-								 );
-
-                if( State < 1 )
-                {
-                    break;
-                }
-
-                /** TODO: Go on */
-            }
-            break;
-
-        case OutcomeSocket:
-            TimeLimit = ShortTime;
-            /** TODO: Go on */
-            break;
-	    }
-
-		ReadySet = ReadSet;
-
-		switch( select(MaxFd + 1, &ReadySet, NULL, NULL, &TimeLimit) )
-		{
-			case SOCKET_ERROR:
-				break;
-
-			case 0:
-				if( InternalInterface_QueryContextSwep(&Context, 10, NULL) == TRUE )
-				{
-					TimeLimit = LongTime;
-				} else {
-					TimeLimit = ShortTime;
-				}
-				break;
-
-			default:
-				TimeLimit = ShortTime;
-
-				if( FD_ISSET(HostsIncomeSocket, &ReadySet) )
-				{
-				    /* Recursive query */
-					int State;
-					int TotalLength = 0;
-					int	MatchState;
-					const char *MatchResult = NULL;
-					BOOL GotLock = FALSE;
-					BOOL NeededSendBack = TRUE;
-
-					State = recvfrom(HostsIncomeSocket,
-									RequestEntity,
-									sizeof(RequestEntity),
-									0,
-									NULL,
-									NULL
-									);
-
-					if( State < 1 )
-					{
-						break;
-					}
-
-					MatchState = Hosts_Match(&MainStaticContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
-					if( MatchState == MATCH_STATE_NONE && MainDynamicContainer != NULL )
-					{
-						RWLock_WrLock(HostsLock);
-						MatchState = Hosts_Match((HostsContainer *)MainDynamicContainer, Header -> RequestingDomain, Header -> RequestingType, &MatchResult);
-
-						GotLock = TRUE;
-					}
-
-					switch( MatchState )
-					{
-						case MATCH_STATE_PERFECT:
-							ERRORMSG("A Bug hit(471).\n");
-							break;
-
-						case MATCH_STATE_ONLY_CNAME:
-							InternalInterface_QueryContextAddHosts(&Context,
-																	Header,
-																	NewIdentifier,
-																	ELFHash(MatchResult, 0)
-																	);
-
-							GetAnswersByName(HostsOutcomeSocket, &(OutcomeAddress), NewIdentifier, MatchResult, Header -> RequestingType);
-							++NewIdentifier;
-							NeededSendBack = FALSE;
-							break;
-
-						default:
-							NeededSendBack = FALSE;
-							break;
-					}
-
-					if( GotLock == TRUE )
-					{
-						RWLock_UnWLock(HostsLock);
-					}
-
-					if( NeededSendBack == TRUE )
-					{
-						if( Header -> NeededHeader == TRUE )
-						{
-							sendto(SendBackSocket,
-									(const char *)Header,
-									TotalLength,
-									0,
-									(const struct sockaddr *)&(Header -> BackAddress.Addr),
-									GetAddressLength(Header -> BackAddress.family)
-									);
-						} else {
-							sendto(SendBackSocket,
-									RequestEntity + sizeof(ControlHeader),
-									TotalLength - sizeof(ControlHeader),
-									0,
-									(const struct sockaddr *)&(Header -> BackAddress.Addr),
-									GetAddressLength(Header -> BackAddress.family)
-									);
-						}
-
-						ShowNormalMessage(Header -> Agent,
-											Header -> RequestingDomain,
-											RequestEntity + sizeof(ControlHeader),
-											TotalLength - sizeof(ControlHeader),
-											'H'
-											);
-					}
-
-				} else {
-				    /* Response of recursive query */
-					int		State;
-					static char		NewlyGeneratedRocord[2048];
-					ControlHeader	*NewHeader = (ControlHeader *)NewlyGeneratedRocord;
-
-					DnsSimpleParser p;
-					DnsSimpleParserIterator i;
-					DnsGenerator g;
-
-					char	*DNSResult = RequestEntity + sizeof(ControlHeader);
-
-                    int32_t	EntryNumber;
-					QueryContextEntry	*Entry;
-
-					BOOL ToBreak = FALSE;
-
-					int CompressedLength;
-
-					State = recvfrom(HostsOutcomeSocket,
-									RequestEntity,
-									sizeof(RequestEntity),
-									0,
-									NULL,
-									NULL
-									);
-
-					if( State < 1 )
-					{
-						break;
-					}
-
-					if( DnsSimpleParser_Init(&p,
-                                             DNSResult,
-                                             State - sizeof(ControlHeader),
-                                             FALSE
-                                             ) != 0
-                        )
-                    {
-                        break;
-                    }
-
-                    if( DnsSimpleParserIterator_Init(&i, &p) != 0 )
-                    {
-                        break;
-                    }
-
-                    if( DnsGenerator_Init(&g,
-                                          NewlyGeneratedRocord + sizeof(ControlHeader),
-                                          sizeof(NewlyGeneratedRocord) - sizeof(ControlHeader),
-                                          NULL, 0, FALSE
-                                          ) != 0
-                       )
-                    {
-                        break;
-                    }
-
-                    g.CopyHeader(&g, DNSResult, FALSE);
-
-					EntryNumber = InternalInterface_QueryContextFind(&Context,
-																	*(uint16_t *)DNSResult,
-																	Header -> RequestingDomainHashValue
-																	);
-
-					if( EntryNumber < 0 )
-					{
-						break;
-					}
-
-					Entry = Bst_GetDataByNumber(&Context, EntryNumber);
-
-					g.CopyIdentifier(&g, Entry->Context.Hosts.Identifier);
-
-                    if( g.Question(&g, Entry->Domain, Entry->Type, DNS_CLASS_IN)
-                        != 0
-                        )
-                    {
-                        break;
-                    }
-
-                    if( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ANSWER )
-                    {
-                        break;
-                    }
-
-                    if( g.CName(&g, Entry->Domain, Header->RequestingDomain, 60)
-                        != 0
-                        )
-                    {
-                        break;
-                    }
-
-                    i.GotoAnswers(&i);
-                    ToBreak = FALSE;
-                    while( i.Next(&i) != NULL &&
-                           i.Purpose == DNS_RECORD_PURPOSE_ANSWER &&
-                           !ToBreak
-                           )
-                    {
-                        switch( i.Type )
-                        {
-                        case DNS_TYPE_CNAME:
-                            if( g.CopyCName(&g, &i) != 0 )
-                            {
-                                ToBreak = TRUE;
-                            }
-                            break;
-
-                        case DNS_TYPE_A:
-                            if( g.CopyA(&g, &i) != 0 )
-                            {
-                                ToBreak = TRUE;
-                            }
-                            break;
-
-                        case DNS_TYPE_AAAA:
-                            if( g.CopyAAAA(&g, &i) != 0 )
-                            {
-                                ToBreak = TRUE;
-                            }
-                            break;
-
-                        default:
-                            ToBreak = TRUE;
-                            break;
-                        }
-                    }
-
-                    if( ToBreak )
-                    {
-                        break;
-                    }
-
-					if( Entry->EDNSEnabled == TRUE )
-					{
-					    while( g.NextPurpose(&g) !=
-                               DNS_RECORD_PURPOSE_ADDITIONAL
-                               );
-
-                        if( g.EDns(&g, 1280) != 0 )
-                        {
-                            break;
-                        }
-					}
-
-					/* Now we can compress it */
-					CompressedLength = DNSCompress(g.Buffer, g.Length(&g));
-
-					if( CompressedLength < 0 )
-                    {
-                        break;
-                    }
-
-					/* Send*/
-					if( Entry->NeededHeader == TRUE )
-					{
-						strncpy(NewHeader->RequestingDomain,
-                                Entry->Domain,
-                                sizeof(NewHeader->RequestingDomain)
-                                );
-                        (NewHeader->RequestingDomain)[sizeof(NewHeader->RequestingDomain) - 1] = '\0';
-						NewHeader->RequestingDomainHashValue = Entry->Context.Hosts.HashValue;
-
-						sendto(SendBackSocket,
-								NewlyGeneratedRocord,
-								CompressedLength + sizeof(ControlHeader),
-								0,
-								(const struct sockaddr *)&(Entry->Context.Hosts.BackAddress.Addr),
-								GetAddressLength(Entry->Context.Hosts.BackAddress.family)
-								);
-					} else {
-						sendto(SendBackSocket,
-								NewlyGeneratedRocord + sizeof(ControlHeader),
-								CompressedLength,
-								0,
-								(const struct sockaddr *)&(Entry -> Context.Hosts.BackAddress.Addr),
-								GetAddressLength(Entry -> Context.Hosts.BackAddress.family)
-								);
-					}
-
-					InternalInterface_QueryContextRemoveByNumber(&Context, EntryNumber);
-
-					ShowNormalMessage(Entry -> Agent,
-										Entry -> Domain,
-										NewlyGeneratedRocord + sizeof(ControlHeader),
-										CompressedLength,
-										'H'
-										);
-				}
-		}
-	}
+    return ret;
 }

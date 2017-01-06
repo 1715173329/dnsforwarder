@@ -534,7 +534,7 @@ static void DnsGenerator_CopyHeader(DnsGenerator *g,
     memcpy(g->Buffer, Source, IncludeRecordCounts ? DNS_HEADER_LENGTH : 4);
 }
 
-static void DnsGenerator_CopyIdentifier(DnsGenerator *g, int Value)
+static void DnsGenerator_CopyIdentifier(DnsGenerator *g, uint16_t Value)
 {
     *(uint16_t *)(g->Buffer) = Value;
 }

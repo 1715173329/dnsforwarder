@@ -30,4 +30,6 @@ struct _HostsContext
 
 };
 
+int HostsContext_Init(HostsContext *c);
+
 #endif // HCONTEXT_H_INCLUDED

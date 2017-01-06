@@ -1,30 +1,105 @@
 #include "hostsutils.h"
 #include "dnsgenerator.h"
+#include "mmgr.h"
 
-static const char *Match(HostsContainer *Container,
-                         const char *Domain,
-                         HostsRecordType Type,
-                         const void **Result
-                         )
+static int HostsUtils_GetCName_Callback(int Number,
+                                        HostsRecordType Type,
+                                        const char *Data,
+                                        char *Buffer
+                                        )
 {
-    if( Container != NULL )
+    strcpy(Buffer, Data);
+    return 1;
+}
+
+int HostsUtils_GetCName(const char *Domain,
+                        char *Buffer,
+                        HostsContainer *Container
+                        )
+{
+    return Container->Find(Container,
+                           Domain,
+                           HOSTS_TYPE_CNAME,
+                           (HostsFindFunc)HostsUtils_GetCName_Callback,
+                           Buffer
+                           )
+            == NULL;
+}
+
+BOOL HostsUtils_TypeExisting(HostsContainer *Container,
+                             const char *Domain,
+                             HostsRecordType Type
+                             )
+{
+    return Container->Find(Container,
+                           Domain,
+                           Type,
+                           NULL,
+                           NULL
+                           )
+            != NULL;
+}
+
+static int HostsUtils_Generate(int              Number,
+                               HostsRecordType  Type,
+                               const void       *Data,
+                               DnsGenerator     *g /* Inited */
+                               )
+{
+    switch( Type )
     {
-        return Container->Find(Container, Domain, &Type, Result);
+    case HOSTS_TYPE_CNAME:
+        if( g->CName(g, "a", Data, 60) != 0 )
+        {
+            return -26;
+        }
+        break;
+
+    case HOSTS_TYPE_A:
+        if( g->RawData(g,
+                       "a",
+                       DNS_TYPE_A,
+                       DNS_CLASS_IN,
+                       Data,
+                       4,
+                       60
+                       )
+            != 0 )
+        {
+            return -41;
+        }
+        break;
+
+    case HOSTS_TYPE_AAAA:
+        if( g->RawData(g,
+                       "a",
+                       DNS_TYPE_AAAA,
+                       DNS_CLASS_IN,
+                       Data,
+                       16,
+                       60
+                       )
+            != 0 )
+        {
+            return -56;
+        }
+        break;
+
+    default:
+        return -61;
+        break;
     }
 
-    return NULL;
+    return 0;
 }
 
-static BOOL CNameExisting(HostsContainer *Container, const char *Domain)
-{
-    return Match(Container, Domain, DNS_TYPE_CNAME, NULL) != NULL;
-}
-
-int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
+HostsUtilsTryResult HostsUtils_Try(IHeader *Header,
+                                   int BufferLength,
+                                   HostsContainer *Container
+                                   )
 {
 	char *RequestEntity = (char *)(Header + 1);
 
-	const char	*Result;
 	const char	*MatchState;
 
 	/** TODO: You should also check the queried class */
@@ -33,26 +108,25 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
         Header->Type != DNS_TYPE_AAAA
         )
     {
-        return HOSTS_TRY_NONE;
+        return HOSTSUTILS_TRY_NONE;
     }
 
     if( Header->Type != DNS_TYPE_CNAME &&
-        CNameExisting(Container, Header->Domain)
+        HostsUtils_TypeExisting(Container, Header->Domain, HOSTS_TYPE_CNAME)
         )
     {
-        return HOSTS_TRY_RECURSED;
+        return HOSTSUTILS_TRY_RECURSED;
     }
 
-    MatchState = Match(Container,
-                       Header->Domain,
-                       Header->Type,
-                       (const void **)&Result
-                       );
+    MatchState = Container->Find(Container,
+                                 Header->Domain,
+                                 Header->Type,
+                                 NULL,
+                                 NULL
+                                 );
 
 	if( MatchState != NULL )
 	{
-	    DnsSimpleParser p;
-	    BOOL HasEdns;
         DnsGenerator g;
 
         char *HereToGenerate = RequestEntity + Header->EntityLength;
@@ -60,22 +134,6 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
                           BufferLength - sizeof(IHeader) - Header->EntityLength;
 
         int ResultLength;
-
-	    if( DnsSimpleParser_Init(&p,
-                                 RequestEntity,
-                                 Header->EntityLength,
-                                 FALSE
-                                 )
-            != 0 )
-        {
-            return HOSTS_TRY_NONE;
-        }
-
-        HasEdns = p.HasType(&p,
-                            DNS_RECORD_PURPOSE_ADDITIONAL,
-                            DNS_CLASS_UNKNOWN,
-                            DNS_TYPE_OPT
-                            );
 
         if( DnsGenerator_Init(&g,
                               HereToGenerate,
@@ -86,7 +144,7 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
                               )
            != 0)
         {
-            return HOSTS_TRY_NONE;
+            return HOSTSUTILS_TRY_NONE;
         }
 
         g.Header->Flags.Direction = 1;
@@ -97,59 +155,26 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
 
         if( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ANSWER )
         {
-            return HOSTS_TRY_NONE;
+            return HOSTSUTILS_TRY_NONE;
         }
 
-        switch( Header->Type )
+        if( Container->Find(Container,
+                            Header->Domain,
+                            Header->Type,
+                            (HostsFindFunc)HostsUtils_Generate,
+                            &g
+                            )
+            == NULL )
         {
-        case DNS_TYPE_CNAME:
-            if( g.CName(&g, "a", Result, 60) != 0 )
-            {
-                return HOSTS_TRY_NONE;
-            }
-            break;
-
-        case DNS_TYPE_A:
-            if( g.RawData(&g,
-                          "a",
-                          DNS_TYPE_A,
-                          DNS_CLASS_IN,
-                          Result,
-                          4,
-                          60
-                          )
-                != 0 )
-            {
-                return HOSTS_TRY_NONE;
-            }
-            break;
-
-        case DNS_TYPE_AAAA:
-            if( g.RawData(&g,
-                          "a",
-                          DNS_TYPE_AAAA,
-                          DNS_CLASS_IN,
-                          Result,
-                          16,
-                          60
-                          )
-                != 0 )
-            {
-                return HOSTS_TRY_NONE;
-            }
-            break;
-
-        default:
-            return HOSTS_TRY_NONE;
-            break;
+            return HOSTSUTILS_TRY_NONE;
         }
 
-        if( HasEdns )
+        if( Header->EDNSEnabled )
         {
             while( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ADDITIONAL );
             if( g.EDns(&g, 1280) != 0 )
             {
-                return HOSTS_TRY_NONE;
+                return HOSTSUTILS_TRY_NONE;
             }
         }
 
@@ -157,7 +182,7 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
         ResultLength = DNSCompress(HereToGenerate, g.Length(&g));
         if( ResultLength < 0 )
         {
-            return HOSTS_TRY_NONE;
+            return HOSTSUTILS_TRY_NONE;
         }
 
         Header->EntityLength = ResultLength;
@@ -165,18 +190,18 @@ int Hosts_Try(IHeader *Header, int BufferLength, HostsContainer *Container)
 
         IHeader_SendBack(Header);
 
-        return HOSTS_TRY_OK;
+        return HOSTSUTILS_TRY_OK;
 	} else {
-	    return HOSTS_TRY_NONE;
+	    return HOSTSUTILS_TRY_NONE;
 	}
 }
 
-int Hosts_RecursiveQuery(SOCKET Socket, /* Both for sending and receiving */
-                         Address_Type *BackAddress,
-                         int Identifier,
-                         const char *Name,
-                         DNSRecordType Type
-                         )
+int HostsUtils_Query(SOCKET Socket, /* Both for sending and receiving */
+                     Address_Type *BackAddress,
+                     int Identifier,
+                     const char *Name,
+                     DNSRecordType Type
+                     )
 {
     static const char DNSHeader[DNS_HEADER_LENGTH] = {
         00, 00, /* QueryIdentifier */
@@ -187,9 +212,9 @@ int Hosts_RecursiveQuery(SOCKET Socket, /* Both for sending and receiving */
         00, 00, /* AdditionalCount */
     };
 
-    static char RequestBuffer[2048];
-    static IHeader *Header = (IHeader *)RequestBuffer;
-    static char *RequestEntity = RequestBuffer + sizeof(IHeader);
+    char RequestBuffer[2048];
+    IHeader *Header = (IHeader *)RequestBuffer;
+    char *RequestEntity = RequestBuffer + sizeof(IHeader);
 
 	DnsGenerator g;
 
@@ -216,11 +241,133 @@ int Hosts_RecursiveQuery(SOCKET Socket, /* Both for sending and receiving */
                  TRUE,
                  RequestEntity,
                  g.Length(&g),
-                 &(BackAddress->Addr),
+                 (struct sockaddr *)&(BackAddress->Addr),
                  Socket,
                  BackAddress->family,
                  "CNameRedirect"
                  );
 
     return MMgr_Send(Header, sizeof(RequestBuffer));
+}
+
+/* Error code returned */
+int HostsUtils_CombineRecursedResponse(void       *Buffer, /* Include IHeader */
+                                       int          Bufferlength,
+                                       char         *RecursedEntity,
+                                       int          EntityLength,
+                                       const char   *RecursedDomain
+                                       )
+{
+    IHeader *NewHeader = (IHeader *)Buffer;
+    char *NewEntity = Buffer + sizeof(IHeader);
+
+    DnsSimpleParser p;
+    DnsSimpleParserIterator i;
+    DnsGenerator g;
+
+    uint16_t OriginalIdentifier = *(uint16_t *)NewEntity;
+
+    int CompressedLength;
+
+    if( DnsSimpleParser_Init(&p,
+                             RecursedEntity,
+                             EntityLength,
+                             FALSE
+                             ) != 0
+        )
+    {
+        return -268;
+    }
+
+    if( DnsSimpleParserIterator_Init(&i, &p) != 0 )
+    {
+        return -273;
+    }
+
+    if( DnsGenerator_Init(&g,
+                          NewEntity,
+                          Bufferlength - sizeof(IHeader),
+                          NULL,
+                          0,
+                          FALSE
+                          )
+       != 0 )
+    {
+        return -285;
+    }
+
+    g.CopyHeader(&g, RecursedEntity, FALSE);
+    g.CopyIdentifier(&g, OriginalIdentifier);
+
+    if( g.Question(&g,
+                   NewHeader->Domain,
+                   NewHeader->Type,
+                   DNS_CLASS_IN
+                   )
+       != 0 )
+    {
+        return -298;
+    }
+
+    if( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ANSWER )
+    {
+        return -303;
+    }
+
+    if( g.CName(&g, NewHeader->Domain, RecursedDomain, 60) != 0 )
+    {
+        return -309;
+    }
+
+    i.GotoAnswers(&i);
+
+    while( i.Next(&i) != NULL && i.Purpose == DNS_RECORD_PURPOSE_ANSWER )
+    {
+        switch( i.Type )
+        {
+        case DNS_TYPE_CNAME:
+            if( g.CopyCName(&g, &i) != 0 )
+            {
+                return -321;
+            }
+            break;
+
+        case DNS_TYPE_A:
+            if( g.CopyA(&g, &i) != 0 )
+            {
+                return -328;
+            }
+            break;
+
+        case DNS_TYPE_AAAA:
+            if( g.CopyAAAA(&g, &i) != 0 )
+            {
+                return -335;
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    if( NewHeader->EDNSEnabled )
+    {
+        while( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ADDITIONAL );
+
+        if( g.EDns(&g, 1280) != 0 )
+        {
+            return -351;
+        }
+    }
+
+    CompressedLength = DNSCompress(g.Buffer, g.Length(&g));
+    if( CompressedLength < 0 )
+    {
+        return -343;
+    }
+
+    NewHeader->EntityLength = CompressedLength;
+
+    return 0;
 }
