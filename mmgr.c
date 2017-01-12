@@ -2,6 +2,8 @@
 #include "stringchunk.h"
 #include "utils.h"
 #include "filter.h"
+#include "hosts.h"
+#include "dnscache.h"
 
 typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
 
@@ -151,6 +153,18 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
 {
     BOOL ret = FALSE;
 
+    /* Hosts & Cache */
+    if( Hosts_Init(ConfigInfo) != 0 )
+    {
+        return -159;
+    }
+
+    if( DNSCache_Init(ConfigInfo) != 0 )
+    {
+        return -164;
+    }
+
+    /* Ordinary modeles */
     if( StringChunk_Init(&Distributor, NULL) != 0 )
     {
         return -10;
@@ -190,9 +204,33 @@ int MMgr_Send(IHeader *h, int BufferLength)
     if( Filter_Out(h) )
     {
         /** TODO: Send back filtered dns message, Show filtered message */
-        return -170;
+        return 0;
     }
 
+    /* Hosts & Cache */
+    switch( Hosts_Try(h, BufferLength) )
+    {
+    case HOSTSUTILS_TRY_BLOCKED:
+        /** TODO: Send back filtered dns message, Show filtered message */
+        return 0;
+        break;
+
+    case HOSTSUTILS_TRY_NONE:
+        break;
+
+    default:
+        /** TODO: Show hosts message */
+        return 0;
+        break;
+    }
+
+    if( DNSCache_FetchFromCache(h, BufferLength) == 0 )
+    {
+        /** TODO: Show cache message */
+        return 0;
+    }
+
+    /* Ordinary modeles */
     if( StringChunk_Domain_Match(&Distributor,
                                  h->Domain,
                                  &(h->HashValue),

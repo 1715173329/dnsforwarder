@@ -10,4 +10,6 @@ int Hosts_Init(ConfigFileInfo *ConfigInfo);
 
 BOOL Hosts_TypeExisting(const char *Domain, HostsRecordType Type);
 
+HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength);
+
 #endif // HOSTS_H_INCLUDED

@@ -851,9 +851,10 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength)
 
     memmove(RequestContent, HereToGenerate, ResultLength);
 
+    h->EntityLength = ResultLength;
     if( IHeader_SendBack(h) < 0 )
     {
-        /** TODO: Error handling*/
+        /** TODO: Error handling */
         return -861;
     }
 

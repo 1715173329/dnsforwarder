@@ -211,10 +211,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../pipes.h" />
-		<Unit filename="../querydnsbase.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../querydnsbase.h" />
 		<Unit filename="../querydnsinterface.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -223,10 +219,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../querydnslistentcp.h" />
-		<Unit filename="../querydnslistenudp.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../querydnslistenudp.h" />
 		<Unit filename="../readconfig.c">
 			<Option compilerVar="CC" />
 		</Unit>

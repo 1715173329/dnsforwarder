@@ -48,25 +48,6 @@ static SOCKET TryBindLocal(BOOL Ipv6, int StartPort, Address_Type *Address)
 	return ret;
 }
 
-int Hosts_Init(ConfigFileInfo *ConfigInfo)
-{
-    StaticHosts_Init(ConfigInfo);
-    DynamicHosts_Init(ConfigInfo);
-
-    BlockIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
-                                                 "BlockIpv6WhenIpv4Exists"
-                                                 );
-
-
-    IncomeSocket = TryBindLocal(Ipv6_Aviliable(), 10200, &IncomeAddress);
-    if( IncomeSocket == INVALID_SOCKET )
-    {
-        return -25;
-    }
-
-    return 0;
-}
-
 BOOL Hosts_TypeExisting(const char *Domain, HostsRecordType Type)
 {
     return StaticHosts_TypeExisting(Domain, Type) ||
@@ -127,7 +108,7 @@ HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength)
     return ret;
 }
 
-static int Hosts_SocketLoop(void)
+static int Hosts_SocketLoop(void *Unused)
 {
 	static HostsContext	Context;
 	static SocketPuller Puller;
@@ -287,4 +268,28 @@ static int Hosts_SocketLoop(void)
 	}
 
 	return 0;
+}
+
+int Hosts_Init(ConfigFileInfo *ConfigInfo)
+{
+    ThreadHandle t;
+
+    StaticHosts_Init(ConfigInfo);
+    DynamicHosts_Init(ConfigInfo);
+
+    BlockIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
+                                                 "BlockIpv6WhenIpv4Exists"
+                                                 );
+
+
+    IncomeSocket = TryBindLocal(Ipv6_Aviliable(), 10200, &IncomeAddress);
+    if( IncomeSocket == INVALID_SOCKET )
+    {
+        return -25;
+    }
+
+    CREATE_THREAD(Hosts_SocketLoop, NULL, t);
+    DETACH_THREAD(t);
+
+    return 0;
 }
