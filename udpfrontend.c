@@ -8,7 +8,7 @@ static BOOL Ipv6_Enabled = FALSE;
 
 static SocketPuller Frontend;
 
-static void UdpFrontend_Work(void)
+static void UdpFrontend_Work(void *Unused)
 {
     /* Buffer */
     #define BUF_LENGTH  2048
@@ -98,6 +98,8 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
     StringListIterator i;
     const char *One;
 
+    ThreadHandle t;
+
     UDPLocal = ConfigGetStringList(ConfigInfo, "UDPLocal");
     if( UDPLocal == NULL )
     {
@@ -153,6 +155,9 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
     }
 
     UDPLocal->Free(UDPLocal);
+
+    CREATE_THREAD(UdpFrontend_Work, NULL, t);
+    DETACH_THREAD(t);
 
     return 0;
 }
