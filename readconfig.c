@@ -499,7 +499,7 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 }
 
 /* Won't change the Option's status */
-void ConfigSetValue(ConfigFileInfo *Info, VType Value, char *KeyName)
+void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 {
 	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName);
 

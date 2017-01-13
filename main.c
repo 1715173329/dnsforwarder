@@ -32,7 +32,7 @@ static BOOL     ShowDebug = FALSE;
 
 static ConfigFileInfo	ConfigInfo;
 
-int EnvironmentInit(char *ConfigFile, const char *Contexts)
+static int EnvironmentInit(char *ConfigFile, const char *Contexts)
 {
 	VType	TmpTypeDescriptor;
 	char	TmpStr[1024];
@@ -64,7 +64,7 @@ int EnvironmentInit(char *ConfigFile, const char *Contexts)
     ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "Local working interfaces");
     ConfigSetStringDelimiters(&ConfigInfo, "UDPLocal", ",");
     TmpTypeDescriptor.str = "127.0.0.1";
-    ConfigSetValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
+    ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
     TmpTypeDescriptor.INT32 = 53;
     ConfigAddOption(&ConfigInfo, "LocalPort", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, "Local working port");
@@ -91,7 +91,7 @@ int EnvironmentInit(char *ConfigFile, const char *Contexts)
     ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Groups");
     ConfigSetStringDelimiters(&ConfigInfo, "UDPGroup", "\t ");
     TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
-    ConfigSetValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
+    ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
 
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "ParallelQuery", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "UDP Parallel Query");
@@ -227,7 +227,7 @@ int EnvironmentInit(char *ConfigFile, const char *Contexts)
 	}
 }
 
-int DaemonInit(void)
+static int DaemonInit(void)
 {
 #ifdef WIN32
 	char		*CmdLine = GetCommandLine();
@@ -321,7 +321,7 @@ int DaemonInit(void)
 #endif /* WIN32 */
 }
 
-int GetDefaultConfigureFile(char *out, int OutLength)
+static int GetDefaultConfigureFile(char *out, int OutLength)
 {
 #ifdef WIN32
 	GetModulePath(out, OutLength);
@@ -334,7 +334,7 @@ int GetDefaultConfigureFile(char *out, int OutLength)
 }
 
 #ifndef WIN32
-void PrepareEnvironment(void)
+static void PrepareEnvironment(void)
 {
 	char ConfigDirectory[2048];
 
@@ -355,7 +355,7 @@ void PrepareEnvironment(void)
 }
 #endif
 
-int ArgParse(int argc, char *argv_ori[], const char **Contexts)
+static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 {
 	char **argv = argv_ori;
 	++argv;
