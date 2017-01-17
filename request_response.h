@@ -1,7 +1,6 @@
 #ifndef REQUEST_RESPONSE_H_INCLUDED
 #define REQUEST_RESPONSE_H_INCLUDED
 
-#include "querydnsbase.h"
 #include "readconfig.h"
 #include "dnscache.h"
 #include "common.h"

@@ -23,6 +23,8 @@ int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug)
     PrintConsole = PrintScreen;
     DebugPrint = PrintDebug;
 
+    EFFECTIVE_LOCK_INIT(PrintLock);
+
 	if( ConfigGetBoolean(ConfigInfo, "LogOn") == FALSE )
 	{
 		return 0;
@@ -62,7 +64,7 @@ int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug)
         return -60;
     }
 
-	EFFECTIVE_LOCK_INIT(PrintLock);
+    INFO("New session.\n");
 
 	return 0;
 }

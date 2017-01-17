@@ -142,14 +142,14 @@ int Filter_Init(ConfigFileInfo *ConfigInfo)
 {
     if( FilterDomain_Init(ConfigInfo) != 0 )
     {
-        INFO("Disabled domains did not initialized.\n");
+        INFO("Disabled domains was not initialized.\n");
     } else {
         INFO("Disabled domains initialized.\n");
     }
 
     if( FilterType_Init(ConfigInfo) != 0 )
     {
-        INFO("Disabled types did not initialized.\n");
+        INFO("Disabled types was not initialized.\n");
     } else {
         INFO("Disabled types initialized.\n");
     }

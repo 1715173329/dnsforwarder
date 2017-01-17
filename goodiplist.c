@@ -2,7 +2,6 @@
 #include <limits.h>
 #include "readconfig.h"
 #include "goodiplist.h"
-#include "request_response.h"
 #include "utils.h"
 #include "timedtask.h"
 #include "socketpuller.h"

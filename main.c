@@ -216,15 +216,20 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "GoodIPListAddIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
-	if( ConfigOpenFile(&ConfigInfo, ConfigFile) == 0 )
-	{
-		ConfigRead(&ConfigInfo);
-		ConfigCloseFile(&ConfigInfo);
-		return 0;
-	} else {
-		ERRORMSG("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
-		return 0;
-	}
+	if( ConfigOpenFile(&ConfigInfo, ConfigFile) != 0 )
+    {
+        if( ShowMessages )
+        {
+            printf("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
+        }
+
+        return 0;
+    }
+
+    ConfigRead(&ConfigInfo);
+    ConfigCloseFile(&ConfigInfo);
+
+	return 0;
 }
 
 static int DaemonInit(void)
@@ -488,6 +493,7 @@ int main(int argc, char *argv[])
 		if( DaemonInit() == 0 )
 		{
 			ShowMessages = FALSE;
+			ShowDebug = FALSE;
 		} else {
 			printf("Daemon init failed, continuing on non-daemon mode.\n");
 		}

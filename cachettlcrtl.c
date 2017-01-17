@@ -97,7 +97,7 @@ int CacheTtlCrtl_Add_From_StringList(CacheTtlCtrl *c, StringList *sl)
 const CtrlContent *CacheTtlCrtl_Get(CacheTtlCtrl *c, const char *Domain)
 {
 	CtrlContent *ret = NULL;
-	if( StringChunk_Domain_Match((StringChunk *)c, Domain, NULL, (char **)&(ret)) == TRUE )
+	if( StringChunk_Domain_Match((StringChunk *)c, Domain, NULL, (void **)&(ret)) == TRUE )
 	{
 		return ret;
 	} else {

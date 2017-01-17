@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include "querydnslistentcp.h"
-#include "querydnsbase.h"
 #include "dnsrelated.h"
 #include "dnsparser.h"
 #include "dnsgenerator.h"
@@ -12,7 +11,6 @@
 #include "stringlist.h"
 #include "filter.h"
 #include "addresslist.h"
-#include "internalsocket.h"
 
 /* Variables */
 static BOOL			Inited = FALSE;

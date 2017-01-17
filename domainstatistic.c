@@ -5,7 +5,6 @@
 #include "stringchunk.h"
 #include "domainstatistic.h"
 #include "utils.h"
-#include "querydnsbase.h"
 
 typedef struct _DomainInfo{
 	int		Count;
@@ -134,7 +133,7 @@ int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type)
 	if( SkipStatistic == FALSE )
 	{
 
-		if( StringChunk_Match(&MainChunk, Domain, HashValue, (char **)&ExistInfo) == FALSE )
+		if( StringChunk_Match(&MainChunk, Domain, HashValue, (void **)&ExistInfo) == FALSE )
 		{
 			DomainInfo NewInfo;
 
@@ -260,7 +259,7 @@ int DomainStatistic_Hold(void)
 		SkipStatistic = TRUE;
 		EFFECTIVE_LOCK_RELEASE(StatisticLock);
 
-		Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
+		Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (void **)&Info);
 		while( Str != NULL )
 		{
 			if( Info != NULL )
@@ -295,7 +294,7 @@ int DomainStatistic_Hold(void)
 						 );
 			}
 
-			Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (char **)&Info);
+			Str = StringChunk_Enum_NoWildCard(&MainChunk, &Enum_Start, (void **)&Info);
 		}
 
 		EFFECTIVE_LOCK_GET(StatisticLock);

@@ -88,7 +88,7 @@ static void UdpM_Works(void *Module)
 
             case 0:
                 EFFECTIVE_LOCK_GET(m->Lock);
-                m->Context.Swep(&(m->Context), 10);
+                m->Context.Swep(&(m->Context));
                 EFFECTIVE_LOCK_RELEASE(m->Lock);
 
                 TimeLimit = LongTime;

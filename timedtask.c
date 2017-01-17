@@ -357,7 +357,7 @@ int TimedTask_Add(BOOL Persistent,
     return 0;
 }
 
-static int CompareFunc(const void *One, const void *Two)
+static int Compare(const void *One, const void *Two)
 {
     const TaskInfo *o = One, *t = Two;
 #ifdef WIN32
@@ -373,7 +373,7 @@ int TimedTask_Init(void)
 
     if( LinkedQueue_Init(&TimeQueue,
                          sizeof(TaskInfo),
-                         CompareFunc
+                         Compare
                          ) != 0
        )
     {

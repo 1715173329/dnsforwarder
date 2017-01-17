@@ -156,7 +156,7 @@ char *GetCurDateAndTime(char *Buffer, int BufferLength)
 
 	timeinfo = localtime(&rawtime);
 
-	strftime(Buffer, BufferLength - 1 ,"%b %d %X ", timeinfo);
+	strftime(Buffer, BufferLength - 1 ,"%b %d %X", timeinfo);
 
 	return Buffer;
 }
@@ -1068,4 +1068,41 @@ char *ReplaceStr_WithLengthChecking(char *Src,
     } else {
         return ReplaceStr(Src, OriSubstr, DesSubstr);
     }
+}
+
+int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked)
+{
+#ifdef WIN32
+	unsigned long NonBlock = 1;
+
+	if( ioctlsocket(sock, FIONBIO, &NonBlock) != 0 )
+	{
+		return -1;
+	} else {
+		return 0;
+	}
+#else
+	int Flags;
+	int BlockFlag;
+
+	Flags = fcntl(sock, F_GETFL, 0);
+	if( Flags < 0 )
+	{
+		return -1;
+	}
+
+	if( NonBlocked == TRUE )
+	{
+        BlockFlag = O_NONBLOCK;
+	} else {
+        BlockFlag = ~O_NONBLOCK;
+	}
+
+	if( fcntl(sock, F_SETFL, Flags | BlockFlag) < 0 )
+	{
+		return -1;
+	}
+
+	return 0;
+#endif
 }

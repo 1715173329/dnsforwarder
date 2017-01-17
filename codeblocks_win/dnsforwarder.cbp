@@ -12,7 +12,7 @@
 				<Option object_output="./obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-f &quot;D:\My_File\VC\dnsforwarder_n\codeblocks_win\bin\Release\dnsforwarder.config&quot; -CONTEXT a' />
+				<Option parameters="-CONTEXT a" />
 				<Compiler>
 					<Add option="-pg" />
 					<Add option="-g" />
@@ -213,6 +213,8 @@
 		<Unit filename="../pipes.h" />
 		<Unit filename="../querydnslistentcp.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+			<Option link="0" />
 		</Unit>
 		<Unit filename="../querydnslistentcp.h" />
 		<Unit filename="../readconfig.c">
@@ -225,6 +227,8 @@
 		<Unit filename="../readline.h" />
 		<Unit filename="../request_response.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+			<Option link="0" />
 		</Unit>
 		<Unit filename="../request_response.h" />
 		<Unit filename="../rwlock.h" />

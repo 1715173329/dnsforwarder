@@ -144,4 +144,7 @@ char *ReplaceStr_WithLengthChecking(char *Src,
                                     const char *DesSubstr,
                                     int SrcBufferLength
                                     );
+
+int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked);
+
 #endif /* _UTILS_ */

@@ -7,9 +7,9 @@ typedef struct _HostsContextItem HostsContextItem;
 struct _HostsContextItem{
 
     IHeader     oh; /* Original header */
+    time_t      t; /* Time of addition */
     uint32_t    i; /* Query identifier */
     uint32_t    oi; /* Original identifier */
-    time_t      t; /* Time of addition */
 
 	char	    RecursedDomain[256];
 	int         RecursedHashValue;
@@ -78,16 +78,17 @@ PRIFUNC int HostsContext_Swep_Collect(Bst *t,
                                       Array *Pending
                                       )
 {
+    const int TIME_OUT = 2; /* Seconds */
+
     time_t	Now = time(NULL);
 
-    if( Now - Context->t > 2 )
+    if( Now - Context->t > TIME_OUT )
     {
         Array_PushBack(Pending, &Context, NULL);
     }
 
     return 0;
 }
-
 
 PUBFUNC void HostsContext_Swep(HostsContext *c)
 {

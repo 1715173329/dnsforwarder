@@ -3,6 +3,7 @@
 #include "addresslist.h"
 #include "utils.h"
 #include "mmgr.h"
+#include "logs.h"
 
 static BOOL Ipv6_Enabled = FALSE;
 
@@ -98,11 +99,14 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
     StringListIterator i;
     const char *One;
 
+    int Count = 0;
+
     ThreadHandle t;
 
     UDPLocal = ConfigGetStringList(ConfigInfo, "UDPLocal");
     if( UDPLocal == NULL )
     {
+        ERRORMSG("No UDP interface specified.\n");
         return -11;
     }
 
@@ -126,7 +130,7 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
         f = AddressList_ConvertToAddressFromString(&a, One, 53);
         if( f == AF_UNSPEC )
         {
-            /** TODO: Show error */
+            ERRORMSG("Invalid `UDPLocal' option : %s .\n", One);
             continue;
         }
 
@@ -152,6 +156,14 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
         }
 
         Frontend.Add(&Frontend, sock, &f, sizeof(sa_family_t));
+        INFO("UDP interface %s opened.\n", One);
+        ++Count;
+    }
+
+    if( Count == 0 )
+    {
+        ERRORMSG("No UDP interface opened.\n");
+        return -163;
     }
 
     UDPLocal->Free(UDPLocal);

@@ -537,7 +537,7 @@ void ConfigDisplay(ConfigFileInfo *Info)
 
 	Enum_Start = 0;
 
-	Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (char **)&Option);
+	Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (void **)&Option);
 	while( Str != NULL )
 	{
 		if( Option != NULL && Option -> Caption != NULL && Option -> Status != STATUS_ALIAS )
@@ -578,6 +578,6 @@ void ConfigDisplay(ConfigFileInfo *Info)
 			}
 		}
 
-		Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (char **)&Option);
+		Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (void **)&Option);
 	}
 }
