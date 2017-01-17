@@ -94,14 +94,6 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
         return -33;
     }
 
-    NewM = StoreAModule();
-    if( NewM == NULL )
-    {
-        return -101;
-    }
-
-    NewM->ModuleName = "UDP";
-
     while( TRUE )
     {
         const char *Services;
@@ -119,6 +111,14 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
         {
             break;
         }
+
+        NewM = StoreAModule();
+        if( NewM == NULL )
+        {
+            return -101;
+        }
+
+        NewM->ModuleName = "UDP";
 
         strncpy(ParallelOnOff, Parallel, sizeof(ParallelOnOff));
         ParallelOnOff[sizeof(ParallelOnOff) - 1] = '\0';
@@ -198,7 +198,8 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
 
 int MMgr_Send(IHeader *h, int BufferLength)
 {
-    ModuleInterface *i;
+    ModuleInterface **i;
+    ModuleInterface *TheModule;
 
     /* Determine whether to discard the query */
     if( Filter_Out(h) )
@@ -246,10 +247,12 @@ int MMgr_Send(IHeader *h, int BufferLength)
         i = NULL;
     }
 
-    if( i == NULL )
+    if( i == NULL || *i == NULL )
     {
         return -190;
     }
 
-    return i->Send(&(i->ModuleUnion), h);
+    TheModule = *i;
+
+    return TheModule->Send(&(TheModule->ModuleUnion), h);
 }

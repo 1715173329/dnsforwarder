@@ -132,10 +132,8 @@ PRIFUNC int HostsContextCompare(const void *_1, const void *_2)
 	if( One->i != Two->i )
 	{
 		return (int)(One->i) - (int)(Two->i);
-	} else if( One->RecursedHashValue != Two->RecursedHashValue ){
-		return One->RecursedHashValue - Two->RecursedHashValue;
 	} else {
-	    return strcmp(One->RecursedDomain, Two->RecursedDomain);
+		return One->RecursedHashValue - Two->RecursedHashValue;
 	}
 }
 

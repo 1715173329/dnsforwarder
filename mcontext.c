@@ -115,10 +115,8 @@ static int ModuleContextCompare(const void *_1, const void *_2)
 	if( One->i != Two->i )
 	{
 		return (int)(One->i) - (int)(Two->i);
-	} else if( One->h.HashValue != Two->h.HashValue ){
-		return One->h.HashValue - Two->h.HashValue;
 	} else {
-	    return strcmp(One->h.Domain, Two->h.Domain);
+		return One->h.HashValue - Two->h.HashValue;
 	}
 }
 

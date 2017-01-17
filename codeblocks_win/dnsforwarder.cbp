@@ -14,12 +14,8 @@
 				<Option compiler="gcc" />
 				<Option parameters="-CONTEXT a" />
 				<Compiler>
-					<Add option="-pg" />
 					<Add option="-g" />
 				</Compiler>
-				<Linker>
-					<Add option="-pg -lgmon" />
-				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option platforms="Windows;" />

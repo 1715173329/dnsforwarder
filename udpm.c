@@ -164,13 +164,17 @@ static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
 
             while( *a != NULL )
             {
-                ret |= (sendto(m->Departure,
-                              (const void *)(h + 1),
-                              h->EntityLength,
-                              MSG_NOSIGNAL,
-                              *a,
-                              m->Parallels.addrlen) > 0
-                       );
+                int State;
+
+                State = sendto(m->Departure,
+                               (const void *)(h + 1),
+                               h->EntityLength,
+                               MSG_NOSIGNAL,
+                               *a,
+                               m->Parallels.addrlen
+                               );
+
+                ret |= (State > 0);
 
                 ++a;
             }
@@ -179,6 +183,8 @@ static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
             struct sockaddr *a;
             sa_family_t	family;
 
+            int State;
+
             a = AddressList_GetOne(&(m->AddrList), &family);
             if( a == NULL )
             {
@@ -186,14 +192,15 @@ static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
                 ret = -277;
             }
 
-            ret = (sendto(m->Departure,
-                          (const void *)(h + 1),
-                          h->EntityLength,
-                          MSG_NOSIGNAL,
-                          a,
-                          GetAddressLength(family)
-                          ) > 0
-                   );
+            State = sendto(m->Departure,
+                           (const void *)(h + 1),
+                           h->EntityLength,
+                           MSG_NOSIGNAL,
+                           a,
+                           GetAddressLength(family)
+                           );
+
+            ret = (State > 0);
 
             /** TODO: Error handlings */
 

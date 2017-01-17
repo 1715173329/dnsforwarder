@@ -26,6 +26,7 @@ int IHeader_Fill(IHeader *h,
     DnsSimpleParserIterator i;
 
     h->_Pad = 0;
+    h->EDNSEnabled = FALSE;
 
     if( DnsSimpleParser_Init(&p, DnsEntity, EntityLength, FALSE) != 0 )
     {
@@ -39,14 +40,14 @@ int IHeader_Fill(IHeader *h,
 
     while( i.Next(&i) != NULL )
     {
-        if( i.Klass != DNS_CLASS_IN )
-        {
-            return -42;
-        }
-
         switch( i.Purpose )
         {
         case DNS_RECORD_PURPOSE_QUESTION:
+            if( i.Klass != DNS_CLASS_IN )
+            {
+                return -48;
+            }
+
             if( i.GetName(&i, h->Domain, sizeof(h->Domain)) < 0 )
             {
                 return -46;
