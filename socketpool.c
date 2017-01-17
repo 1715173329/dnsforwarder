@@ -20,7 +20,7 @@ static int SocketPool_Add(SocketPool *sp,
         su.Data = NULL;
     }
 
-	if( sp->t.Add(&(sp->t), &su) != NULL )
+	if( sp->t.Add(&(sp->t), &su) == NULL )
 	{
 		return -27;
 	}
@@ -32,15 +32,22 @@ typedef struct _SocketPool_Fetch_Arg
 {
     SOCKET Sock;
     fd_set *fs;
+    void **DataOut;
 } SocketPool_Fetch_Arg;
 
 static int SocketPool_Fetch_Inner(Bst *t,
-                                  const SocketUnit *Data,
+                                  const SocketUnit *su,
                                   SocketPool_Fetch_Arg *Arg)
 {
-    if( FD_ISSET(Data->Sock, Arg->fs) )
+    if( FD_ISSET(su->Sock, Arg->fs) )
     {
-        Arg->Sock = Data->Sock;
+        Arg->Sock = su->Sock;
+
+        if( Arg->DataOut != NULL )
+        {
+            *(Arg->DataOut) = su->Data;
+        }
+
         return 1;
     }
 
@@ -52,7 +59,7 @@ static SOCKET SocketPool_FetchOnSet(SocketPool *sp,
                                     void **Data
                                     )
 {
-    SocketPool_Fetch_Arg ret = {INVALID_SOCKET, fs};
+    SocketPool_Fetch_Arg ret = {INVALID_SOCKET, fs, Data};
 
     sp->t.Enum(&(sp->t),
                (Bst_Enum_Callback)SocketPool_Fetch_Inner,

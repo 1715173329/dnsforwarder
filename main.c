@@ -521,6 +521,8 @@ int main(int argc, char *argv[])
 
 	putchar('\n');
 
+	ExitThisThread();
+
 #ifdef WIN32
     WSACleanup();
 #endif

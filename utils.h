@@ -147,4 +147,6 @@ char *ReplaceStr_WithLengthChecking(char *Src,
 
 int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked);
 
+void ExitThisThread(void);
+
 #endif /* _UTILS_ */

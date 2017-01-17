@@ -1106,3 +1106,12 @@ int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked)
 	return 0;
 #endif
 }
+
+void ExitThisThread(void)
+{
+#ifdef WIN32
+    ExitThread(0);
+#else /* WIN32 */
+    pthread_exit(NULL);
+#endif /* WIN32 */
+}
