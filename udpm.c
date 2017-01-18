@@ -3,6 +3,7 @@
 #include "udpm.h"
 #include "logs.h"
 #include "utils.h"
+#include "dnscache.h"
 
 static void UdpM_Works(void *Module)
 {
@@ -27,7 +28,7 @@ static void UdpM_Works(void *Module)
     ReceiveBuffer = SafeMalloc(BUF_LENGTH);
     if( ReceiveBuffer == NULL )
     {
-        /** TODO: Show fatal error */
+        ERRORMSG("Fatal error 30.\n");
         return;
     }
 
@@ -50,7 +51,7 @@ static void UdpM_Works(void *Module)
                 addr = AddressList_GetOne(&(m->AddrList), &family);
                 if( addr == NULL )
                 {
-                    /** TODO: Show fatal error */
+                    ERRORMSG("Fatal error 53.\n");
                     EFFECTIVE_LOCK_RELEASE(m->Lock);
                     return;
                 }
@@ -65,7 +66,7 @@ static void UdpM_Works(void *Module)
 
             if( m->Departure == INVALID_SOCKET )
             {
-                /** TODO: Show fatal error */
+                ERRORMSG("Fatal error 68.\n");
                 EFFECTIVE_LOCK_RELEASE(m->Lock);
                 return;
             }
@@ -79,7 +80,7 @@ static void UdpM_Works(void *Module)
         switch( select(m->Departure + 1, &ReadySet, NULL, NULL, &TimeLimit) )
         {
             case SOCKET_ERROR:
-                ERRORMSG("SOCKET_ERROR Reached, 201.\n");
+                ERRORMSG("SOCKET_ERROR Reached, 82.\n");
                 while( TRUE )
                 {
                     SLEEP(32767);
@@ -110,7 +111,12 @@ static void UdpM_Works(void *Module)
                              NULL
                              );
 
-        /** TODO: Error handlings, address advanced */
+        if( RecvState <= 0 )
+        {
+            /** TODO: Show Error messages. */
+            ShowErrorMessage(Header, 'U');
+            AddressList_Advance(&(m->AddrList));
+        }
 
         /* Fill IHeader */
         IHeader_Fill(Header,
@@ -136,7 +142,15 @@ static void UdpM_Works(void *Module)
 
             SentState = IHeader_SendBack(Header);
 
-            /** TODO: Error handlings, Show message, Domain statistic, add cache*/
+            if( SentState != 0 )
+            {
+                ShowErrorMessage(Header, 'U');
+                continue;
+            }
+
+            ShowNormalMessage(Header, 'U');
+            DNSCache_AddItemsToCache(Header);
+            /** TODO: Domain statistic*/
         }
     }
 
@@ -145,7 +159,7 @@ static void UdpM_Works(void *Module)
 
 static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
 {
-    int ret;
+    int ret = 0;
     EFFECTIVE_LOCK_GET(m->Lock);
 
     if( m->Context.Add(&(m->Context), h) != 0 )
@@ -188,7 +202,7 @@ static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
             a = AddressList_GetOne(&(m->AddrList), &family);
             if( a == NULL )
             {
-                /** TODO: Fatal error handlings */
+                ERRORMSG("Fatal error 205.\n");
                 ret = -277;
             }
 

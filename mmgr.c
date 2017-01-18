@@ -4,6 +4,7 @@
 #include "filter.h"
 #include "hosts.h"
 #include "dnscache.h"
+#include "logs.h"
 
 typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
 
@@ -153,10 +154,15 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
 {
     BOOL ret = FALSE;
 
+    if( Filter_Init(ConfigInfo) != 0 )
+    {
+        return -159;
+    }
+
     /* Hosts & Cache */
     if( Hosts_Init(ConfigInfo) != 0 )
     {
-        return -159;
+        return -165;
     }
 
     if( DNSCache_Init(ConfigInfo) != 0 )
@@ -204,7 +210,8 @@ int MMgr_Send(IHeader *h, int BufferLength)
     /* Determine whether to discard the query */
     if( Filter_Out(h) )
     {
-        /** TODO: Send back filtered dns message, Show filtered message */
+        /** TODO: Send back filtered dns message */
+        ShowRefusingMessage(h, "Disabled");
         return 0;
     }
 
@@ -213,21 +220,26 @@ int MMgr_Send(IHeader *h, int BufferLength)
     {
     case HOSTSUTILS_TRY_BLOCKED:
         /** TODO: Send back filtered dns message, Show filtered message */
+        ShowRefusingMessage(h, "Disabled because of existing IPv4 host");
         return 0;
         break;
 
     case HOSTSUTILS_TRY_NONE:
         break;
 
-    default:
+    case HOSTSUTILS_TRY_RECURSED:
         /** TODO: Show hosts message */
+        return 0;
+
+    case HOSTSUTILS_TRY_OK:
+        ShowNormalMessage(h, 'H');
         return 0;
         break;
     }
 
     if( DNSCache_FetchFromCache(h, BufferLength) == 0 )
     {
-        /** TODO: Show cache message */
+        ShowNormalMessage(h, 'C');
         return 0;
     }
 

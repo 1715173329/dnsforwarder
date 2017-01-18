@@ -45,7 +45,7 @@ static int SocketPool_Fetch_Inner(Bst *t,
 
         if( Arg->DataOut != NULL )
         {
-            *(Arg->DataOut) = su->Data;
+            *(Arg->DataOut) = (void *)su->Data;
         }
 
         return 1;

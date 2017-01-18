@@ -143,7 +143,7 @@ void Log_Print(const char *Type, const char *format, ...)
         CheckLength();
 
         CurrentLength += fprintf(LogFile,
-                                 "%s [%s] ",
+                                 Type == NULL ? "%s " : "%s [%s] ",
                                  DateAndTime,
                                  Type == NULL ? "" : Type
                                  );
@@ -154,7 +154,7 @@ void Log_Print(const char *Type, const char *format, ...)
 
 	if( PrintConsole )
     {
-        printf("%s [%s] ",
+        printf(Type == NULL ? "%s " : "%s [%s] ",
                DateAndTime,
                Type == NULL ? "" : Type
                );

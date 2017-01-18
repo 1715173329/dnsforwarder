@@ -176,5 +176,5 @@ static BOOL IsDisabledDomain(const char *Domain, int HashValue)
 
 BOOL Filter_Out(IHeader *h)
 {
-    return IsDisabledType(h->Type) && IsDisabledDomain(h->Domain, h->HashValue);
+    return IsDisabledType(h->Type) || IsDisabledDomain(h->Domain, h->HashValue);
 }

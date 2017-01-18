@@ -53,6 +53,8 @@ PUBFUNC int HostsContext_FindAndRemove(HostsContext *c,
     HostsContextItem    k;
     const HostsContextItem *ri;
 
+    int EntityLength;
+
     k.i = *(uint16_t *)(Input + 1);
     strncpy(k.RecursedDomain, Input->Domain, sizeof(k.RecursedDomain));
     k.RecursedDomain[sizeof(k.RecursedDomain) - 1] = '\0';
@@ -65,8 +67,12 @@ PUBFUNC int HostsContext_FindAndRemove(HostsContext *c,
         return -55;
     }
 
+    EntityLength = Input->EntityLength;
+
     memcpy(Output, &(ri->oh), sizeof(IHeader));
     *(uint16_t *)(Output + 1) = ri->oi;
+
+    Output->EntityLength = EntityLength;
 
     c->t.Delete(&(c->t), ri);
 

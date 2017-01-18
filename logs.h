@@ -7,7 +7,7 @@
 
 #define PRINTON		Log_Inited()
 
-#define DEBUGSECTION	if( PRINTON )
+#define DEBUGSECTION	if( PRINTON && Log_DebugOn() )
 
 int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug);
 
@@ -20,7 +20,7 @@ void Log_Print(const char *Type, const char *format, ...);
 #define	WARNING(...)    Log_Print("WARN", __VA_ARGS__)
 #define	INFO(...)       Log_Print("INFO", __VA_ARGS__)
 #define	ERRORMSG(...)   Log_Print("ERROR", __VA_ARGS__)
-#define	DEBUG(...)      if( Log_DebugOn() ) \
+#define	DEBUG(...)      DEBUGSECTION \
                             Log_Print("DEBUG", __VA_ARGS__);
 
 void ShowRefusingMessage(IHeader *h, const char *Message);

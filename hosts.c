@@ -3,6 +3,8 @@
 #include "udpfrontend.h"
 #include "hcontext.h"
 #include "socketpuller.h"
+#include "goodiplist.h"
+#include "logs.h"
 
 static BOOL BlockIpv6WhenIpv4Exists = FALSE;
 
@@ -80,7 +82,9 @@ HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength)
     if( BlockIpv6WhenIpv4Exists )
     {
         if( Header->Type == DNS_TYPE_AAAA &&
-            Hosts_TypeExisting(Header->Domain, HOSTS_TYPE_A)
+            (Hosts_TypeExisting(Header->Domain, HOSTS_TYPE_A) ||
+             Hosts_TypeExisting(Header->Domain, HOSTS_TYPE_GOOD_IP_LIST)
+             )
             )
         {
             /** TODO: Show blocked message */
@@ -263,7 +267,7 @@ static int Hosts_SocketLoop(void *Unused)
                 continue;
             }
 
-            /** TODO: Go on */
+            ShowNormalMessage(NewHeader, 'H');
         } else {}
 	}
 
@@ -277,10 +281,11 @@ int Hosts_Init(ConfigFileInfo *ConfigInfo)
     StaticHosts_Init(ConfigInfo);
     DynamicHosts_Init(ConfigInfo);
 
+    GoodIpList_Init(ConfigInfo);
+
     BlockIpv6WhenIpv4Exists = ConfigGetBoolean(ConfigInfo,
                                                  "BlockIpv6WhenIpv4Exists"
                                                  );
-
 
     IncomeSocket = TryBindLocal(Ipv6_Aviliable(), 10200, &IncomeAddress);
     if( IncomeSocket == INVALID_SOCKET )

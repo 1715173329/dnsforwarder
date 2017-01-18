@@ -1,6 +1,7 @@
 #include "hostsutils.h"
 #include "dnsgenerator.h"
 #include "mmgr.h"
+#include "goodiplist.h"
 
 static int HostsUtils_GetCName_Callback(int Number,
                                         HostsRecordType Type,
@@ -85,6 +86,31 @@ static int HostsUtils_Generate(int              Number,
         }
         break;
 
+    case HOSTS_TYPE_GOOD_IP_LIST:
+        {
+            const char *ActuallData;
+
+            ActuallData = GoodIpList_Get(Data);
+            if( ActuallData == NULL )
+            {
+                return -96;
+            }
+
+            if( g->RawData(g,
+                           "a",
+                           DNS_TYPE_A,
+                           DNS_CLASS_IN,
+                           ActuallData,
+                           4,
+                           60
+                           )
+                != 0 )
+            {
+                return -109;
+            }
+        }
+        break;
+
     default:
         return -61;
         break;
@@ -99,17 +125,8 @@ HostsUtilsTryResult HostsUtils_Try(IHeader *Header,
                                    )
 {
 	char *RequestEntity = (char *)(Header + 1);
-
 	const char	*MatchState;
-
-	/** TODO: You should also check the queried class */
-    if( Header->Type != DNS_TYPE_CNAME &&
-        Header->Type != DNS_TYPE_A &&
-        Header->Type != DNS_TYPE_AAAA
-        )
-    {
-        return HOSTSUTILS_TRY_NONE;
-    }
+	HostsRecordType Type;
 
     if( Header->Type != DNS_TYPE_CNAME &&
         HostsUtils_TypeExisting(Container, Header->Domain, HOSTS_TYPE_CNAME)
@@ -118,12 +135,53 @@ HostsUtilsTryResult HostsUtils_Try(IHeader *Header,
         return HOSTSUTILS_TRY_RECURSED;
     }
 
-    MatchState = Container->Find(Container,
-                                 Header->Domain,
-                                 Header->Type,
-                                 NULL,
-                                 NULL
-                                 );
+    switch( Header->Type )
+    {
+    case DNS_TYPE_CNAME:
+        Type = HOSTS_TYPE_CNAME;
+        MatchState = Container->Find(Container,
+                                     Header->Domain,
+                                     HOSTS_TYPE_CNAME,
+                                     NULL,
+                                     NULL
+                                     );
+        break;
+
+    case DNS_TYPE_A:
+        MatchState = Container->Find(Container,
+                                     Header->Domain,
+                                     HOSTS_TYPE_A,
+                                     NULL,
+                                     NULL
+                                     );
+        if( MatchState != NULL )
+        {
+            Type = HOSTS_TYPE_A;
+        } else {
+            Type = HOSTS_TYPE_GOOD_IP_LIST;
+            MatchState = Container->Find(Container,
+                                         Header->Domain,
+                                         HOSTS_TYPE_GOOD_IP_LIST,
+                                         NULL,
+                                         NULL
+                                         );
+        }
+        break;
+
+    case DNS_TYPE_AAAA:
+        Type = HOSTS_TYPE_AAAA;
+        MatchState = Container->Find(Container,
+                                     Header->Domain,
+                                     HOSTS_TYPE_AAAA,
+                                     NULL,
+                                     NULL
+                                     );
+        break;
+
+    default:
+        return HOSTSUTILS_TRY_NONE;
+        break;
+    }
 
 	if( MatchState != NULL )
 	{
@@ -160,7 +218,7 @@ HostsUtilsTryResult HostsUtils_Try(IHeader *Header,
 
         if( Container->Find(Container,
                             Header->Domain,
-                            Header->Type,
+                            Type,
                             (HostsFindFunc)HostsUtils_Generate,
                             &g
                             )

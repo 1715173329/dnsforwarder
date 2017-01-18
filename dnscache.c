@@ -9,11 +9,12 @@
 #include "cacheht.h"
 #include "cachettlcrtl.h"
 #include "logs.h"
+#include "timedtask.h"
 
-#define	CACHE_VERSION		22
+#define	CACHE_VERSION   22
 
-#define	CACHE_END	'\x0A'
-#define	CACHE_START	'\xFF'
+#define	CACHE_END   '\x0A'
+#define	CACHE_START '\xFF'
 
 static BOOL				Inited = FALSE;
 
@@ -22,8 +23,6 @@ static RWLock			CacheLock;
 static FileHandle		CacheFileHandle;
 static MappingHandle	CacheMappingHandle;
 static char				*MapStart;
-
-static ThreadHandle		TTLCountdown_Thread;
 
 static int32_t			CacheSize;
 static BOOL				IgnoreTTL;
@@ -45,7 +44,7 @@ struct _Header{
 	char		Comment[128 - sizeof(uint32_t) - sizeof(int32_t) - sizeof(int32_t) - sizeof(int32_t) - sizeof(CacheHT)];
 };
 
-static void DNSCacheTTLCountdown_Thread(void)
+static void DNSCacheTTLCountdown_Task(void *Unused, void *Unused2)
 {
 	register	int			loop;
 	register	BOOL		GotMutex	=	FALSE;
@@ -55,57 +54,49 @@ static void DNSCacheTTLCountdown_Thread(void)
 
 	register	time_t		CurrentTime;
 
-	while( Inited )
-	{
-		CurrentTime = time(NULL);
-		loop = ChunkList -> Used - 1;
+    CurrentTime = time(NULL);
+    loop = ChunkList -> Used - 1;
 
-		Node = (Cht_Node *)Array_GetBySubscript(ChunkList, loop);
+    Node = (Cht_Node *)Array_GetBySubscript(ChunkList, loop);
 
-		while( Node != NULL )
-		{
-			if( Node -> TTL > 0 )
-			{
-				if( CurrentTime - Node -> TimeAdded >= Node -> TTL )
-				{
-					if(GotMutex == FALSE)
-					{
-						RWLock_WrLock(CacheLock);
-						GotMutex = TRUE;
-					}
+    while( Node != NULL )
+    {
+        if( Node -> TTL > 0 )
+        {
+            if( CurrentTime - Node -> TimeAdded >= Node -> TTL )
+            {
+                if(GotMutex == FALSE)
+                {
+                    RWLock_WrLock(CacheLock);
+                    GotMutex = TRUE;
+                }
 
-					Node -> TTL = 0;
+                Node -> TTL = 0;
 
-					*(char *)(MapStart + Node -> Offset) = 0xFD;
+                *(char *)(MapStart + Node -> Offset) = 0xFD;
 
-					CacheHT_RemoveFromSlot(CacheInfo, loop, Node);
+                CacheHT_RemoveFromSlot(CacheInfo, loop, Node);
 
-					--(*CacheCount);
+                --(*CacheCount);
 
-				}
-			}
+            }
+        }
 
-			Node = (Cht_Node *)Array_GetBySubscript(ChunkList, --loop);
-		}
+        Node = (Cht_Node *)Array_GetBySubscript(ChunkList, --loop);
+    }
 
-		if(GotMutex == TRUE)
-		{
-			if( ChunkList -> Used == 0 )
-			{
-				(*CacheEnd) = sizeof(struct _Header);
-			} else {
-				Node = (Cht_Node *)(Cht_Node *)Array_GetBySubscript(ChunkList, ChunkList -> Used - 1);
-				(*CacheEnd) = Node -> Offset + Node -> Length;
-			}
+    if(GotMutex == TRUE)
+    {
+        if( ChunkList -> Used == 0 )
+        {
+            (*CacheEnd) = sizeof(struct _Header);
+        } else {
+            Node = (Cht_Node *)(Cht_Node *)Array_GetBySubscript(ChunkList, ChunkList -> Used - 1);
+            (*CacheEnd) = Node -> Offset + Node -> Length;
+        }
 
-			RWLock_UnWLock(CacheLock);
-			GotMutex = FALSE;
-		}
-
-		SLEEP(59000);
-	}
-
-	TTLCountdown_Thread = INVALID_THREAD;
+        RWLock_UnWLock(CacheLock);
+    }
 }
 
 static BOOL IsReloadable(void)
@@ -238,12 +229,7 @@ int DNSCache_Init(ConfigFileInfo *ConfigInfo)
 		}
 	}
 
-	if( _CacheSize % 8 != 0 )
-	{
-		CacheSize = ROUND_UP(_CacheSize, 8);
-	} else {
-		CacheSize = _CacheSize;
-	}
+    CacheSize = ROUND_UP(_CacheSize, 8);
 
 	if( CacheSize < 102400 )
 	{
@@ -323,8 +309,17 @@ int DNSCache_Init(ConfigFileInfo *ConfigInfo)
 
 	Inited = TRUE;
 
-	if(IgnoreTTL == FALSE)
-		CREATE_THREAD(DNSCacheTTLCountdown_Thread, NULL, TTLCountdown_Thread);
+	if( !IgnoreTTL )
+    {
+        TimedTask_Add(TRUE,
+                      FALSE,
+                      59000,
+                      (TaskFunc)DNSCacheTTLCountdown_Task,
+                      NULL,
+                      NULL,
+                      TRUE
+                      );
+    }
 
 	return 0;
 }
@@ -385,7 +380,10 @@ static Cht_Node *DNSCache_FindFromCache(char *Content, size_t Length, Cht_Node *
 
 }
 
-static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i, time_t CurrentTime, const CtrlContent *InfectedTtlContent)
+static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i,
+                                    time_t CurrentTime,
+                                    const CtrlContent *InfectedTtlContent
+                                    )
 {
 	/* used to store cache data temporarily, TODO: no bounds checking here */
 	char			Buffer[512];
@@ -543,11 +541,9 @@ static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i, time_t CurrentTi
 	return 0;
 }
 
-int DNSCache_AddItemsToCache(char *DNSBody,
-                             int DNSBodyLength,
-                             const char *Domain
-                             )
+int DNSCache_AddItemsToCache(IHeader *Header)
 {
+    char *DnsEntity = IHEADER_TAIL(Header);
 	const CtrlContent *TtlContent = NULL;
 
 	DnsSimpleParser p;
@@ -555,7 +551,7 @@ int DNSCache_AddItemsToCache(char *DNSBody,
 
 	if(Inited == FALSE) return 0;
 
-	if( DnsSimpleParser_Init(&p, DNSBody, DNSBodyLength, FALSE) != 0 )
+	if( DnsSimpleParser_Init(&p, DnsEntity, Header->EntityLength, FALSE) != 0 )
     {
         return -1;
     }
@@ -565,7 +561,7 @@ int DNSCache_AddItemsToCache(char *DNSBody,
         return -2;
     }
 
-	TtlContent =  CacheTtlCrtl_Get(TtlCtrl, Domain);
+	TtlContent =  CacheTtlCrtl_Get(TtlCtrl, Header->Domain);
 	RWLock_WrLock(CacheLock);
 
     while( i.Next(&i) != NULL )

@@ -99,6 +99,8 @@
 
 	typedef short	sa_family_t;
 
+	#define ExitThisThread()    (ExitThread(0))
+
 #else /* For Linux below */
 
 	#include <netinet/in.h>	/* For struct 'sockaddr_in' */
@@ -242,6 +244,8 @@
 	#define WILDCARD_MATCHED	0
 
 	#define	CONNECT_FUNCTION_BLOCKED	EINPROGRESS
+
+	#define ExitThisThread()    (pthread_exit(NULL))
 
 #endif /* WIN32 */
 

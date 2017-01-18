@@ -91,6 +91,8 @@ static int ModuleContext_FindAndRemove(ModuleContext *c,
 
     const ModuleContextItem *ri;
 
+    int EntityLength;
+
     k.i = *(uint16_t *)e;
     k.h.HashValue = Input->HashValue;
 
@@ -100,7 +102,11 @@ static int ModuleContext_FindAndRemove(ModuleContext *c,
         return -60;
     }
 
+    EntityLength = Input->EntityLength;
+
     memcpy(Output, &(ri->h), sizeof(IHeader));
+
+    Output->EntityLength = EntityLength;
 
     c->d.Delete(&(c->d), ri);
 

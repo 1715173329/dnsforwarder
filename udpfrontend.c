@@ -74,9 +74,13 @@ static void UdpFrontend_Work(void *Unused)
 
         if( *f == AF_INET )
         {
-            IPv4AddressToAsc(IncomingAddress, Agent);
+            IPv4AddressToAsc(&(((struct sockaddr_in *)IncomingAddress)->sin_addr),
+                             Agent
+                             );
         } else {
-            IPv6AddressToAsc(IncomingAddress, Agent);
+            IPv6AddressToAsc(&(((struct sockaddr_in6 *)IncomingAddress)->sin6_addr),
+                             Agent
+                             );
         }
 
         IHeader_Fill(Header,

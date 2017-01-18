@@ -20,7 +20,9 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
     SocketPuller    p;
     int i;
     struct timeval	Time	=	{5, 0};
-    struct sockaddr_in *Fastest = NULL;
+    struct sockaddr_in **Fastest = NULL;
+
+    struct sockaddr_in *ret = NULL;
 
     if( SocketPuller_Init(&p) != 0 )
     {
@@ -52,14 +54,21 @@ static struct sockaddr_in *CheckAList(struct sockaddr_in *Ips, int Count)
 		p.Add(&p, skt, &a, sizeof(struct sockaddr *));
     }
 
-    if( p.Select(&p, &Time, (void *)&Fastest, FALSE, TRUE) == INVALID_SOCKET )
+    if( p.Select(&p, &Time, (void **)&Fastest, FALSE, TRUE) == INVALID_SOCKET )
     {
-        p.Free(&p);
-        return NULL;
+        ret = NULL;
+    }
+
+    if( Fastest == NULL )
+    {
+        ret = NULL;
+    } else {
+        ret = *Fastest;
     }
 
     p.Free(&p);
-    return Fastest;
+
+    return ret;
 }
 
 static int ThreadJod(const char *Domain, ListInfo *inf)
@@ -77,7 +86,7 @@ static int ThreadJod(const char *Domain, ListInfo *inf)
 
     if( Fastest != NULL )
     {
-        struct sockaddr_in *t;
+        struct sockaddr_in t;
 
         INFO("The fastest ip for `%s' is %s\n",
              Domain,

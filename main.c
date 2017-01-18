@@ -21,6 +21,7 @@
 #include "logs.h"
 #include "mmgr.h"
 #include "udpfrontend.h"
+#include "timedtask.h"
 
 #define VERSION__ "6.0.0"
 
@@ -499,6 +500,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if( TimedTask_Init() != 0 )
+    {
+        return -505;
+    }
+
 	if( EnvironmentInit(ConfigFile, Contexts) != 0 )
     {
         return -498;
@@ -518,8 +524,6 @@ int main(int argc, char *argv[])
     {
         return -311;
     }
-
-	putchar('\n');
 
 	ExitThisThread();
 
