@@ -12,7 +12,7 @@
 				<Option object_output="./obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-CONTEXT a -d" />
+				<Option parameters="-CONTEXT a" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -23,7 +23,6 @@
 				<Option object_output="./obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-d" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-Os" />

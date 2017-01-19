@@ -10,7 +10,7 @@ static int HostsUtils_GetCName_Callback(int Number,
                                         )
 {
     strcpy(Buffer, Data);
-    return 1;
+    return 0;
 }
 
 int HostsUtils_GetCName(const char *Domain,
@@ -264,7 +264,7 @@ int HostsUtils_Query(SOCKET Socket, /* Both for sending and receiving */
     static const char DNSHeader[DNS_HEADER_LENGTH] = {
         00, 00, /* QueryIdentifier */
         01, 00, /* Flags */
-        00, 01, /* QuestionCount */
+        00, 00, /* QuestionCount */
         00, 00, /* AnswerCount */
         00, 00, /* NameServerCount */
         00, 00, /* AdditionalCount */
@@ -295,15 +295,19 @@ int HostsUtils_Query(SOCKET Socket, /* Both for sending and receiving */
         return -328;
     }
 
-    IHeader_Fill(Header,
-                 TRUE,
-                 RequestEntity,
-                 g.Length(&g),
-                 (struct sockaddr *)&(BackAddress->Addr),
-                 Socket,
-                 BackAddress->family,
-                 "CNameRedirect"
-                 );
+    if( IHeader_Fill(Header,
+                     TRUE,
+                     RequestEntity,
+                     g.Length(&g),
+                     (struct sockaddr *)&(BackAddress->Addr),
+                     Socket,
+                     BackAddress->family,
+                     "CNameRedirect"
+                     )
+        != 0 )
+    {
+        return -309;
+    }
 
     return MMgr_Send(Header, sizeof(RequestBuffer));
 }

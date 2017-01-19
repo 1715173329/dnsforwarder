@@ -186,13 +186,15 @@ int GetFromInternet_SingleFile(const char	*URL,
 }
 
 #ifdef DOWNLOAD_LIBCURL
-static size_t WriteFileCallback(void *Contents, size_t Size, size_t nmemb, void *FileDes)
+static size_t WriteFileCallback(void *Contents,
+                                size_t Size,
+                                size_t nmemb,
+                                void *FileDes
+                                )
 {
-
 	FILE *fp = (FILE *)FileDes;
 	fwrite(Contents, Size, nmemb, fp);
 	return Size * nmemb;
-	return 0;
 }
 #endif /* DOWNLOAD_LIBCURL */
 
@@ -217,7 +219,7 @@ int GetFromInternet_Base(const char *URL, const char *File)
 		return ret;
 	}
 
-	webopenurl = InternetOpenUrl(webopen, URL, NULL, 0, INTERNET_FLAG_RELOAD, (DWORD_PTR)NULL);
+	webopenurl = InternetOpenUrl(webopen, URL, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 	if( webopenurl == NULL ){
 		ret = -1 * GetLastError();
 		InternetCloseHandle(webopenurl);
@@ -283,7 +285,6 @@ int GetFromInternet_Base(const char *URL, const char *File)
 		return -2;
 	}
 
-
 	curl_easy_setopt(curl, CURLOPT_URL, URL);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1l);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteFileCallback);
@@ -313,6 +314,7 @@ int GetFromInternet_Base(const char *URL, const char *File)
 #		endif /* DOWNLOAD_WGET */
 #	endif /* WIN32 */
 #else /* NODOWNLOAD */
+    WARNING("No downloader implemented.\n");
 	return -1;
 #endif /* NODOWNLOAD */
 }

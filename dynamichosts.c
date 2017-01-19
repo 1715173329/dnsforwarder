@@ -45,11 +45,7 @@ static int DynamicHosts_Load(void)
 		Status = ReadLine(fp, Buffer, sizeof(Buffer));
 		if( Status == READ_FAILED_OR_END )
         {
-            ERRORMSG("Loading hosts failed.\n", Buffer);
-            fclose(fp);
-            TempContainer->Free(TempContainer);
-            SafeFree(TempContainer);
-            return -66;
+            break;
         }
 
 		if( Status == READ_TRUNCATED )
@@ -121,7 +117,7 @@ static void GetHostsFromInternet_Thread(void *Unused1, void *Unused2)
 
         if( Script != NULL )
         {
-            INFO("Running script ...\n");
+            INFO("Running hosts script ...\n");
             system(Script);
         }
 

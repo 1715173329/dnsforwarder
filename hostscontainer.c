@@ -95,36 +95,53 @@ PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
 {
     int Number = 1;
 
-	const TableNode *IP;
-	const TableNode *ret;
+	const TableNode **Matched = NULL;
+	const TableNode *IP = NULL;
 
-	if( !StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&IP) )
+	if( !StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&Matched) )
 	{
         return NULL;
 	}
 
-	ret = IP;
-
-    while( IP != NULL )
+	if( Matched != NULL )
     {
-        if( Type == HOSTS_TYPE_UNKNOWN || IP->Type == Type )
+        IP = *Matched;
+    }
+
+    if( Func != NULL )
+    {
+        const TableNode *ret;
+
+        while( IP != NULL )
         {
-            if( Func != NULL )
+            if( Type == HOSTS_TYPE_UNKNOWN || IP->Type == Type )
             {
+                /* Found */
                 if( Func(Number++, IP->Type, IP->Data, Arg) != 0 )
                 {
                     return NULL;
                 }
 
-            } else {
-                break;
+                ret = IP;
             }
+
+            IP = IP->Next;
         }
 
-        IP = IP->Next;
-    }
+        return ret;
+    } else {
+        while( IP != NULL )
+        {
+            if( Type == HOSTS_TYPE_UNKNOWN || IP->Type == Type )
+            {
+                return IP;
+            }
 
-    return ret;
+            IP = IP->Next;
+        }
+
+        return NULL;
+    }
 }
 
 PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
@@ -174,7 +191,7 @@ PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
 
         if( StringChunk_Add(&(Container -> Mappings),
                             Name,
-                            s,
+                            &s,
                             sizeof(TableNode *)
                             )
             != 0 )

@@ -97,8 +97,8 @@ HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength)
     if( ret == HOSTSUTILS_TRY_RECURSED )
     {
         if( sendto(IncomeSocket,
-                   (const char *)Header, /* Only send header */
-                   sizeof(IHeader), /* Only send header */
+                   (const char *)Header, /* Only send header and identifier */
+                   sizeof(IHeader) + sizeof(uint16_t), /* Only send header and identifier */
                    MSG_NOSIGNAL,
                    (const struct sockaddr *)&(IncomeAddress.Addr),
                    GetAddressLength(IncomeAddress.family)
@@ -214,7 +214,7 @@ static int Hosts_SocketLoop(void *Unused)
 
             if( Hosts_GetCName(Header->Domain, RecursedDomain) != 0 )
             {
-                /** TODO: Show fatal error */
+                ERRORMSG("Fatal error 221.\n");
                 continue;
             }
 
@@ -223,7 +223,7 @@ static int Hosts_SocketLoop(void *Unused)
             if( Context.Add(&Context, Header, RecursedDomain, NewIdentifier)
                 != 0 )
             {
-                /** TODO: Show fatal error */
+                ERRORMSG("Fatal error 230.\n");
                 continue;
             }
 
@@ -250,8 +250,8 @@ static int Hosts_SocketLoop(void *Unused)
             TimeLimit = ShortTime;
 
             State = recvfrom(OutcomeSocket,
-                             RequestEntity,
-                             LEFT_LENGTH_SL,
+                             RequestBuffer, /* Receiving a header */
+                             sizeof(RequestBuffer),
                              0,
                              NULL,
                              NULL
@@ -262,19 +262,9 @@ static int Hosts_SocketLoop(void *Unused)
                 continue;
             }
 
-            IHeader_Fill(Header,
-                         FALSE,
-                         RequestEntity,
-                         State,
-                         NULL,
-                         INVALID_SOCKET,
-                         AF_UNSPEC,
-                         ""
-                         );
-
             if( Context.FindAndRemove(&Context, Header, NewHeader) != 0 )
             {
-                /** TODO: Show an error */
+                ERRORMSG("Fatal error 267.\n");
                 continue;
             }
 
@@ -286,13 +276,13 @@ static int Hosts_SocketLoop(void *Unused)
                                                    )
                 != 0 )
             {
-                /** TODO: Show fatal error */
+                ERRORMSG("Fatal error 279.\n");
                 continue;
             }
 
             if( IHeader_SendBack(NewHeader) != 0 )
             {
-                /** TODO: Show an error */
+                ERRORMSG("Fatal error 285.\n");
                 continue;
             }
 
