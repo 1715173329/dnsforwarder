@@ -9,7 +9,7 @@
 
 #define DEBUGSECTION	if( PRINTON && Log_DebugOn() )
 
-int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug);
+int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL Debug);
 
 BOOL Log_Inited(void);
 

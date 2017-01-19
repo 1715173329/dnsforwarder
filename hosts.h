@@ -12,4 +12,6 @@ BOOL Hosts_TypeExisting(const char *Domain, HostsRecordType Type);
 
 HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength);
 
+int Hosts_Get(IHeader *Header, int BufferLength);
+
 #endif // HOSTS_H_INCLUDED

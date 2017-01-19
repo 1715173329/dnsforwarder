@@ -8,7 +8,7 @@
 #define MAX_PATH_BUFFER     256
 
 static BOOL	PrintConsole = FALSE;
-static BOOL	DebugPrint = FALSE;
+static BOOL	DebugOn = FALSE;
 
 static FILE	*LogFile = NULL;
 
@@ -18,10 +18,10 @@ static char	FilePath[MAX_PATH_BUFFER];
 
 static EFFECTIVE_LOCK   PrintLock;
 
-int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug)
+int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL Debug)
 {
     PrintConsole = PrintScreen;
-    DebugPrint = PrintDebug;
+    DebugOn = Debug;
 
     EFFECTIVE_LOCK_INIT(PrintLock);
 
@@ -64,19 +64,17 @@ int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL PrintDebug)
         return -60;
     }
 
-    INFO("New session.\n");
-
 	return 0;
 }
 
 BOOL Log_Inited(void)
 {
-	return (!(LogFile == NULL)) || PrintConsole;
+	return LogFile != NULL || PrintConsole;
 }
 
 BOOL Log_DebugOn(void)
 {
-    return DebugPrint;
+    return DebugOn;
 }
 
 static void CheckLength(void)

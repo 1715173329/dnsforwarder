@@ -46,18 +46,13 @@ struct _Header{
 
 static void DNSCacheTTLCountdown_Task(void *Unused, void *Unused2)
 {
-	register	int			loop;
-	register	BOOL		GotMutex	=	FALSE;
-	register	Cht_Node	*Node	=	NULL;
+	BOOL        GotMutex = FALSE;
 
-	register	Array		*ChunkList	=	&(CacheInfo -> NodeChunk);
+	Array       *ChunkList = &(CacheInfo -> NodeChunk);
+	int         loop = ChunkList->Used - 1;
+	Cht_Node    *Node = (Cht_Node *)Array_GetBySubscript(ChunkList, loop);
 
-	register	time_t		CurrentTime;
-
-    CurrentTime = time(NULL);
-    loop = ChunkList -> Used - 1;
-
-    Node = (Cht_Node *)Array_GetBySubscript(ChunkList, loop);
+    time_t      CurrentTime = time(NULL);
 
     while( Node != NULL )
     {
@@ -91,7 +86,7 @@ static void DNSCacheTTLCountdown_Task(void *Unused, void *Unused2)
         {
             (*CacheEnd) = sizeof(struct _Header);
         } else {
-            Node = (Cht_Node *)(Cht_Node *)Array_GetBySubscript(ChunkList, ChunkList -> Used - 1);
+            Node = (Cht_Node *)Array_GetBySubscript(ChunkList, ChunkList -> Used - 1);
             (*CacheEnd) = Node -> Offset + Node -> Length;
         }
 
@@ -448,7 +443,7 @@ static int DNSCache_AddAItemToCache(DnsSimpleParserIterator *i,
         return -3;
     }
 
-	/* End of name \1 type \1 class boundle */
+	/* End of name\1type\1class triple */
 	*BufferItr++ = '\0';
     if( BufferItr >= Buffer + sizeof(Buffer) )
     {
@@ -854,28 +849,8 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength)
         return -861;
     }
 
-    /** TODO: Show message, Domain statistic*/
+    ShowNormalMessage(h, 'C');
+    /** Domain statistic*/
 
     return 0;
-}
-
-void DNSCacheClose(ConfigFileInfo *ConfigInfo)
-{
-	if(Inited == TRUE)
-	{
-		Inited = FALSE;
-		RWLock_WrLock(CacheLock);
-
-		if( ConfigGetBoolean(ConfigInfo, "MemoryCache") == FALSE )
-		{
-			UNMAP_FILE(MapStart, CacheSize);
-			DESTROY_MAPPING(CacheMappingHandle);
-			CLOSE_FILE(CacheFileHandle);
-		} else {
-			SafeFree(MapStart);
-		}
-
-		RWLock_UnWLock(CacheLock);
-		RWLock_Destroy(CacheLock);
-	}
 }

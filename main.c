@@ -29,7 +29,7 @@ static char		*ConfigFile;
 static BOOL		DeamonMode;
 
 static BOOL     ShowMessages = TRUE;
-static BOOL     ShowDebug = FALSE;
+static BOOL     DebugOn = FALSE;
 
 static ConfigFileInfo	ConfigInfo;
 
@@ -237,52 +237,43 @@ static int DaemonInit(void)
 {
 #ifdef WIN32
 	char		*CmdLine = GetCommandLine();
-	char		ModuleName[320];
-	char		*itr;
 	char		*NewArguments;
-
-	int			ModuleNameLength;
 
 	BOOL		StartUpStatus;
 	STARTUPINFO	StartUpInfo;
 	PROCESS_INFORMATION ProcessInfo;
 
-	ModuleNameLength = GetModuleFileName(NULL, ModuleName, sizeof(ModuleName) - 1);
+	CmdLine = GoToNextNonSpace(CmdLine);
 
-	if( ModuleNameLength == 0 )
-	{
-		return 1;
-	} else {
-		ModuleName[sizeof(ModuleName) - 1] = '\0';
-	}
+	if( CmdLine[0] != '\"' && CmdLine[1] != ':' )
+    {
+        /* CmdLine doesn't contain module name portion */
 
-	for(; isspace(*CmdLine); ++CmdLine);
-	if(*CmdLine == '"')
-	{
-		itr	=	strchr(++CmdLine, '"');
-	} else {
-		itr	=	strchr(CmdLine, ' ');
-	}
+        char ModuleName[320];
 
-	if( itr != NULL )
-		CmdLine = itr + 1;
-	else
-		return 1;
+        if( GetModuleFileName(NULL, ModuleName, sizeof(ModuleName) - 1) == 0 )
+        {
+            return -255;
+        }
 
-	for(; isspace(*CmdLine); ++CmdLine);
+        ModuleName[sizeof(ModuleName) - 1] = '\0';
 
-	NewArguments = SafeMalloc(strlen(ModuleName) + strlen(CmdLine) + 32);
-	strcpy(NewArguments, "\"");
-	strcat(NewArguments, ModuleName);
-	strcat(NewArguments, "\" ");
-	strcat(NewArguments, CmdLine);
+        NewArguments = SafeMalloc(strlen(ModuleName) + strlen(CmdLine) + 32);
+        if( NewArguments == NULL )
+        {
+            return -283;
+        }
 
-	itr = strstr(NewArguments + strlen(ModuleName) + 2, "-d");
-	while( itr != NULL )
-	{
-		*(itr + 1) = 'q';
-		itr = strstr(itr + 2, "-d");
-	}
+        sprintf(NewArguments, "\"%s\" %s", ModuleName, CmdLine);
+    } else {
+        NewArguments = SafeMalloc(strlen(CmdLine) + 32);
+        if( NewArguments == NULL )
+        {
+            return -292;
+        }
+
+        strcpy(NewArguments, CmdLine);
+    }
 
 	StartUpInfo.cb = sizeof(StartUpInfo);
 	StartUpInfo.lpReserved = NULL;
@@ -293,12 +284,23 @@ static int DaemonInit(void)
 	StartUpInfo.cbReserved2 = 0;
 	StartUpInfo.lpReserved2 = NULL;
 
-	StartUpStatus = CreateProcess(NULL, NewArguments, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &StartUpInfo, &ProcessInfo);
+	StartUpStatus = CreateProcess(NULL,
+                                  NewArguments,
+                                  NULL,
+                                  NULL,
+                                  FALSE,
+                                  CREATE_NO_WINDOW,
+                                  NULL,
+                                  NULL,
+                                  &StartUpInfo,
+                                  &ProcessInfo
+                                  );
 
 	SafeFree(NewArguments);
+
 	if( StartUpStatus != FALSE )
 	{
-		printf("deamon process pid : %d\n", (int)(ProcessInfo.dwProcessId));
+		printf("deamon process pid : %lu\n", ProcessInfo.dwProcessId);
 		exit(0);
 	} else {
 		return 1;
@@ -314,7 +316,7 @@ static int DaemonInit(void)
     {
         if(pid != 0)
         {
-            printf("deamon process pid : %d\n", pid);
+            printf("deamon process pid : %lu\n", (unsigned long)pid);
             exit(0);
         }
         setsid();
@@ -332,10 +334,10 @@ static int GetDefaultConfigureFile(char *out, int OutLength)
 #ifdef WIN32
 	GetModulePath(out, OutLength);
 	strcat(out, "\\dnsforwarder.config");
-#else
+#else /* WIN32 */
 	GetConfigDirectory(out);
 	strcat(out, "/config");
-#endif
+#endif /* WIN32 */
 	return 0;
 }
 
@@ -359,7 +361,7 @@ static void PrepareEnvironment(void)
 
 	printf("Please put configure file into `%s' and rename it to `config'.\n", ConfigDirectory);
 }
-#endif
+#endif /* WIN32 */
 
 static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 {
@@ -381,7 +383,7 @@ static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 #ifndef WIN32
 				  "\n"
 				  "  -p         Prepare needed environment.\n"
-#endif
+#endif /* WIN32 */
 				  "\n"
 				  "  -h         Show this help.\n"
 				  "\n"
@@ -400,7 +402,7 @@ static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 
         if(strcmp("-D", *argv) == 0)
         {
-			ShowDebug = TRUE;
+			DebugOn = TRUE;
             ++argv;
             continue;
         }
@@ -428,7 +430,7 @@ static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 			++argv;
             continue;
 		}
-#endif
+#endif /* WIN32 */
 
 		if( strcmp("-CONTEXT", *argv) == 0 )
 		{
@@ -448,20 +450,27 @@ int main(int argc, char *argv[])
 {
 #ifdef WIN32
     WSADATA wdata;
-#endif
+    HWND ThisWindow = GetConsoleWindow();
+    BOOL DeamonInited = ThisWindow == NULL ?
+                        TRUE :
+                        !IsWindowVisible(ThisWindow);
+#else /* WIN32 */
+    BOOL DeamonInited = FALSE;
+#endif /* WIN32 */
+
 	const char *Contexts = NULL;
 
 #ifndef NODOWNLOAD
-#ifdef WIN32
+    #ifdef WIN32
     if( WSAStartup(MAKEWORD(2, 2), &wdata) != 0 )
     {
         return -244;
     }
-#else
-#ifdef DOWNLOAD_LIBCURL
+    #else
+        #ifdef DOWNLOAD_LIBCURL
 	curl_global_init(CURL_GLOBAL_ALL);
-#endif /* DOWNLOAD_LIBCURL */
-#endif /* WIN32 */
+        #endif /* DOWNLOAD_LIBCURL */
+    #endif /* WIN32 */
 #endif /* NODOWNLOAD */
 
 #ifdef WIN32
@@ -485,34 +494,52 @@ int main(int argc, char *argv[])
 
 #ifndef WIN32
     printf("Please run `dnsforwarder -p' if something goes wrong.\n\n")
-#endif
+#endif /* WIN32 */
 
     printf("Configure File : %s\n\n", ConfigFile);
+
+    if( DeamonInited )
+    {
+        DeamonMode = FALSE;
+    }
 
 	if( DeamonMode )
 	{
 		if( DaemonInit() == 0 )
 		{
-			ShowMessages = FALSE;
-			ShowDebug = FALSE;
+			DeamonInited = TRUE;
 		} else {
-			printf("Daemon init failed, continuing on non-daemon mode.\n");
+			printf("Daemon init failed, continuing on non-daemon mode. Restart recommended.\n");
 		}
 	}
-
-	if( TimedTask_Init() != 0 )
-    {
-        return -505;
-    }
 
 	if( EnvironmentInit(ConfigFile, Contexts) != 0 )
     {
         return -498;
     }
 
-	if( Log_Init(&ConfigInfo, ShowMessages, ShowDebug) != 0 )
+    putchar('\n');
+
+	if( DeamonInited )
+    {
+        ShowMessages = FALSE;
+    }
+
+	if( Log_Init(&ConfigInfo, ShowMessages, DebugOn) != 0 )
     {
         return -291;
+    }
+
+    INFO("New session.\n");
+
+    if( DeamonInited )
+    {
+        INFO("Running on daemon mode.\n");
+    }
+
+	if( TimedTask_Init() != 0 )
+    {
+        return -505;
     }
 
     if( MMgr_Init(&ConfigInfo) != 0 )
@@ -529,6 +556,6 @@ int main(int argc, char *argv[])
 
 #ifdef WIN32
     WSACleanup();
-#endif
+#endif /* WIN32 */
     return 0;
 }

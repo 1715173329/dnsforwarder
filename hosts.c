@@ -112,6 +112,35 @@ HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength)
     return ret;
 }
 
+int Hosts_Get(IHeader *Header, int BufferLength)
+{
+    switch( Hosts_Try(Header, BufferLength) )
+    {
+    case HOSTSUTILS_TRY_BLOCKED:
+        IHeader_SendBackRefusedMessage(Header);
+        ShowRefusingMessage(Header, "Disabled because of existing IPv4 host");
+        return 0;
+        break;
+
+    case HOSTSUTILS_TRY_NONE:
+        return -126;
+        break;
+
+    case HOSTSUTILS_TRY_RECURSED:
+        /** TODO: Show hosts message */
+        return 0;
+
+    case HOSTSUTILS_TRY_OK:
+        ShowNormalMessage(Header, 'H');
+        return 0;
+        break;
+
+    default:
+        return -139;
+        break;
+    }
+}
+
 static int Hosts_SocketLoop(void *Unused)
 {
 	static HostsContext	Context;

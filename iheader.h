@@ -45,4 +45,6 @@ int IHeader_Fill(IHeader *h,
 
 int IHeader_SendBack(IHeader *h /* Entity followed */);
 
+int IHeader_SendBackRefusedMessage(IHeader *h);
+
 #endif // IHEADER_H_INCLUDED

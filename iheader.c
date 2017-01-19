@@ -152,3 +152,15 @@ int IHeader_SendBack(IHeader *h /* Entity followed */)
 
     return 0;
 }
+
+int IHeader_SendBackRefusedMessage(IHeader *h)
+{
+    DNSHeader *RequestContent = IHEADER_TAIL(h);
+
+    RequestContent->Flags.Direction = 1;
+    RequestContent->Flags.RecursionAvailable = 1;
+    RequestContent->Flags.ResponseCode = 0;
+
+    return IHeader_SendBack(h);
+
+}

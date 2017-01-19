@@ -210,36 +210,17 @@ int MMgr_Send(IHeader *h, int BufferLength)
     /* Determine whether to discard the query */
     if( Filter_Out(h) )
     {
-        /** TODO: Send back filtered dns message */
-        ShowRefusingMessage(h, "Disabled");
         return 0;
     }
 
     /* Hosts & Cache */
-    switch( Hosts_Try(h, BufferLength) )
+    if( Hosts_Get(h, BufferLength) == 0 )
     {
-    case HOSTSUTILS_TRY_BLOCKED:
-        /** TODO: Send back filtered dns message, Show filtered message */
-        ShowRefusingMessage(h, "Disabled because of existing IPv4 host");
         return 0;
-        break;
-
-    case HOSTSUTILS_TRY_NONE:
-        break;
-
-    case HOSTSUTILS_TRY_RECURSED:
-        /** TODO: Show hosts message */
-        return 0;
-
-    case HOSTSUTILS_TRY_OK:
-        ShowNormalMessage(h, 'H');
-        return 0;
-        break;
     }
 
     if( DNSCache_FetchFromCache(h, BufferLength) == 0 )
     {
-        ShowNormalMessage(h, 'C');
         return 0;
     }
 

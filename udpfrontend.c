@@ -22,7 +22,7 @@ static void UdpFrontend_Work(void *Unused)
     ReceiveBuffer = SafeMalloc(BUF_LENGTH);
     if( ReceiveBuffer == NULL )
     {
-        /** TODO: Show fatal error */
+        ERRORMSG("No enough memory, 26.\n");
         return;
     }
 
@@ -53,7 +53,8 @@ static void UdpFrontend_Work(void *Unused)
                                );
         if( sock == INVALID_SOCKET )
         {
-            continue;
+            ERRORMSG("Fatal error 57.\n");
+            return;
         }
 
         AddrLen = sizeof(Address_Type);
@@ -66,12 +67,6 @@ static void UdpFrontend_Work(void *Unused)
                              &AddrLen
                              );
 
-        if( RecvState < 0 )
-        {
-            /** TODO: Error handling */
-            continue;
-        }
-
         if( *f == AF_INET )
         {
             IPv4AddressToAsc(&(((struct sockaddr_in *)IncomingAddress)->sin_addr),
@@ -81,6 +76,14 @@ static void UdpFrontend_Work(void *Unused)
             IPv6AddressToAsc(&(((struct sockaddr_in6 *)IncomingAddress)->sin6_addr),
                              Agent
                              );
+        }
+
+        if( RecvState < 0 )
+        {
+            INFO("An error occured while receiving from UDP client %s, not a big deal.\n",
+                 Agent
+                 );
+            continue;
         }
 
         IHeader_Fill(Header,

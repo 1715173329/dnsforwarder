@@ -13,6 +13,4 @@ int DNSCache_AddItemsToCache(IHeader *Header);
 
 int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength);
 
-void DNSCacheClose(ConfigFileInfo *ConfigInfo);
-
 #endif /* _DNS_CACHE_ */
