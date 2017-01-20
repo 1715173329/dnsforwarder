@@ -22,7 +22,7 @@
 #include "request_response.h"
 #include "debug.h"
 
-#define VERSION__ "5.0.42"
+#define VERSION__ "5.0.43"
 
 #define PRINTM(...)		if(ShowMessages == TRUE) printf(__VA_ARGS__);
 

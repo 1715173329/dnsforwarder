@@ -85,7 +85,7 @@ static int IPMisc_Process(IPMisc *m,
                              &Data)
                == FALSE )
             {
-                return IP_MISC_ACTION_NOTHING;
+                continue;
             }
             DataLength = 4;
             break;
@@ -93,12 +93,13 @@ static int IPMisc_Process(IPMisc *m,
         case DNS_TYPE_AAAA:
             if( IpChunk_Find6(&(m->c), RowDataPos, (int *)&ActionType, &Data) == FALSE )
             {
-                return IP_MISC_ACTION_NOTHING;
+                continue;
             }
             DataLength = 16;
             break;
 
         default:
+            continue;
             break;
         }
 
@@ -115,8 +116,6 @@ static int IPMisc_Process(IPMisc *m,
         default:
             break;
         }
-
-        continue;
     }
 
     return IP_MISC_ACTION_NOTHING;
