@@ -2,7 +2,6 @@
 #include <string.h>
 #include <time.h>
 #include "dnscache.h"
-#include "dnsparser.h"
 #include "dnsgenerator.h"
 #include "utils.h"
 #include "rwlock.h"
@@ -10,6 +9,7 @@
 #include "cachettlcrtl.h"
 #include "logs.h"
 #include "timedtask.h"
+#include "domainstatistic.h"
 
 #define	CACHE_VERSION   22
 
@@ -850,7 +850,7 @@ int DNSCache_FetchFromCache(IHeader *h /* Entity followed */, int BufferLength)
     }
 
     ShowNormalMessage(h, 'C');
-    /** Domain statistic*/
+    DomainStatistic_Add(h, STATISTIC_TYPE_CACHE);
 
     return 0;
 }

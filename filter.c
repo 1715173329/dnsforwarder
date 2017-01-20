@@ -1,10 +1,12 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "filter.h"
 #include "stringchunk.h"
-#include "stringlist.h"
 #include "bst.h"
 #include "common.h"
 #include "logs.h"
+#include "readline.h"
+#include "domainstatistic.h"
 
 static Bst			*DisabledTypes = NULL;
 
@@ -15,37 +17,13 @@ static int TypeCompare(const int *_1, const int *_2)
 	return *_1 - *_2;
 }
 
-static int LoadDomainsFromList(StringChunk *List, StringList *Domains)
-{
-	const char *Str;
-
-	StringListIterator  sli;
-
-	if( List == NULL || Domains == NULL )
-	{
-		return 0;
-	}
-
-	if( StringListIterator_Init(&sli, Domains) != 0 )
-    {
-        return -1;
-    }
-
-	Str = sli.Next(&sli);
-	while( Str != NULL )
-	{
-		if( StringChunk_Add_Domain(List, Str, NULL, 0) != 0 )
-		{
-			return -2;
-		}
-		Str = sli.Next(&sli);
-	}
-
-	return 0;
-}
-
 static int InitChunk(StringChunk **List)
 {
+    if( *List != NULL )
+    {
+        return 0;
+    }
+
 	*List = malloc(sizeof(StringChunk));
 	if( *List == NULL )
 	{
@@ -76,10 +54,35 @@ static int InitBst(Bst **t, int (*CompareFunc)(const void *, const void *))
 	return 0;
 }
 
+static int LoadDomainsFromList(StringChunk *List, StringList *Domains)
+{
+	const char *Str;
+
+	StringListIterator  sli;
+
+	if( List == NULL || Domains == NULL )
+	{
+		return 0;
+	}
+
+	if( StringListIterator_Init(&sli, Domains) != 0 )
+    {
+        return -1;
+    }
+
+	Str = sli.Next(&sli);
+	while( Str != NULL )
+	{
+		StringChunk_Add_Domain(List, Str, NULL, 0);
+		Str = sli.Next(&sli);
+	}
+
+	return 0;
+}
+
 static int FilterDomain_Init(ConfigFileInfo *ConfigInfo)
 {
-    StringList *dd =
-        ConfigGetStringList(ConfigInfo, "DisabledDomain");
+    StringList *dd = ConfigGetStringList(ConfigInfo, "DisabledDomain");
 
     if( dd == NULL )
     {
@@ -93,6 +96,48 @@ static int FilterDomain_Init(ConfigFileInfo *ConfigInfo)
 
     LoadDomainsFromList(DisabledDomain, dd);
     dd->Free(dd);
+
+    return 0;
+}
+
+static int FilterDomain_InitFromFile(ConfigFileInfo *ConfigInfo)
+{
+    const char *FilePath = ConfigGetRawString(ConfigInfo, "DisabledList");
+    FILE *fp;
+    ReadLineStatus	Status;
+    char	Domain[512];
+
+    if( FilePath == NULL )
+    {
+        return 0;
+    }
+
+    fp = fopen(FilePath, "r");
+    if( fp == NULL )
+    {
+        return -118;
+    }
+
+    if( InitChunk(&DisabledDomain) != 0 )
+	{
+	    fclose(fp);
+        return -117;
+	}
+
+    Status = ReadLine(fp, Domain, sizeof(Domain));
+	while( Status != READ_FAILED_OR_END )
+	{
+		if( Status == READ_DONE )
+		{
+			StringChunk_Add_Domain(DisabledDomain, Domain, NULL, 0);
+		} else {
+			ReadLine_GoToNextLine(fp);
+		}
+
+		Status = ReadLine(fp, Domain, sizeof(Domain));
+	}
+
+    fclose(fp);
 
     return 0;
 }
@@ -154,6 +199,13 @@ int Filter_Init(ConfigFileInfo *ConfigInfo)
         INFO("Disabled types initialized.\n");
     }
 
+    if( FilterDomain_InitFromFile(ConfigInfo) != 0 )
+    {
+        INFO("Disabled list was not initialized.\n");
+    } else {
+        INFO("Disabled list initialized.\n");
+    }
+
 	return 0;
 }
 
@@ -180,6 +232,7 @@ BOOL Filter_Out(IHeader *h)
     {
         IHeader_SendBackRefusedMessage(h);
         ShowRefusingMessage(h, "Disabled type or domain");
+        DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
 
         return TRUE;
     } else {

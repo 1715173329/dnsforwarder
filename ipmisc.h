@@ -3,6 +3,8 @@
 
 #include "ipchunk.h"
 #include "dnsparser.h"
+#include "readconfig.h"
+#include "iheader.h"
 
 typedef enum _MiscType {
     IP_MISC_TYPE_UNKNOWN = 0,
@@ -31,5 +33,11 @@ struct _IPMisc{
 };
 
 int IPMisc_Init(IPMisc *m);
+
+/** Singleton */
+
+int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo);
+
+int IPMiscSingleton_Process(IHeader *h /* Entity followed */);
 
 #endif // IPMISC_H_INCLUDED

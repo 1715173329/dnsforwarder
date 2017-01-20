@@ -85,7 +85,7 @@ static int IPMisc_Process(IPMisc *m,
                              &Data)
                == FALSE )
             {
-                return IP_MISC_ACTION_NOTHING;
+                continue;
             }
             DataLength = 4;
             break;
@@ -93,12 +93,13 @@ static int IPMisc_Process(IPMisc *m,
         case DNS_TYPE_AAAA:
             if( IpChunk_Find6(&(m->c), RowDataPos, (int *)&ActionType, &Data) == FALSE )
             {
-                return IP_MISC_ACTION_NOTHING;
+                continue;
             }
             DataLength = 16;
             break;
 
         default:
+            continue;
             break;
         }
 
@@ -116,7 +117,6 @@ static int IPMisc_Process(IPMisc *m,
             break;
         }
 
-        continue;
     }
 
     return IP_MISC_ACTION_NOTHING;
@@ -134,4 +134,83 @@ int IPMisc_Init(IPMisc *m)
     m->Process = IPMisc_Process;
 
     return 0;
+}
+
+/** Singleton */
+
+static IPMisc   IpMiscSingleton;
+static BOOL     SingletonInited = FALSE;
+
+int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo)
+{
+    StringList *BlockIP = ConfigGetStringList(ConfigInfo, "BlockIP");
+    StringList *IPSubstituting =
+                              ConfigGetStringList(ConfigInfo, "IPSubstituting");
+
+    StringListIterator i;
+
+    if( BlockIP == NULL && IPSubstituting == NULL )
+    {
+        return 0;
+    }
+
+    if( IPMisc_Init(&IpMiscSingleton) != 0 )
+    {
+        return -147;
+    }
+
+    if( BlockIP != NULL )
+    {
+        const char *Itr;
+
+        if( StringListIterator_Init(&i, BlockIP) != 0 )
+        {
+            return -165;
+        }
+
+        while( (Itr = i.Next(&i)) != NULL )
+        {
+            IpMiscSingleton.AddBlockFromString(&IpMiscSingleton, Itr);
+        }
+
+        BlockIP->Free(BlockIP);
+    }
+
+    if( IPSubstituting != NULL )
+    {
+        const char *Itr, *Itr2;
+
+        if( StringListIterator_Init(&i, IPSubstituting) != 0 )
+        {
+            return -176;
+        }
+
+        Itr = i.Next(&i);
+        Itr2 = i.Next(&i);
+        while( Itr != NULL && Itr2 != NULL )
+        {
+            IpMiscSingleton.AddSubstituteFromString(&IpMiscSingleton, Itr, Itr2);
+
+            Itr = i.Next(&i);
+            Itr2 = i.Next(&i);
+        }
+
+        IPSubstituting->Free(IPSubstituting);
+    }
+
+    SingletonInited = TRUE;
+    return 0;
+}
+
+int IPMiscSingleton_Process(IHeader *h /* Entity followed */)
+{
+    if( !SingletonInited )
+    {
+        return IP_MISC_ACTION_NOTHING;
+    }
+
+    return IpMiscSingleton.Process(&IpMiscSingleton,
+                                   IHEADER_TAIL(h),
+                                   h->EntityLength
+                                   );
 }

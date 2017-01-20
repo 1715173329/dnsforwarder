@@ -5,6 +5,8 @@
 #include "iheader.h"
 #include "bst.h"
 
+typedef void (*SwepCallback)(const IHeader *h, int Number, void *Arg);
+
 typedef struct _ModuleContext ModuleContext;
 
 struct _ModuleContext{
@@ -20,7 +22,7 @@ struct _ModuleContext{
                          IHeader *Output
                          );
 
-    void (*Swep)(ModuleContext *c);
+    void (*Swep)(ModuleContext *c, SwepCallback cb, void *Arg);
 };
 
 int ModuleContext_Init(ModuleContext *c);

@@ -25,7 +25,7 @@ void Log_Print(const char *Type, const char *format, ...);
 
 void ShowRefusingMessage(IHeader *h, const char *Message);
 
-void ShowTimeOutMessage(IHeader *h, char Protocol);
+void ShowTimeOutMessage(const IHeader *h, char Protocol);
 
 void ShowErrorMessage(IHeader *h, char Protocol);
 

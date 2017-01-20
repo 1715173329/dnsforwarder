@@ -110,7 +110,7 @@ PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
 
     if( Func != NULL )
     {
-        const TableNode *ret;
+        const TableNode *ret = NULL;
 
         while( IP != NULL )
         {

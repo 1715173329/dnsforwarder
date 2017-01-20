@@ -5,6 +5,7 @@
 #include "hosts.h"
 #include "dnscache.h"
 #include "logs.h"
+#include "ipmisc.h"
 
 typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
 
@@ -170,6 +171,11 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
         return -164;
     }
 
+    if( IpMiscSingleton_Init(ConfigInfo) != 0 )
+    {
+        return -176;
+    }
+
     /* Ordinary modeles */
     if( StringChunk_Init(&Distributor, NULL) != 0 )
     {
@@ -190,11 +196,6 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
        != 0 )
     {
         return -98;
-    }
-
-    if( Filter_Init(ConfigInfo) != 0 )
-    {
-        return -157;
     }
 
     ret |= (Udp_Init(ConfigInfo) == 0);

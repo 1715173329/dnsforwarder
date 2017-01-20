@@ -14,7 +14,6 @@
 	#endif /* WIN32 */
 #endif /* NODOWNLOAD */
 
-#include "dnsrelated.h"
 #include "common.h"
 #include "utils.h"
 #include "readconfig.h"
@@ -22,6 +21,7 @@
 #include "mmgr.h"
 #include "udpfrontend.h"
 #include "timedtask.h"
+#include "domainstatistic.h"
 
 #define VERSION__ "6.0.0"
 
@@ -56,37 +56,11 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = TmpStr;
     ConfigAddOption(&ConfigInfo, "LogFileFolder", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
 
-    /*
-    TmpTypeDescriptor.str = "127.0.0.1";
-    ConfigAddOption(&ConfigInfo, "LocalInterface", STRATEGY_REPLACE, TYPE_STRING, TmpTypeDescriptor, "Local working interface");
-    */
-
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "Local working interfaces");
     ConfigSetStringDelimiters(&ConfigInfo, "UDPLocal", ",");
     TmpTypeDescriptor.str = "127.0.0.1";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
-
-    TmpTypeDescriptor.INT32 = 53;
-    ConfigAddOption(&ConfigInfo, "LocalPort", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, "Local working port");
-
-    TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "OpenLocalTCP", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "Local TCP is opened");
-
-
-    TmpTypeDescriptor.str = "TCP";
-    ConfigAddOption(&ConfigInfo, "PrimaryServer", STRATEGY_REPLACE, TYPE_STRING, TmpTypeDescriptor, "Primary server");
-
-    TmpTypeDescriptor.str = "8.8.8.8";
-    ConfigAddOption(&ConfigInfo, "TCPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Server");
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "TCPProxy", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-    /*
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "UDPServer", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Server");
-    */
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Groups");
@@ -94,30 +68,12 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
 
-    TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "ParallelQuery", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "UDP Parallel Query");
-
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "ExcludedDomain", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "AlwaysTCP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "AlwaysUDP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "ExcludedList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "UDPBlock_IP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "DedicatedServer", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
+    ConfigSetStringDelimiters(&ConfigInfo, "IPSubstituting", "\t ,");
 
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "DomainStatistic", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
@@ -194,8 +150,6 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
 	TmpTypeDescriptor.boolean = FALSE;
 	ConfigAddOption(&ConfigInfo, "OverwriteCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
-
-
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "DisabledType", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
@@ -205,12 +159,6 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "DisabledList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor, NULL);
 
-    TmpTypeDescriptor.INT32 = 0;
-    ConfigAddOption(&ConfigInfo, "RefusingResponseCode", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
-
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "CheckIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "GoodIPList", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
 
@@ -219,11 +167,7 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
 
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) != 0 )
     {
-        if( ShowMessages )
-        {
-            printf("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
-        }
-
+        printf("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
         return 0;
     }
 
@@ -540,6 +484,11 @@ int main(int argc, char *argv[])
 	if( TimedTask_Init() != 0 )
     {
         return -505;
+    }
+
+    if( DomainStatistic_Init(&ConfigInfo) != 0 )
+    {
+        return -496;
     }
 
     if( MMgr_Init(&ConfigInfo) != 0 )

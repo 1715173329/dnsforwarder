@@ -23,7 +23,7 @@ static int ModuleContext_Swep_Collect(Bst *t,
     return 0;
 }
 
-static void ModuleContext_Swep(ModuleContext *c)
+static void ModuleContext_Swep(ModuleContext *c, SwepCallback cb, void *Arg)
 {
     Array Pending;
     int i;
@@ -50,6 +50,11 @@ static void ModuleContext_Swep(ModuleContext *c)
         const ModuleContextItem **Context;
 
         Context = Array_GetBySubscript(&Pending, i);
+
+        if( cb != NULL )
+        {
+            cb(&((**Context).h), i + 1, Arg);
+        }
 
         c->d.Delete(&(c->d), *Context);
     }

@@ -175,7 +175,7 @@ void ShowRefusingMessage(IHeader *h, const char *Message)
               );
 }
 
-void ShowTimeOutMessage(IHeader *h, char Protocol)
+void ShowTimeOutMessage(const IHeader *h, char Protocol)
 {
     Log_Print(NULL,
               "[%c][%s][%s][%s] Timed out.\n",

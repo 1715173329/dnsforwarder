@@ -2,6 +2,7 @@
 #define DOMAINSTATISTIC_H_INCLUDED
 
 #include "readconfig.h"
+#include "iheader.h"
 
 typedef enum _StatisticType{
 	STATISTIC_TYPE_REFUSED = 0,
@@ -15,10 +16,6 @@ typedef enum _StatisticType{
 
 int DomainStatistic_Init(ConfigFileInfo *ConfigInfo);
 
-int DomainStatistic_Add(const char *Domain, int *HashValue, StatisticType Type);
-
-int DomainStatistic_Hold(void);
-
-
+int DomainStatistic_Add(IHeader *h, StatisticType Type);
 
 #endif // DOMAINSTATISTIC_H_INCLUDED

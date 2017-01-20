@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <memory.h>
-#include <string.h>
-#include <limits.h>
-#include "bst.h"
 #include "dnsparser.h"
 #include "dnsgenerator.h"
 #include "utils.h"

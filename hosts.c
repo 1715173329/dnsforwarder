@@ -5,6 +5,7 @@
 #include "socketpuller.h"
 #include "goodiplist.h"
 #include "logs.h"
+#include "domainstatistic.h"
 
 static BOOL BlockIpv6WhenIpv4Exists = FALSE;
 
@@ -119,6 +120,7 @@ int Hosts_Get(IHeader *Header, int BufferLength)
     case HOSTSUTILS_TRY_BLOCKED:
         IHeader_SendBackRefusedMessage(Header);
         ShowRefusingMessage(Header, "Disabled because of existing IPv4 host");
+        DomainStatistic_Add(Header, STATISTIC_TYPE_REFUSED);
         return 0;
         break;
 
@@ -132,6 +134,7 @@ int Hosts_Get(IHeader *Header, int BufferLength)
 
     case HOSTSUTILS_TRY_OK:
         ShowNormalMessage(Header, 'H');
+        DomainStatistic_Add(Header, STATISTIC_TYPE_HOSTS);
         return 0;
         break;
 

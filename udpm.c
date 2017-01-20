@@ -4,6 +4,28 @@
 #include "logs.h"
 #include "utils.h"
 #include "dnscache.h"
+#include "ipmisc.h"
+#include "domainstatistic.h"
+#include "timedtask.h"
+
+static void SwepWorks(IHeader *h, int Number, UdpM *Module)
+{
+    ShowTimeOutMessage(h, 'U');
+
+    if( Number == 1 )
+    {
+        AddressList_Advance(&(Module->AddrList));
+    }
+}
+
+static int SwepTask(UdpM *m, SwepCallback cb)
+{
+    EFFECTIVE_LOCK_GET(m->Lock);
+    m->Context.Swep(&(m->Context), cb, m);
+    EFFECTIVE_LOCK_RELEASE(m->Lock);
+
+    return 0;
+}
 
 static void UdpM_Works(void *Module)
 {
@@ -19,11 +41,6 @@ static void UdpM_Works(void *Module)
     char *Entity;
 
     fd_set	ReadSet, ReadySet;
-
-	static const struct timeval	LongTime = {3600, 0};
-	static const struct timeval	ShortTime = {5, 0};
-
-	struct timeval	TimeLimit = LongTime;
 
     ReceiveBuffer = SafeMalloc(BUF_LENGTH);
     if( ReceiveBuffer == NULL )
@@ -77,7 +94,7 @@ static void UdpM_Works(void *Module)
         EFFECTIVE_LOCK_RELEASE(m->Lock);
 
         ReadySet = ReadSet;
-        switch( select(m->Departure + 1, &ReadySet, NULL, NULL, &TimeLimit) )
+        switch( select(m->Departure + 1, &ReadySet, NULL, NULL, NULL) )
         {
             case SOCKET_ERROR:
                 ERRORMSG("SOCKET_ERROR Reached, 82.\n");
@@ -88,16 +105,10 @@ static void UdpM_Works(void *Module)
                 break;
 
             case 0:
-                EFFECTIVE_LOCK_GET(m->Lock);
-                m->Context.Swep(&(m->Context));
-                EFFECTIVE_LOCK_RELEASE(m->Lock);
-
-                TimeLimit = LongTime;
                 continue;
                 break;
 
             default:
-                TimeLimit = ShortTime;
                 /* Goto recv job */
                 break;
         }
@@ -113,9 +124,8 @@ static void UdpM_Works(void *Module)
 
         if( RecvState <= 0 )
         {
-            /** TODO: Show Error messages. */
             ShowErrorMessage(Header, 'U');
-            AddressList_Advance(&(m->AddrList));
+            continue;
         }
 
         /* Fill IHeader */
@@ -140,6 +150,22 @@ static void UdpM_Works(void *Module)
         {
             int SentState;
 
+            switch( IPMiscSingleton_Process(Header) )
+            {
+            case IP_MISC_ACTION_NOTHING:
+                break;
+
+            case IP_MISC_ACTION_BLOCK:
+                ShowBlockedMessage(Header, "Bad package, discarded");
+                continue;
+                break;
+
+            default:
+                ERRORMSG("Fatal error 155.\n");
+                continue;
+                break;
+            }
+
             SentState = IHeader_SendBack(Header);
 
             if( SentState != 0 )
@@ -150,6 +176,7 @@ static void UdpM_Works(void *Module)
 
             ShowNormalMessage(Header, 'U');
             DNSCache_AddItemsToCache(Header);
+            DomainStatistic_Add(Header, STATISTIC_TYPE_UDP);
             /** TODO: Domain statistic*/
         }
     }
@@ -297,6 +324,15 @@ int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
     m->Send = UdpM_Send;
 
     CREATE_THREAD(UdpM_Works, m, m->WorkThread);
+
+    TimedTask_Add(TRUE,
+                  FALSE,
+                  10000,
+                  (TaskFunc)SwepTask,
+                  m,
+                  SwepWorks,
+                  FALSE
+                  );
 
     return 0;
 }
