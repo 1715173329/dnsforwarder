@@ -33,4 +33,6 @@ void ShowNormalMessage(IHeader *h, char Protocol);
 
 void ShowBlockedMessage(IHeader *h, const char *Message);
 
+void ShowSocketError(const char *Prompts, int ErrorNum);
+
 #endif // LOGS_H_INCLUDED

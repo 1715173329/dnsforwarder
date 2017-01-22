@@ -3,6 +3,7 @@
 /** Module manager */
 
 #include "udpm.h"
+#include "tcpm.h"
 
 int MMgr_Init(ConfigFileInfo *ConfigInfo);
 

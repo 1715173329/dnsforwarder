@@ -8,8 +8,6 @@
 
 typedef struct _UdpM UdpM;
 
-
-
 struct _UdpM {
     /* private */
     volatile SOCKET  Departure;

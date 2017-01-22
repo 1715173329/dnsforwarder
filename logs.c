@@ -249,3 +249,13 @@ void ShowBlockedMessage(IHeader *h, const char *Message)
                   );
     }
 }
+
+void ShowSocketError(const char *Prompts, int ErrorNum)
+{
+	if( PRINTON )
+	{
+	    char	ErrorMessage[320];
+		GetErrorMsg(ErrorNum, ErrorMessage, sizeof(ErrorMessage));
+		ERRORMSG("%s : %d : %s\n", Prompts, ErrorNum, ErrorMessage);
+	}
+}

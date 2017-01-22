@@ -17,7 +17,7 @@ static BOOL NeedRealloc(Array *MetaInfo, int DataLength)
         return FALSE;
     }
 
-    if( lm -> Amount - lm -> Used < DataLength )
+    if( lm->Amount - lm->Used < DataLength )
     {
         return TRUE;
     } else {
@@ -58,7 +58,7 @@ static void *WriteHere(Array *MetaInfo, int DataLength)
         if( lm != NULL)
         {
             lm->Used = DataLength;
-            return lm -> Start;
+            return lm->Start;
         } else {
             return NULL;
         }
@@ -81,7 +81,7 @@ static void *WriteHere(Array *MetaInfo, int DataLength)
 
 static void *Add(StableBuffer *s, const void *Data, int Length, BOOL Align)
 {
-    void *wh = WriteHere(&(s -> MetaInfo),
+    void *wh = WriteHere(&(s->MetaInfo),
                          Align ? ROUND_UP(Length, sizeof(void *)) : Length
                          );
 
@@ -101,23 +101,23 @@ static void *Add(StableBuffer *s, const void *Data, int Length, BOOL Align)
 static void Clear(StableBuffer *s)
 {
     int i;
-    for( i = 0; i < Array_GetUsed(&(s -> MetaInfo)); ++i )
+    for( i = 0; i < Array_GetUsed(&(s->MetaInfo)); ++i )
     {
-        StableBuffer_MetaInfo *m = Array_GetBySubscript(&(s -> MetaInfo), i);
+        StableBuffer_MetaInfo *m = Array_GetBySubscript(&(s->MetaInfo), i);
 
         if( m != NULL )
         {
-            SafeFree(m -> Start);
+            SafeFree(m->Start);
         }
     }
 
-    Array_Clear(&(s -> MetaInfo));
+    Array_Clear(&(s->MetaInfo));
 }
 
 static void Free(StableBuffer *s)
 {
     Clear(s);
-    Array_Free(&(s -> MetaInfo));
+    Array_Free(&(s->MetaInfo));
 }
 
 int StableBuffer_Init(StableBuffer *s)
@@ -126,7 +126,7 @@ int StableBuffer_Init(StableBuffer *s)
     s->Clear = Clear;
     s->Free = Free;
 
-    return Array_Init(&(s -> MetaInfo),
+    return Array_Init(&(s->MetaInfo),
                       sizeof(StableBuffer_MetaInfo), 0, FALSE, NULL);
 }
 

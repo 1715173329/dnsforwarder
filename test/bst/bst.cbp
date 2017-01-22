@@ -35,6 +35,9 @@
 		<Linker>
 			<Add library="libws2_32.a" />
 		</Linker>
+		<Unit filename="../../addresslist.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="../../array.c">
 			<Option compilerVar="CC" />
 		</Unit>

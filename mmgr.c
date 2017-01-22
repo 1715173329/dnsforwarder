@@ -12,6 +12,7 @@ typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
 typedef struct _ModuleInterface {
     union {
         UdpM    Udp;
+        TcpM    Tcp;
     } ModuleUnion;
 
     SendFunc    Send;
@@ -151,6 +152,76 @@ static int Udp_Init(ConfigFileInfo *ConfigInfo)
     return 0;
 }
 
+static int Tcp_Init(ConfigFileInfo *ConfigInfo)
+{
+    ModuleInterface *NewM;
+
+    StringList  *TCPGroups;
+    StringListIterator  i;
+
+    TCPGroups = ConfigGetStringList(ConfigInfo, "TCPGroup");
+    if( TCPGroups == NULL )
+    {
+        return 0;
+    }
+
+    if( StringListIterator_Init(&i, TCPGroups) != 0 )
+    {
+        return -33;
+    }
+
+    while( TRUE )
+    {
+        const char *Services;
+        const char *Domains;
+        const char *Proxies;
+        char ProxyString[8];
+
+        /* Initializing parameters */
+        Services = i.Next(&i);
+        Domains = i.Next(&i);
+        Proxies = i.Next(&i);
+
+        if( Services == NULL || Domains == NULL || Proxies == NULL )
+        {
+            break;
+        }
+
+        NewM = StoreAModule();
+        if( NewM == NULL )
+        {
+            return -192;
+        }
+
+        NewM->ModuleName = "TCP";
+
+        strncpy(ProxyString, Proxies, sizeof(ProxyString));
+        ProxyString[sizeof(ProxyString) - 1] = '\0';
+        StrToLower(ProxyString);
+
+        if( strcmp(ProxyString, "no") == 0 )
+        {
+            Proxies = NULL;
+        }
+
+        /* Initializing module */
+        if( TcpM_Init(&(NewM->ModuleUnion.Tcp), Services, Proxies) != 0 )
+        {
+            continue;
+        }
+
+        NewM->Send = (SendFunc)(NewM->ModuleUnion.Tcp.Send);
+
+        if( MappingAModule(NewM, Domains) != 0 )
+        {
+            /** TODO: Show error */
+        }
+    }
+
+    TCPGroups->Free(TCPGroups);
+    return 0;
+}
+
 int MMgr_Init(ConfigFileInfo *ConfigInfo)
 {
     BOOL ret = FALSE;
@@ -199,6 +270,7 @@ int MMgr_Init(ConfigFileInfo *ConfigInfo)
     }
 
     ret |= (Udp_Init(ConfigInfo) == 0);
+    ret |= (Tcp_Init(ConfigInfo) == 0);
 
     return !ret;
 }

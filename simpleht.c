@@ -11,67 +11,67 @@ int SimpleHT_Init(SimpleHT *ht, int DataLength, size_t MaxLoadFactor, int (*Hash
 {
 	int loop;
 
-    if( Array_Init(&(ht -> Slots), sizeof(Sht_Slot), 7, FALSE, NULL) != 0 )
+    if( Array_Init(&(ht->Slots), sizeof(Sht_Slot), 7, FALSE, NULL) != 0 )
     {
 		return -1;
     }
 
 	for( loop = 0; loop != 7; ++loop )
 	{
-		Array_PushBack(&(ht -> Slots), &EmptySlot, NULL);
+		Array_PushBack(&(ht->Slots), &EmptySlot, NULL);
 	}
 
-    if( Array_Init(&(ht -> Nodes), sizeof(Sht_NodeHead) + DataLength, 0, FALSE, NULL) != 0 )
+    if( Array_Init(&(ht->Nodes), sizeof(Sht_NodeHead) + DataLength, 0, FALSE, NULL) != 0 )
     {
 		return -2;
     }
 
-	ht -> MaxLoadFactor = MaxLoadFactor;
-	ht -> LeftSpace = 7 * MaxLoadFactor;
-	ht -> HashFunction = HashFunction;
+	ht->MaxLoadFactor = MaxLoadFactor;
+	ht->LeftSpace = 7 * MaxLoadFactor;
+	ht->HashFunction = HashFunction;
 
 	return 0;
 }
 
 static Sht_NodeHead *SimpleHT_RemoveFromSlot(SimpleHT *ht, int Slot, int *NodeSubscript)
 {
-	int NumberOfSlots_New = Array_GetUsed(&(ht -> Slots));
+	int NumberOfSlots_New = Array_GetUsed(&(ht->Slots));
 
 	Sht_Slot *TheSlot;
 	Sht_NodeHead *FirstNode = NULL;
 	Sht_NodeHead *SecondNode = NULL;
 
-	TheSlot = Array_GetBySubscript(&(ht -> Slots), Slot);
+	TheSlot = Array_GetBySubscript(&(ht->Slots), Slot);
 	if( TheSlot == NULL )
 	{
 		return NULL;
 	}
 
-	FirstNode = Array_GetBySubscript(&(ht -> Nodes), TheSlot -> Next);
+	FirstNode = Array_GetBySubscript(&(ht->Nodes), TheSlot->Next);
 	if( FirstNode == NULL )
 	{
 		return NULL;
 	}
 
-	if( FirstNode -> HashValue % NumberOfSlots_New != Slot )
+	if( FirstNode->HashValue % NumberOfSlots_New != Slot )
 	{
-		*NodeSubscript = TheSlot -> Next;
-		TheSlot -> Next = FirstNode -> Next;
+		*NodeSubscript = TheSlot->Next;
+		TheSlot->Next = FirstNode->Next;
 		return FirstNode;
 	} else {
-		*NodeSubscript = FirstNode -> Next;
-		SecondNode = Array_GetBySubscript(&(ht -> Nodes), FirstNode -> Next);
+		*NodeSubscript = FirstNode->Next;
+		SecondNode = Array_GetBySubscript(&(ht->Nodes), FirstNode->Next);
 		while( SecondNode != NULL )
 		{
-			if( SecondNode -> HashValue % NumberOfSlots_New != Slot )
+			if( SecondNode->HashValue % NumberOfSlots_New != Slot )
 			{
-				FirstNode -> Next = SecondNode -> Next;
+				FirstNode->Next = SecondNode->Next;
 				return SecondNode;
 			}
 
 			FirstNode = SecondNode;
-			*NodeSubscript = SecondNode -> Next;
-			SecondNode = Array_GetBySubscript(&(ht -> Nodes), SecondNode -> Next);
+			*NodeSubscript = SecondNode->Next;
+			SecondNode = Array_GetBySubscript(&(ht->Nodes), SecondNode->Next);
 		}
 		return NULL;
 	}
@@ -79,31 +79,31 @@ static Sht_NodeHead *SimpleHT_RemoveFromSlot(SimpleHT *ht, int Slot, int *NodeSu
 
 static int SimpleHT_AddToSlot(SimpleHT *ht, Sht_NodeHead *Node, int NodeSubscript)
 {
-	int NumberOfSlots = Array_GetUsed(&(ht -> Slots));
+	int NumberOfSlots = Array_GetUsed(&(ht->Slots));
 	Sht_Slot *TheSlot;
 
-	TheSlot = Array_GetBySubscript(&(ht -> Slots), Node -> HashValue % NumberOfSlots);
+	TheSlot = Array_GetBySubscript(&(ht->Slots), Node->HashValue % NumberOfSlots);
 	if( TheSlot == NULL )
 	{
 		return -1;
 	}
 
-	Node -> Next = TheSlot -> Next;
-	TheSlot -> Next = NodeSubscript;
+	Node->Next = TheSlot->Next;
+	TheSlot->Next = NodeSubscript;
 
 	return 0;
 }
 
 static int SimpleHT_Expand(SimpleHT *ht)
 {
-	int NumberOfSlots_Old = Array_GetUsed(&(ht -> Slots));
+	int NumberOfSlots_Old = Array_GetUsed(&(ht->Slots));
 	Sht_NodeHead *Itr = NULL;
 	int ItrSubscript = 0;
 	int loop;
 
 	for( loop = 0; loop < NumberOfSlots_Old; ++loop )
 	{
-		if( Array_PushBack(&(ht -> Slots), &EmptySlot, NULL) < 0 )
+		if( Array_PushBack(&(ht->Slots), &EmptySlot, NULL) < 0 )
 		{
 			return -1;
 		}
@@ -127,45 +127,45 @@ const char *SimpleHT_Add(SimpleHT *ht, const char *Key, int KeyLength, const cha
 	Sht_NodeHead *New;
 	int	NewSubscript;
 
-	if( ht -> LeftSpace == 0 )
+	if( ht->LeftSpace == 0 )
 	{
-		int NumberOfSlots_Old = Array_GetUsed(&(ht -> Slots));
+		int NumberOfSlots_Old = Array_GetUsed(&(ht->Slots));
 
 		if( SimpleHT_Expand(ht) != 0 )
 		{
 			return NULL;
 		}
 
-		ht -> LeftSpace = NumberOfSlots_Old * ht -> MaxLoadFactor;
+		ht->LeftSpace = NumberOfSlots_Old * ht->MaxLoadFactor;
 	}
 
-	NewSubscript = Array_PushBack(&(ht -> Nodes), NULL, NULL);
+	NewSubscript = Array_PushBack(&(ht->Nodes), NULL, NULL);
 	if( NewSubscript < 0 )
 	{
 		return NULL;
 	}
 
-	New = Array_GetBySubscript(&(ht -> Nodes), NewSubscript);
+	New = Array_GetBySubscript(&(ht->Nodes), NewSubscript);
 
 	if( HashValue == NULL )
 	{
-		New -> HashValue = (ht -> HashFunction)(Key, KeyLength);
+		New->HashValue = (ht->HashFunction)(Key, KeyLength);
 	} else {
-		New -> HashValue = *HashValue;
+		New->HashValue = *HashValue;
 	}
 
-	memcpy(New + 1, Data, ht -> Nodes.DataLength - sizeof(Sht_NodeHead));
+	memcpy(New + 1, Data, ht->Nodes.DataLength - sizeof(Sht_NodeHead));
 
 	SimpleHT_AddToSlot(ht, New, NewSubscript);
 
-	--(ht -> LeftSpace);
+	--(ht->LeftSpace);
 
 	return (const char *)(New + 1);
 }
 
 const char *SimpleHT_Find(SimpleHT *ht, const char *Key, int KeyLength, int *HashValue, const char *Start)
 {
-	int NumberOfSlots = Array_GetUsed(&(ht -> Slots));
+	int NumberOfSlots = Array_GetUsed(&(ht->Slots));
 	int SlotNumber;
 	Sht_Slot *TheSlot;
 	Sht_NodeHead *Node;
@@ -177,22 +177,22 @@ const char *SimpleHT_Find(SimpleHT *ht, const char *Key, int KeyLength, int *Has
 
 	if( Start != NULL )
 	{
-		Node = Array_GetBySubscript(&(ht -> Nodes), (((Sht_NodeHead *)Start) - 1) -> Next);
+		Node = Array_GetBySubscript(&(ht->Nodes), (((Sht_NodeHead *)Start) - 1)->Next);
 	} else {
 		if( HashValue == NULL )
 		{
-			SlotNumber = (ht -> HashFunction)(Key, KeyLength) % NumberOfSlots;
+			SlotNumber = (ht->HashFunction)(Key, KeyLength) % NumberOfSlots;
 		} else {
 			SlotNumber = (*HashValue) % NumberOfSlots;
 		}
 
-		TheSlot = Array_GetBySubscript(&(ht -> Slots), SlotNumber);
+		TheSlot = Array_GetBySubscript(&(ht->Slots), SlotNumber);
 		if( TheSlot == NULL )
 		{
 			return NULL;
 		}
 
-		Node = Array_GetBySubscript(&(ht -> Nodes), TheSlot -> Next);
+		Node = Array_GetBySubscript(&(ht->Nodes), TheSlot->Next);
 	}
 
 	if( Node == NULL )
@@ -206,7 +206,7 @@ const char *SimpleHT_Find(SimpleHT *ht, const char *Key, int KeyLength, int *Has
 
 const char *SimpleHT_Enum(SimpleHT *ht, int32_t *Start)
 {
-	Array *Nodes = &(ht -> Nodes);
+	Array *Nodes = &(ht->Nodes);
 	Sht_NodeHead *Node;
 
 	Node = Array_GetBySubscript(Nodes, *Start);
@@ -222,6 +222,6 @@ const char *SimpleHT_Enum(SimpleHT *ht, int32_t *Start)
 
 void SimpleHT_Free(SimpleHT *ht)
 {
-	Array_Free(&(ht -> Slots));
-	Array_Free(&(ht -> Nodes));
+	Array_Free(&(ht->Slots));
+	Array_Free(&(ht->Nodes));
 }

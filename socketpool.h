@@ -25,12 +25,14 @@ struct _SocketPool{
                int DataLength
                );
 
+    int (*Del)(SocketPool *sp, SOCKET Sock);
+
     SOCKET (*FetchOnSet)(SocketPool *sp,
                          fd_set *fs,
                          void **Data
                          );
 
-    void (*CloseAll)(SocketPool *sp);
+    void (*CloseAll)(SocketPool *sp, SOCKET ExceptFor);
 
     void (*Free)(SocketPool *sp, BOOL CloseAllSocket);
 };

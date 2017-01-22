@@ -62,11 +62,20 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     TmpTypeDescriptor.str = "127.0.0.1";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
+    /* UDPGroup 1.2.4.8,114.114.114.114 * on */
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Groups");
     ConfigSetStringDelimiters(&ConfigInfo, "UDPGroup", "\t ");
+    /*
     TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
+    */
+
+    /* TCPGroup 1.2.4.8,114.114.114.114 example.com 192.168.50.5:8080, 192.168.50.6:8080*/
+    /* TCPGroup 1.2.4.8,114.114.114.114 no*/
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Groups");
+    ConfigSetStringDelimiters(&ConfigInfo, "TCPGroup", "\t ");
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);

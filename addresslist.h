@@ -42,10 +42,10 @@ int AddressList_Add(__in	AddressList		*a,
  *  0 on success, a non-zero value otherwise.
  */
 
-sa_family_t AddressList_ConvertToAddressFromString(__out	Address_Type	*Out,
-												   __in		const char		*Addr_Port,
-												   __in		int				DefaultPort
-												   );
+sa_family_t AddressList_ConvertFromString(__out Address_Type    *Out,
+                                          __in  const char      *Addr_Port,
+                                          __in  int             DefaultPort
+                                          );
 
 int AddressList_Add_From_String(__in	AddressList	*a,
 								__in	const char	*Addr_Port,
@@ -69,9 +69,9 @@ int AddressList_Add_From_String(__in	AddressList	*a,
 
 int AddressList_Advance(__in AddressList *a);
 /* Description:
- *  Increase a -> Counter by 1 .
+ *  Increase a->Counter by 1 .
  * Return value:
- *  The a -> Counter before it increased.
+ *  The a->Counter before it increased.
  */
 
 struct sockaddr *AddressList_GetOneBySubscript(__in			AddressList	*a,
@@ -90,13 +90,13 @@ struct sockaddr *AddressList_GetOne(__in		AddressList	*a,
  *  The pointer to the fetched address.
  */
 
-#define AddressList_GetNumberOfAddresses(a_ptr)	( Array_GetUsed(&((a_ptr) -> AddressList)) )
+#define AddressList_GetNumberOfAddresses(a_ptr)	( Array_GetUsed(&((a_ptr)->AddressList)) )
 
 /* You should free the return value and *families when they are no longer needed. */
 struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t family);
 struct sockaddr **AddressList_GetPtrList(AddressList *a, sa_family_t **families);
 
-#define AddressList_Free(a_ptr)	(Array_Free(&((a_ptr) -> AddressList)))
+#define AddressList_Free(a_ptr)	(Array_Free(&((a_ptr)->AddressList)))
 /* Description:
  *  Free an initialized AddressList.
  * Return value:

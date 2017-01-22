@@ -28,6 +28,20 @@ static int SocketPool_Add(SocketPool *sp,
 	return 0;
 }
 
+static int SocketPool_Del(SocketPool *sp, SOCKET Sock)
+{
+    SocketUnit k = {Sock, NULL};
+    const SocketUnit *r;
+
+    r = sp->t.Search(&(sp->t), &k, NULL);
+    if( r != NULL )
+    {
+        sp->t.Delete(&(sp->t), r);
+    }
+
+    return 0;
+}
+
 typedef struct _SocketPool_Fetch_Arg
 {
     SOCKET Sock;
@@ -71,10 +85,10 @@ static SOCKET SocketPool_FetchOnSet(SocketPool *sp,
 
 static int SocketPool_CloseAll_Inner(Bst *t,
                                      const SocketUnit *Data,
-                                     void *Unused
+                                     SOCKET *ExceptFor
                                      )
 {
-    if( Data->Sock != INVALID_SOCKET )
+    if( Data->Sock != INVALID_SOCKET && Data->Sock != *ExceptFor )
     {
         CLOSE_SOCKET(Data->Sock);
     }
@@ -82,11 +96,11 @@ static int SocketPool_CloseAll_Inner(Bst *t,
     return 0;
 }
 
-static void SocketPool_CloseAll(SocketPool *sp)
+static void SocketPool_CloseAll(SocketPool *sp, SOCKET ExceptFor)
 {
     sp->t.Enum(&(sp->t),
                (Bst_Enum_Callback)SocketPool_CloseAll_Inner,
-               NULL
+               &ExceptFor
                );
 }
 
@@ -94,7 +108,7 @@ static void SocketPool_Free(SocketPool *sp, BOOL CloseAllSocket)
 {
     if( CloseAllSocket )
     {
-        SocketPool_CloseAll(sp);
+        SocketPool_CloseAll(sp, INVALID_SOCKET);
     }
 
     sp->t.Free(&(sp->t));
@@ -103,7 +117,7 @@ static void SocketPool_Free(SocketPool *sp, BOOL CloseAllSocket)
 
 static int Compare(const SocketUnit *_1, const SocketUnit *_2)
 {
-	return (int)(_1 -> Sock) - (int)(_2 -> Sock);
+	return (int)(_1->Sock) - (int)(_2->Sock);
 }
 
 int SocketPool_Init(SocketPool *sp)
@@ -124,6 +138,7 @@ int SocketPool_Init(SocketPool *sp)
     }
 
     sp->Add = SocketPool_Add;
+    sp->Del = SocketPool_Del;
     sp->CloseAll = SocketPool_CloseAll;
     sp->FetchOnSet = SocketPool_FetchOnSet;
     sp->Free = SocketPool_Free;

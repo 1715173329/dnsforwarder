@@ -53,23 +53,23 @@ int Array_Init(	__in Array *a,
 
 #define Array_Init_Static(DataLengrh)	{NULL, (DataLengrh), 0, 0}
 
-#define Array_IsEmpty(a_ptr)	(((a_ptr) -> Used) == 0)
+#define Array_IsEmpty(a_ptr)	(((a_ptr)->Used) == 0)
 /* Description:
  *  Check if an Array is empty.
  * Parameters:
  *  a_ptr : Pointer to an Array to be checked.
  */
 
-#define Array_GetUsed(a_ptr)	((a_ptr) -> Used)
+#define Array_GetUsed(a_ptr)	((a_ptr)->Used)
 /* Description:
  *  Get `Used' of an Array.
  * Parameters:
  *  a_ptr : Pointer to an Array to be gotten.
  */
 
-#define Array_GetDataLength(a_ptr)	((a_ptr) -> DataLength)
+#define Array_GetDataLength(a_ptr)	((a_ptr)->DataLength)
 
-#define Array_GetRawArray(a_ptr)	((a_ptr) -> Data)
+#define Array_GetRawArray(a_ptr)	((a_ptr)->Data)
 
 void *Array_GetBySubscript(__in const Array *a, __in int Subscript);
 /* Description:
@@ -125,7 +125,7 @@ void *Array_SetToSubscript(__in Array *a, __in int Subscript, __in const void *D
 
 void Array_Sort(Array *a, int (*Compare)(const void *, const void *));
 
-#define Array_Clear(a_ptr)	((a_ptr) -> Used = 0)
+#define Array_Clear(a_ptr)	((a_ptr)->Used = 0)
 /* Description:
  *  Remove all elements, but their rooms are still there.
  * Parameters:

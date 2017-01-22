@@ -14,39 +14,39 @@ int StringChunk_Init(StringChunk *dl, StringList *List)
 		return 0;
 	}
 
-	if( SimpleHT_Init(&(dl -> List_Pos), sizeof(EntryForString), 5, ELFHash) != 0 )
+	if( SimpleHT_Init(&(dl->List_Pos), sizeof(EntryForString), 5, ELFHash) != 0 )
 	{
 		return -1;
 	}
 
-	if( Array_Init(&(dl -> List_W_Pos), sizeof(EntryForString), 0, FALSE, NULL) != 0 )
+	if( Array_Init(&(dl->List_W_Pos), sizeof(EntryForString), 0, FALSE, NULL) != 0 )
 	{
-		SimpleHT_Free(&(dl -> List_Pos));
+		SimpleHT_Free(&(dl->List_Pos));
 		return -2;
 	}
 
-	if( StableBuffer_Init(&(dl -> AdditionalDataChunk)) != 0 )
+	if( StableBuffer_Init(&(dl->AdditionalDataChunk)) != 0 )
 	{
-		SimpleHT_Free(&(dl -> List_Pos));
-		Array_Free(&(dl -> List_W_Pos));
+		SimpleHT_Free(&(dl->List_Pos));
+		Array_Free(&(dl->List_W_Pos));
 		return -3;
 	}
 
 	/* Whether to use external `StringList' to store strings. */
 	if( List == NULL )
 	{
-		dl -> List = SafeMalloc(sizeof(StringList));
-		if( dl -> List == NULL )
+		dl->List = SafeMalloc(sizeof(StringList));
+		if( dl->List == NULL )
 		{
 			return -4;
 		}
 
-		if( StringList_Init(dl -> List, NULL, NULL) != 0 )
+		if( StringList_Init(dl->List, NULL, NULL) != 0 )
 		{
 			return -5;
 		}
 	} else {
-		dl -> List = List;
+		dl->List = List;
 	}
 
 	return 0;
@@ -252,7 +252,7 @@ const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, void **
 {
 	EntryForString *Result;
 
-	Result = (EntryForString *)SimpleHT_Enum(&(dl -> List_Pos), Start);
+	Result = (EntryForString *)SimpleHT_Enum(&(dl->List_Pos), Start);
 	if( Result == NULL )
 	{
 		if( Data != NULL )
@@ -273,13 +273,13 @@ const char *StringChunk_Enum_NoWildCard(StringChunk *dl, int32_t *Start, void **
 
 void StringChunk_Free(StringChunk *dl, BOOL FreeStringList)
 {
-	SimpleHT_Free(&(dl -> List_Pos));
-	Array_Free(&(dl -> List_W_Pos));
+	SimpleHT_Free(&(dl->List_Pos));
+	Array_Free(&(dl->List_W_Pos));
 	dl->AdditionalDataChunk.Free(&(dl->AdditionalDataChunk));
 
 	if( FreeStringList == TRUE )
 	{
 		dl->List->Free(dl->List);
-		SafeFree(dl -> List);
+		SafeFree(dl->List);
 	}
 }

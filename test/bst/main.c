@@ -47,10 +47,11 @@ int testify(Bst *t, const void *Data, void *Arg)
 
 int add(Bst *t, int n, int *min, int *max)
 {
-    int a = *(int *)t->Add(t, &n);
+    void *added = t->Add(t, &n);
+    int a = *(int *)added;
     if( a > *max ) *max = a;
     if( a < *min ) *min = a;
-    printf("Add : %d\n", a);
+    printf("Add :%#010x %d\n", ((Bst_NodeHead *)added) - 1,a);
     return a;
 }
 

@@ -12,12 +12,12 @@ int AddressList_Init(AddressList *a)
 		return 0;
 	}
 
-	if( Array_Init(&(a -> AddressList), sizeof(Address_Type), 8, FALSE, NULL) != 0 )
+	if( Array_Init(&(a->AddressList), sizeof(Address_Type), 8, FALSE, NULL) != 0 )
 	{
 		return -1;
 	}
 
-	a -> Counter = 0;
+	a->Counter = 0;
 	return 0;
 }
 
@@ -29,7 +29,7 @@ int AddressList_Add(AddressList *a, Address_Type	*Addr)
 		return -1;
 	}
 
-	if( Array_PushBack(&(a -> AddressList), Addr, NULL) < 0 )
+	if( Array_PushBack(&(a->AddressList), Addr, NULL) < 0 )
 	{
 		return -1;
 	} else {
@@ -38,14 +38,14 @@ int AddressList_Add(AddressList *a, Address_Type	*Addr)
 
 }
 
-sa_family_t AddressList_ConvertToAddressFromString(Address_Type *Out, const char *Addr_Port, int DefaultPort)
+sa_family_t AddressList_ConvertFromString(Address_Type *Out, const char *Addr_Port, int DefaultPort)
 {
 	sa_family_t	Family;
 
 	memset(Out, 0, sizeof(Address_Type));
 
 	Family = GetAddressFamily(Addr_Port);
-	Out -> family = Family;
+	Out->family = Family;
 
 	switch( Family )
 	{
@@ -76,10 +76,10 @@ sa_family_t AddressList_ConvertToAddressFromString(Address_Type *Out, const char
 					Port = Port_warpper;
 				}
 
-				Out -> Addr.Addr6.sin6_family = Family;
-				Out -> Addr.Addr6.sin6_port = htons(Port);
+				Out->Addr.Addr6.sin6_family = Family;
+				Out->Addr.Addr6.sin6_port = htons(Port);
 
-				IPv6AddressToNum(Addr, &(Out -> Addr.Addr6.sin6_addr));
+				IPv6AddressToNum(Addr, &(Out->Addr.Addr6.sin6_addr));
 
 				return AF_INET6;
 			}
@@ -104,7 +104,7 @@ sa_family_t AddressList_ConvertToAddressFromString(Address_Type *Out, const char
 					sscanf(PortPos + 1, "%d", &Port_warpper);
 					Port = Port_warpper;
 				}
-				FILL_ADDR4(Out -> Addr.Addr4, Family, Addr, Port);
+				FILL_ADDR4(Out->Addr.Addr4, Family, Addr, Port);
 
 				return AF_INET;
 			}
@@ -120,7 +120,7 @@ int AddressList_Add_From_String(AddressList *a, const char *Addr_Port, int Defau
 {
 	Address_Type	Tmp;
 
-	if( AddressList_ConvertToAddressFromString(&Tmp, Addr_Port, DefaultPort) == AF_UNSPEC )
+	if( AddressList_ConvertFromString(&Tmp, Addr_Port, DefaultPort) == AF_UNSPEC )
 	{
 		return -1;
 	}
@@ -136,7 +136,7 @@ int AddressList_Advance(AddressList *a)
 		return 0;
 	}
 
-	return (a -> Counter)++;
+	return (a->Counter)++;
 }
 
 struct sockaddr *AddressList_GetOneBySubscript(AddressList *a, sa_family_t *family, int Subscript)
@@ -148,22 +148,22 @@ struct sockaddr *AddressList_GetOneBySubscript(AddressList *a, sa_family_t *fami
 		return 0;
 	}
 
-	Result = (Address_Type *)Array_GetBySubscript(&(a -> AddressList), Subscript);
+	Result = (Address_Type *)Array_GetBySubscript(&(a->AddressList), Subscript);
 	if( Result == NULL )
 	{
 		return NULL;
 	} else {
 		if( family != NULL )
 		{
-			*family = Result -> family;
+			*family = Result->family;
 		}
-		return (struct sockaddr *)&(Result -> Addr);
+		return (struct sockaddr *)&(Result->Addr);
 	}
 }
 
 struct sockaddr *AddressList_GetOne(AddressList *a, sa_family_t *family)
 {
-	return AddressList_GetOneBySubscript(a, family, a -> Counter % Array_GetUsed(&(a -> AddressList)));
+	return AddressList_GetOneBySubscript(a, family, a->Counter % Array_GetUsed(&(a->AddressList)));
 }
 
 struct sockaddr **AddressList_GetPtrListOfFamily(AddressList *a, sa_family_t family)

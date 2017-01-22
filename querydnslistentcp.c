@@ -57,25 +57,25 @@ static int Query(char *Content, int ContentLength, int BufferLength, SOCKET This
 	int RequestLength = ContentLength - sizeof(ControlHeader);
 	uint16_t TCPLength = htons(RequestLength);
 
-	Header -> RequestingDomain[0] = '\0';
+	Header->RequestingDomain[0] = '\0';
 
 	if( DNSGetHostName(RequestEntity,
 						RequestLength,
 						DNSJumpHeader(RequestEntity),
-						Header -> RequestingDomain,
-						sizeof(Header -> RequestingDomain)
+						Header->RequestingDomain,
+						sizeof(Header->RequestingDomain)
 						)
 		< 0 )
 	{
 		return -1;
 	}
 
-	StrToLower(Header -> RequestingDomain);
+	StrToLower(Header->RequestingDomain);
 
-	Header -> RequestingType =
+	Header->RequestingType =
 		(DNSRecordType)DNSGetRecordType(DNSJumpHeader(RequestEntity));
 
-	Header -> RequestingDomainHashValue = ELFHash(Header -> RequestingDomain, 0);
+	Header->RequestingDomainHashValue = ELFHash(Header->RequestingDomain, 0);
 
 	State = QueryBase(Content, ContentLength, BufferLength, TCPOutcomeSocket);
 
@@ -87,9 +87,9 @@ static int Query(char *Content, int ContentLength, int BufferLength, SOCKET This
 			break;
 
 		case QUERY_RESULT_DISABLE:
-			((DNSHeader *)(RequestEntity)) -> Flags.Direction = 1;
-			((DNSHeader *)(RequestEntity)) -> Flags.RecursionAvailable = 1;
-			((DNSHeader *)(RequestEntity)) -> Flags.ResponseCode = RefusingResponseCode;
+			((DNSHeader *)(RequestEntity))->Flags.Direction = 1;
+			((DNSHeader *)(RequestEntity))->Flags.RecursionAvailable = 1;
+			((DNSHeader *)(RequestEntity))->Flags.ResponseCode = RefusingResponseCode;
 			send(ThisSocket, (const char *)&TCPLength, 2, 0);
 			send(ThisSocket, RequestEntity, RequestLength, 0);
 			return -1;
@@ -121,7 +121,7 @@ static Bst	si;
 
 static int SocketInfoCompare(const SocketInfo *_1, const SocketInfo *_2)
 {
-	return (int)(_1 -> Socket) - (int)(_2 -> Socket);
+	return (int)(_1->Socket) - (int)(_2->Socket);
 }
 
 static int InitSocketInfo(void)
@@ -139,21 +139,21 @@ static SOCKET SocketInfoMatch(fd_set *ReadySet, fd_set *ReadSet, char *ClientAdd
 	Info = Bst_Enum(&si, &Start);
 	while( Info != NULL )
 	{
-		if( FD_ISSET(Info -> Socket, ReadySet) )
+		if( FD_ISSET(Info->Socket, ReadySet) )
 		{
-			Info -> TimeAdd = Now;
-			strcpy(ClientAddress, Info -> Address);
+			Info->TimeAdd = Now;
+			strcpy(ClientAddress, Info->Address);
 			if( Number != NULL )
 			{
 				*Number = Start;
 			}
-			return Info -> Socket;
+			return Info->Socket;
 		}
 
-		if( Now - Info -> TimeAdd > 2 )
+		if( Now - Info->TimeAdd > 2 )
 		{
-			CLOSE_SOCKET(Info -> Socket);
-			FD_CLR(Info -> Socket, ReadSet);
+			CLOSE_SOCKET(Info->Socket);
+			FD_CLR(Info->Socket, ReadSet);
 			Bst_Delete_ByNumber(&si, Start);
 		}
 
@@ -184,12 +184,12 @@ static BOOL SocketInfoSwep(fd_set *ReadSet)
 	Info = Bst_Enum(&si, &Start);
 	while( Info != NULL )
 	{
-		if( Now - Info -> TimeAdd > 2 )
+		if( Now - Info->TimeAdd > 2 )
 		{
-			CLOSE_SOCKET(Info -> Socket);
-			FD_CLR(Info -> Socket, ReadSet);
+			CLOSE_SOCKET(Info->Socket);
+			FD_CLR(Info->Socket, ReadSet);
 
-			INFO("TCP connection to client %s closed.\n", Info -> Address);
+			INFO("TCP connection to client %s closed.\n", Info->Address);
 
 			Bst_Delete_ByNumber(&si, Start);
 		}
@@ -210,7 +210,7 @@ static void SendBack(char *Result, int Length)
 	uint16_t	 	EntityLength = Length - sizeof(ControlHeader);
 	uint16_t	 	EntityLength_n = htons(EntityLength);
 
-	Number = InternalInterface_QueryContextFind(&Context, Identifier, Header -> RequestingDomainHashValue);
+	Number = InternalInterface_QueryContextFind(&Context, Identifier, Header->RequestingDomainHashValue);
 	if( Number < 0 )
 	{
 		return;
@@ -218,8 +218,8 @@ static void SendBack(char *Result, int Length)
 
 	Entry = Bst_GetDataByNumber(&Context, Number);
 
-	send(Entry -> Context.Socket, (const char *)&EntityLength_n, 2, 0);
-	send(Entry -> Context.Socket, RequestEntity, EntityLength, 0);
+	send(Entry->Context.Socket, (const char *)&EntityLength_n, 2, 0);
+	send(Entry->Context.Socket, RequestEntity, EntityLength, 0);
 
 	InternalInterface_QueryContextRemoveByNumber(&Context, Number);
 
@@ -243,8 +243,8 @@ static int QueryDNSListenTCP(void)
 
 	InternalInterface_InitControlHeader(Header);
 
-	memcpy(&(Header -> BackAddress), &TCPOutcomeAddress, sizeof(Address_Type));
-	Header -> NeededHeader = TRUE;
+	memcpy(&(Header->BackAddress), &TCPOutcomeAddress, sizeof(Address_Type));
+	Header->NeededHeader = TRUE;
 
 	InitSocketInfo();
 
@@ -356,7 +356,7 @@ static int QueryDNSListenTCP(void)
 
 					int32_t	Number;
 
-					Socket = SocketInfoMatch(&ReadySet, &ReadSet, Header -> Agent, &Number);
+					Socket = SocketInfoMatch(&ReadySet, &ReadSet, Header->Agent, &Number);
 
 					if( Socket != INVALID_SOCKET )
 					{
@@ -378,7 +378,7 @@ static int QueryDNSListenTCP(void)
 							Bst_Delete_ByNumber(&si, Number);
 							FD_CLR(Socket, &ReadSet);
 							CLOSE_SOCKET(Socket);
-							INFO("Lost TCP connection to client %s.\n", Header -> Agent);
+							INFO("Lost TCP connection to client %s.\n", Header->Agent);
 							break;
 						}
 

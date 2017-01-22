@@ -80,8 +80,8 @@ static int ThreadJod(const char *Domain, ListInfo *inf)
         return -159;
     }
 
-    Fastest = CheckAList((struct sockaddr_in *)Array_GetRawArray(&(inf -> List)),
-                         Array_GetUsed(&(inf -> List))
+    Fastest = CheckAList((struct sockaddr_in *)Array_GetRawArray(&(inf->List)),
+                         Array_GetUsed(&(inf->List))
                          );
 
     if( Fastest != NULL )
@@ -93,7 +93,7 @@ static int ThreadJod(const char *Domain, ListInfo *inf)
              inet_ntoa(Fastest->sin_addr)
              );
 
-        First = Array_GetBySubscript(&(inf -> List), 0);
+        First = Array_GetBySubscript(&(inf->List), 0);
         if( First == NULL )
         {
             return -178;
@@ -258,7 +258,7 @@ const char *GoodIpList_Get(const char *List)
                                      )
        == TRUE )
     {
-        return (const char *)&(((const struct sockaddr_in *)Array_GetBySubscript(&(m -> List), 0)) -> sin_addr);
+        return (const char *)&(((const struct sockaddr_in *)Array_GetBySubscript(&(m->List), 0))->sin_addr);
     } else {
         return NULL;
     }

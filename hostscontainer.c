@@ -98,7 +98,7 @@ PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
 	const TableNode **Matched = NULL;
 	const TableNode *IP = NULL;
 
-	if( !StringChunk_Match(&(Container -> Mappings), Name, NULL, (void **)&Matched) )
+	if( !StringChunk_Match(&(Container->Mappings), Name, NULL, (void **)&Matched) )
 	{
         return NULL;
 	}
@@ -189,7 +189,7 @@ PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
             return -201;
         }
 
-        if( StringChunk_Add(&(Container -> Mappings),
+        if( StringChunk_Add(&(Container->Mappings),
                             Name,
                             &s,
                             sizeof(TableNode *)
@@ -374,13 +374,13 @@ PUBFUNC HostsRecordType HostsContainer_Load(HostsContainer *Container,
 
 PUBFUNC void HostsContainer_Free(HostsContainer *Container)
 {
-	StringChunk_Free(&(Container -> Mappings), TRUE);
+	StringChunk_Free(&(Container->Mappings), TRUE);
 	Container->Table.Free(&(Container->Table));
 }
 
 int HostsContainer_Init(HostsContainer *Container)
 {
-	if( StringChunk_Init(&(Container -> Mappings), NULL) != 0 )
+	if( StringChunk_Init(&(Container->Mappings), NULL) != 0 )
 	{
 		return -2;
 	}

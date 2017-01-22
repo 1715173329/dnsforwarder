@@ -4,15 +4,15 @@
 
 static int Compare(IpElement *_1, IpElement *_2)
 {
-	if( _1 -> IpLength != _2 -> IpLength )
+	if( _1->IpLength != _2->IpLength )
 	{
-		return  _1 -> IpLength - _2 -> IpLength;
+		return  _1->IpLength - _2->IpLength;
 	} else {
-		if( _1 -> IpLength == 4 )
+		if( _1->IpLength == 4 )
 		{
-			return _1 -> Ip.Ipv4 - _2 -> Ip.Ipv4;
+			return _1->Ip.Ipv4 - _2->Ip.Ipv4;
 		} else {
-			return memcmp(_1 -> Ip.Ipv6, _2 -> Ip.Ipv6, _1 -> IpLength);
+			return memcmp(_1->Ip.Ipv6, _2->Ip.Ipv6, _1->IpLength);
 		}
 	}
 }
@@ -182,7 +182,7 @@ BOOL IpChunk_Find6(IpChunk *ic, const char *Ipv6, int *Type, const char **Data)
 	} else {
         if( Type != NULL )
         {
-            *Type = Result -> Type;
+            *Type = Result->Type;
         }
 
         if( Data != NULL )

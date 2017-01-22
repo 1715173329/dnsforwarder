@@ -19,6 +19,8 @@ struct _SocketPuller{
                        int DataLength
                        );
 
+    int (*Del)(SocketPuller *p, SOCKET s);
+
     PUBMEMB SOCKET (*Select)(SocketPuller *p,
                              struct timeval *tv,
                              void **Data,
@@ -26,7 +28,10 @@ struct _SocketPuller{
                              BOOL Writing
                              );
 
+    PUBMEMB BOOL (*IsEmpty)(SocketPuller *p);
+    PUBMEMB void (*CloseAll)(SocketPuller *p, SOCKET ExceptFor);
     PUBMEMB void (*Free)(SocketPuller *p);
+    PUBMEMB void (*FreeWithoutClose)(SocketPuller *p);
 };
 
 int SocketPuller_Init(SocketPuller *p);

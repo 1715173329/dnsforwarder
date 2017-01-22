@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "bst.h"
 #include "utils.h"
+#include "logs.h"
 
 PRIFUNC Bst_NodeHead *GetUnusedNode(Bst *t)
 {
@@ -257,7 +258,42 @@ PUBFUNC void Bst_Delete(Bst *t, const void *Node)
 
     if( ActuallyRemoved != Current )
     {
-        memcpy(Current + 1, ActuallyRemoved + 1, t->ElementLength);
+        /* Replace Current with ActuallyRemoved */
+
+        /*memcpy(Current + 1, ActuallyRemoved + 1, t->ElementLength);*/
+
+        Bst_NodeHead *CurrentParent = Current->Parent;
+        Bst_NodeHead *CurrentLeft = Current->Left;
+        Bst_NodeHead *CurrentRight = Current->Right;
+
+        /* Parent */
+        if( CurrentParent != NULL )
+        {
+            if( CurrentParent->Left == Current )
+            {
+                CurrentParent->Left = ActuallyRemoved;
+            } else {
+                CurrentParent->Right = ActuallyRemoved;
+            }
+        } else {
+            t->Root = ActuallyRemoved;
+        }
+
+        /* Left Child */
+        CurrentLeft->Parent = ActuallyRemoved;
+
+        /* Right Child */
+        if( CurrentRight != NULL )
+        {
+            CurrentRight->Parent = ActuallyRemoved;
+        }
+
+        /* ActuallyRemoved */
+        ActuallyRemoved->Parent = CurrentParent;
+        ActuallyRemoved->Left = CurrentLeft;
+        ActuallyRemoved->Right = CurrentRight;
+
+        ActuallyRemoved = Current;
     }
 
     ActuallyRemoved->Right = t->FreeList;

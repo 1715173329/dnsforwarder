@@ -122,13 +122,13 @@ static int DomainStatistic_Works(void *Unused, void *Unused2)
     {
         if( Info != NULL )
         {
-            Sum.Count += Info -> Count;
-            Sum.Refused += Info -> Refused;
-            Sum.Hosts += Info -> Hosts;
-            Sum.Cache += Info -> Cache;
-            Sum.Udp += Info -> Udp;
-            Sum.Tcp += Info -> Tcp;
-            Sum.BlockedMsg += Info -> BlockedMsg;
+            Sum.Count += Info->Count;
+            Sum.Refused += Info->Refused;
+            Sum.Hosts += Info->Hosts;
+            Sum.Cache += Info->Cache;
+            Sum.Udp += Info->Udp;
+            Sum.Tcp += Info->Tcp;
+            Sum.BlockedMsg += Info->BlockedMsg;
 
             fprintf(MainFile,
                     "{"
@@ -142,13 +142,13 @@ static int DomainStatistic_Works(void *Unused, void *Unused2)
                         "BlockedMsg:%d"
                     "},",
                     Str,
-                    Info -> Count,
-                    Info -> Refused,
-                    Info -> Hosts,
-                    Info -> Cache,
-                    Info -> Udp,
-                    Info -> Tcp,
-                    Info -> BlockedMsg
+                    Info->Count,
+                    Info->Refused,
+                    Info->Hosts,
+                    Info->Cache,
+                    Info->Udp,
+                    Info->Tcp,
+                    Info->BlockedMsg
                      );
         }
 
@@ -308,32 +308,32 @@ int DomainStatistic_Add(IHeader *h, StatisticType Type)
 				switch( Type )
 				{
 					case STATISTIC_TYPE_REFUSED:
-						++(ExistInfo -> Count);
-						++(ExistInfo -> Refused);
+						++(ExistInfo->Count);
+						++(ExistInfo->Refused);
 						break;
 
 					case STATISTIC_TYPE_HOSTS:
-						++(ExistInfo -> Count);
-						++(ExistInfo -> Hosts);
+						++(ExistInfo->Count);
+						++(ExistInfo->Hosts);
 						break;
 
 					case STATISTIC_TYPE_CACHE:
-						++(ExistInfo -> Count);
-						++(ExistInfo -> Cache);
+						++(ExistInfo->Count);
+						++(ExistInfo->Cache);
 						break;
 
 					case STATISTIC_TYPE_UDP:
-						++(ExistInfo -> Count);
-						++(ExistInfo -> Udp);
+						++(ExistInfo->Count);
+						++(ExistInfo->Udp);
 						break;
 
 					case STATISTIC_TYPE_TCP:
-						++(ExistInfo -> Count);
-						++(ExistInfo -> Tcp);
+						++(ExistInfo->Count);
+						++(ExistInfo->Tcp);
 						break;
 
 					case STATISTIC_TYPE_BLOCKEDMSG:
-						++(ExistInfo -> BlockedMsg);
+						++(ExistInfo->BlockedMsg);
 						break;
 				}
 			}

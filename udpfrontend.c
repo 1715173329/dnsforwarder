@@ -134,7 +134,7 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
 
         SOCKET sock;
 
-        f = AddressList_ConvertToAddressFromString(&a, One, 53);
+        f = AddressList_ConvertFromString(&a, One, 53);
         if( f == AF_UNSPEC )
         {
             ERRORMSG("Invalid `UDPLocal' option : %s .\n", One);

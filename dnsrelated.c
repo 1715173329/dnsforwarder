@@ -87,7 +87,7 @@ const char *DNSGetTypeName(uint16_t Num)
 
 static int DNSSECAlgorithm_Compare(DNSSECAlgorithm *Key, DNSSECAlgorithm *Element)
 {
-	return Key -> Num - Element -> Num;
+	return Key->Num - Element->Num;
 }
 
 const char *DNSSECGetAlgorithmName(int Num)
@@ -102,6 +102,6 @@ const char *DNSSECGetAlgorithmName(int Num)
 	{
 		return "UNKNOWN";
 	} else {
-		return Result -> Name;
+		return Result->Name;
 	}
 }

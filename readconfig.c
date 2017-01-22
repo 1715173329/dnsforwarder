@@ -11,22 +11,22 @@ int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
 	StringListIterator  sli;
 
     const char  *Itr;
-	Info -> fp = NULL;
+	Info->fp = NULL;
 
-	if( StringChunk_Init(&(Info -> Contexts), NULL) != 0 )
+	if( StringChunk_Init(&(Info->Contexts), NULL) != 0 )
     {
         return -1;
     }
 
     if( StringList_Init(&l, Contexts, ",") != 0 )
     {
-    	StringChunk_Free(&(Info -> Contexts), TRUE);
+    	StringChunk_Free(&(Info->Contexts), TRUE);
         return -2;
     }
 
 	if( StringListIterator_Init(&sli, &l) != 0 )
     {
-        StringChunk_Free(&(Info -> Contexts), TRUE);
+        StringChunk_Free(&(Info->Contexts), TRUE);
         l.Free(&l);
         return -3;
     }
@@ -34,15 +34,15 @@ int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
     Itr = sli.Next(&sli);
     while( Itr != NULL )
     {
-        StringChunk_Add(&(Info -> Contexts), Itr, NULL, 0);
+        StringChunk_Add(&(Info->Contexts), Itr, NULL, 0);
         Itr = sli.Next(&sli);
     }
 
     l.Free(&l);
 
-    if( StringChunk_Init(&(Info -> Options), NULL) != 0 )
+    if( StringChunk_Init(&(Info->Options), NULL) != 0 )
     {
-        StringChunk_Free(&(Info -> Contexts), TRUE);
+        StringChunk_Free(&(Info->Contexts), TRUE);
         return -4;
     }
 
@@ -51,8 +51,8 @@ int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts)
 
 int ConfigOpenFile(ConfigFileInfo *Info, const char *File)
 {
-	Info -> fp = fopen(File, "r");
-	if( Info -> fp == NULL )
+	Info->fp = fopen(File, "r");
+	if( Info->fp == NULL )
 		return -56;
 	else
 		return 0;
@@ -60,7 +60,7 @@ int ConfigOpenFile(ConfigFileInfo *Info, const char *File)
 
 int ConfigCloseFile(ConfigFileInfo *Info)
 {
-	return fclose(Info -> fp);
+	return fclose(Info->fp);
 }
 
 int ConfigAddOption(ConfigFileInfo *Info,
@@ -104,7 +104,7 @@ int ConfigAddOption(ConfigFileInfo *Info,
 			break;
 	}
 
-	return StringChunk_Add(&(Info -> Options), KeyName, (const char *)&New, sizeof(ConfigOption));
+	return StringChunk_Add(&(Info->Options), KeyName, (const char *)&New, sizeof(ConfigOption));
 }
 
 int ConfigAddAlias(ConfigFileInfo *Info, char *Alias, char *Target)
@@ -114,18 +114,18 @@ int ConfigAddAlias(ConfigFileInfo *Info, char *Alias, char *Target)
 	New.Status = STATUS_ALIAS;
 	New.Caption = StringDup(Target);
 
-	return StringChunk_Add(&(Info -> Options), Alias, (const char *)&New, sizeof(ConfigOption));
+	return StringChunk_Add(&(Info->Options), Alias, (const char *)&New, sizeof(ConfigOption));
 }
 
 static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info, const char *KeyName)
 {
 	ConfigOption *Option;
 
-	if( StringChunk_Match_NoWildCard(&(Info -> Options), KeyName, NULL, (void **)&Option) == TRUE )
+	if( StringChunk_Match_NoWildCard(&(Info->Options), KeyName, NULL, (void **)&Option) == TRUE )
 	{
-		if( Option -> Status == STATUS_ALIAS )
+		if( Option->Status == STATUS_ALIAS )
 		{
-			return GetOptionOfAInfo(Info, Option -> Caption);
+			return GetOptionOfAInfo(Info, Option->Caption);
 		} else {
 			return Option;
 		}
@@ -193,21 +193,21 @@ static BOOL GetBoolealValueFromString(char *str)
 
 static void ParseBoolean(ConfigOption *Option, char *Value)
 {
-	switch (Option -> Strategy)
+	switch (Option->Strategy)
 	{
 		case STRATEGY_APPEND_DISCARD_DEFAULT:
-			if( Option -> Status == STATUS_DEFAULT_VALUE )
+			if( Option->Status == STATUS_DEFAULT_VALUE )
 			{
-				Option -> Strategy = STRATEGY_APPEND;
+				Option->Strategy = STRATEGY_APPEND;
 			}
 			/* No break */
 
 		case STRATEGY_DEFAULT:
 		case STRATEGY_REPLACE:
 
-			Option -> Holder.boolean = GetBoolealValueFromString(Value);
+			Option->Holder.boolean = GetBoolealValueFromString(Value);
 
-			Option -> Status = STATUS_SPECIAL_VALUE;
+			Option->Status = STATUS_SPECIAL_VALUE;
 			break;
 
 		case STRATEGY_APPEND:
@@ -215,9 +215,9 @@ static void ParseBoolean(ConfigOption *Option, char *Value)
 				BOOL SpecifiedValue;
 
 				SpecifiedValue = GetBoolealValueFromString(Value);
-				Option -> Holder.boolean |= SpecifiedValue;
+				Option->Holder.boolean |= SpecifiedValue;
 
-				Option -> Status = STATUS_SPECIAL_VALUE;
+				Option->Status = STATUS_SPECIAL_VALUE;
 			}
 			break;
 
@@ -229,19 +229,19 @@ static void ParseBoolean(ConfigOption *Option, char *Value)
 
 static void ParseInt32(ConfigOption *Option, const char *Value)
 {
-	switch (Option -> Strategy)
+	switch (Option->Strategy)
 	{
 		case STRATEGY_APPEND_DISCARD_DEFAULT:
-			if( Option -> Status == STATUS_DEFAULT_VALUE )
+			if( Option->Status == STATUS_DEFAULT_VALUE )
 			{
-				Option -> Strategy = STRATEGY_APPEND;
+				Option->Strategy = STRATEGY_APPEND;
 			}
 			/* No break */
 
 		case STRATEGY_DEFAULT:
 		case STRATEGY_REPLACE:
-			sscanf(Value, "%d", &(Option -> Holder.INT32));
-			Option -> Status = STATUS_SPECIAL_VALUE;
+			sscanf(Value, "%d", &(Option->Holder.INT32));
+			Option->Status = STATUS_SPECIAL_VALUE;
 			break;
 
 		case STRATEGY_APPEND:
@@ -249,9 +249,9 @@ static void ParseInt32(ConfigOption *Option, const char *Value)
 				int32_t SpecifiedValue;
 
 				sscanf(Value, "%d", &SpecifiedValue);
-				Option -> Holder.INT32 += SpecifiedValue;
+				Option->Holder.INT32 += SpecifiedValue;
 
-				Option -> Status = STATUS_SPECIAL_VALUE;
+				Option->Status = STATUS_SPECIAL_VALUE;
 			}
 			break;
 
@@ -269,12 +269,12 @@ static void ParseString(ConfigOption *Option,
                         int BufferLength
                         )
 {
-	switch( Option -> Strategy )
+	switch( Option->Strategy )
 	{
 		case STRATEGY_APPEND_DISCARD_DEFAULT:
-			if( Option -> Status == STATUS_DEFAULT_VALUE )
+			if( Option->Status == STATUS_DEFAULT_VALUE )
 			{
-				Option -> Strategy = STRATEGY_APPEND;
+				Option->Strategy = STRATEGY_APPEND;
 			}
 			/* No break */
 
@@ -351,7 +351,7 @@ int ConfigRead(ConfigFileInfo *Info)
 	char            Context_SkipReading[2048] = {'\0'};
 
 	while(TRUE){
-		ReadStatus = ReadLine(Info -> fp, Buffer, sizeof(Buffer));
+		ReadStatus = ReadLine(Info->fp, Buffer, sizeof(Buffer));
 		if( ReadStatus == READ_FAILED_OR_END )
 			return NumOfRead;
 
@@ -368,7 +368,7 @@ int ConfigRead(ConfigFileInfo *Info)
 		}
 
         /* If it is a context begin or end */
-        if( Buffer[0] == '{' && StringChunk_Match_NoWildCard(&(Info -> Contexts), Buffer + 1, NULL, NULL) == TRUE )
+        if( Buffer[0] == '{' && StringChunk_Match_NoWildCard(&(Info->Contexts), Buffer + 1, NULL, NULL) == TRUE )
 		{
 			Context_SkipReading[0] = '}';
 			strncpy(Context_SkipReading + 1, Buffer + 1, sizeof(Context_SkipReading) - 1);
@@ -390,7 +390,7 @@ int ConfigRead(ConfigFileInfo *Info)
 		if( Option == NULL )
 			continue;
 
-		switch( Option -> Type )
+		switch( Option->Type )
 		{
 			case TYPE_INT32:
 				ParseInt32(Option, ValuePos);
@@ -415,7 +415,7 @@ int ConfigRead(ConfigFileInfo *Info)
 				/* No break */
 
 			case TYPE_STRING:
-				ParseString(Option, ValuePos, ReadStatus, TRUE, Info -> fp, Buffer, sizeof(Buffer));
+				ParseString(Option, ValuePos, ReadStatus, TRUE, Info->fp, Buffer, sizeof(Buffer));
 				break;
 
 			default:
@@ -480,7 +480,7 @@ int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName)
 
 	if( Option != NULL )
 	{
-		return Option -> Holder.INT32;
+		return Option->Holder.INT32;
 	} else {
 		return 0;
 	}
@@ -492,7 +492,7 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 
 	if( Option != NULL )
 	{
-		return Option -> Holder.boolean;
+		return Option->Holder.boolean;
 	} else {
 		return FALSE;
 	}
@@ -505,14 +505,14 @@ void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 
 	if( Option != NULL )
 	{
-		switch( Option -> Type )
+		switch( Option->Type )
 		{
 			case TYPE_INT32:
-				Option -> Holder.INT32 = Value.INT32;
+				Option->Holder.INT32 = Value.INT32;
 				break;
 
 			case TYPE_BOOLEAN:
-				Option -> Holder.boolean = Value.boolean;
+				Option->Holder.boolean = Value.boolean;
 				break;
 
 			case TYPE_STRING:
@@ -537,19 +537,19 @@ void ConfigDisplay(ConfigFileInfo *Info)
 
 	Enum_Start = 0;
 
-	Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (void **)&Option);
+	Str = StringChunk_Enum_NoWildCard(&(Info->Options), &Enum_Start, (void **)&Option);
 	while( Str != NULL )
 	{
-		if( Option != NULL && Option -> Caption != NULL && Option -> Status != STATUS_ALIAS )
+		if( Option != NULL && Option->Caption != NULL && Option->Status != STATUS_ALIAS )
 		{
-			switch( Option -> Type )
+			switch( Option->Type )
 			{
 				case TYPE_INT32:
-					printf("%s:%d\n", Option -> Caption, Option -> Holder.INT32);
+					printf("%s:%d\n", Option->Caption, Option->Holder.INT32);
 					break;
 
 				case TYPE_BOOLEAN:
-					printf("%s:%s\n", Option -> Caption, BoolToYesNo(Option -> Holder.boolean));
+					printf("%s:%s\n", Option->Caption, BoolToYesNo(Option->Holder.boolean));
 					break;
 
 				case TYPE_STRING:
@@ -567,7 +567,7 @@ void ConfigDisplay(ConfigFileInfo *Info)
                         Str = sli.Next(&sli);
 						while( Str != NULL )
 						{
-							printf("%s:%s\n", Option -> Caption, Str);
+							printf("%s:%s\n", Option->Caption, Str);
 							Str = sli.Next(&sli);
 						}
 					}
@@ -578,6 +578,6 @@ void ConfigDisplay(ConfigFileInfo *Info)
 			}
 		}
 
-		Str = StringChunk_Enum_NoWildCard(&(Info -> Options), &Enum_Start, (void **)&Option);
+		Str = StringChunk_Enum_NoWildCard(&(Info->Options), &Enum_Start, (void **)&Option);
 	}
 }

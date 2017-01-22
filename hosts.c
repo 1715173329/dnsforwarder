@@ -12,45 +12,6 @@ static BOOL BlockIpv6WhenIpv4Exists = FALSE;
 static SOCKET	IncomeSocket;
 static Address_Type	IncomeAddress;
 
-static SOCKET TryBindLocal(BOOL Ipv6, int StartPort, Address_Type *Address)
-{
-    const char *Loopback = Ipv6 ? "[::1]" : "127.0.0.1";
-
-	int MaxTime = 10000;
-
-	Address_Type Address1;
-	SOCKET ret = INVALID_SOCKET;
-
-	do {
-		AddressList_ConvertToAddressFromString(&Address1, Loopback, StartPort);
-
-		ret = socket(Address1.family, SOCK_DGRAM, IPPROTO_UDP);
-		if( ret == INVALID_SOCKET )
-        {
-            continue;
-        }
-
-        if( bind(ret,
-                 (struct sockaddr *)&(Address1.Addr),
-                 GetAddressLength(Address1.family)
-                 )
-           != 0 )
-        {
-            CLOSE_SOCKET(ret);
-            ret = INVALID_SOCKET;
-            continue;
-        }
-
-	} while( ret == INVALID_SOCKET && --MaxTime > 0 && ++StartPort > 0 );
-
-	if( ret != INVALID_SOCKET && Address != NULL )
-    {
-        memcpy(Address, &Address1, sizeof(Address_Type));
-    }
-
-	return ret;
-}
-
 BOOL Hosts_TypeExisting(const char *Domain, HostsRecordType Type)
 {
     return StaticHosts_TypeExisting(Domain, Type) ||

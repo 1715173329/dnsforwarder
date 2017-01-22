@@ -27,10 +27,8 @@ static int SwepTask(UdpM *m, SwepCallback cb)
     return 0;
 }
 
-static void UdpM_Works(void *Module)
+static void UdpM_Works(UdpM *m)
 {
-    UdpM *m = (UdpM *)Module;
-
     struct sockaddr *addr;
 
     #define BUF_LENGTH  2048
@@ -177,7 +175,6 @@ static void UdpM_Works(void *Module)
             ShowNormalMessage(Header, 'U');
             DNSCache_AddItemsToCache(Header);
             DomainStatistic_Add(Header, STATISTIC_TYPE_UDP);
-            /** TODO: Domain statistic*/
         }
     }
 

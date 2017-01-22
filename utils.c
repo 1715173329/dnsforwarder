@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include "addresslist.h"
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -573,7 +574,7 @@ int	GetConfigDirectory(char *out)
 #else /* WIN32 */
 #ifndef ANDROID
 	struct passwd *pw = getpwuid(getuid());
-	char *home = pw -> pw_dir;
+	char *home = pw->pw_dir;
 	*out = '\0';
 	if( home == NULL )
 		return 1;
@@ -1105,4 +1106,106 @@ int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked)
 
 	return 0;
 #endif
+}
+
+BOOL SocketIsWritable(SOCKET sock, int Timeout)
+{
+	struct timeval TimeLimit = {Timeout / 1000, (Timeout % 1000) * 1000};
+	fd_set rfd;
+
+	if( sock == INVALID_SOCKET )
+	{
+		return FALSE;
+	}
+
+	FD_ZERO(&rfd);
+	FD_SET(sock, &rfd);
+
+	switch(select(sock + 1, NULL, &rfd, NULL, &TimeLimit))
+	{
+		case 0:
+		case SOCKET_ERROR:
+			return FALSE;
+			break;
+
+		default:
+			return TRUE;
+			break;
+	}
+}
+
+BOOL SocketIsStillReadable(SOCKET Sock, int timeout)
+{
+	fd_set rfd;
+	struct timeval TimeLimit = {timeout / 1000, (timeout % 1000) * 1000};
+
+	FD_ZERO(&rfd);
+	FD_SET(Sock, &rfd);
+
+	switch(select(Sock + 1, &rfd, NULL, NULL, &TimeLimit))
+	{
+		case SOCKET_ERROR:
+		case 0:
+			return FALSE;
+			break;
+		case 1:
+			return TRUE;
+			break;
+		default:
+			return FALSE;
+			break;
+	}
+}
+
+void ClearTCPSocketBuffer(SOCKET Sock, int Length)
+{
+	char BlackHole[128];
+
+	while( Length > 0 )
+	{
+		Length -= recv(Sock,
+						BlackHole,
+						sizeof(BlackHole) < Length ? sizeof(BlackHole) : Length,
+						MSG_NOSIGNAL
+						);
+	}
+}
+
+SOCKET TryBindLocal(BOOL Ipv6, int StartPort, Address_Type *Address)
+{
+    const char *Loopback = Ipv6 ? "[::1]" : "127.0.0.1";
+
+	int MaxTime = 10000;
+
+	Address_Type Address1;
+	SOCKET ret = INVALID_SOCKET;
+
+	do {
+		AddressList_ConvertFromString(&Address1, Loopback, StartPort);
+
+		ret = socket(Address1.family, SOCK_DGRAM, IPPROTO_UDP);
+		if( ret == INVALID_SOCKET )
+        {
+            continue;
+        }
+
+        if( bind(ret,
+                 (struct sockaddr *)&(Address1.Addr),
+                 GetAddressLength(Address1.family)
+                 )
+           != 0 )
+        {
+            CLOSE_SOCKET(ret);
+            ret = INVALID_SOCKET;
+            continue;
+        }
+
+	} while( ret == INVALID_SOCKET && --MaxTime > 0 && ++StartPort > 0 );
+
+	if( ret != INVALID_SOCKET && Address != NULL )
+    {
+        memcpy(Address, &Address1, sizeof(Address_Type));
+    }
+
+	return ret;
 }

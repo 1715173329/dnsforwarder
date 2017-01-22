@@ -1,0 +1,642 @@
+#include "tcpm.h"
+#include "stringlist.h"
+#include "socketpuller.h"
+#include "utils.h"
+#include "logs.h"
+#include "udpfrontend.h"
+#include "timedtask.h"
+#include "dnscache.h"
+#include "ipmisc.h"
+#include "domainstatistic.h"
+#include "timedtask.h"
+
+static void SwepWorks(IHeader *h, int Number, TcpM *Module)
+{
+    ShowTimeOutMessage(h, 'T');
+
+    if( Number == 1 && Module->SocksProxies == NULL )
+    {
+        AddressList_Advance(&(Module->ServiceList));
+    }
+}
+
+static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
+                           sa_family_t      *FamiliesList,
+                           const char       *Type
+                           )
+{
+#   define  CONNECT_TIMEOUT 5
+#   define  NUMBER_OF_SOCKETS 5
+
+#ifdef WIN32
+	clock_t TimeStart;
+#endif
+
+    SocketPuller p;
+    int i; /* Loop */
+    SOCKET Final;
+
+    struct timeval TimeLimit = {CONNECT_TIMEOUT, 0};
+
+    if( SocketPuller_Init(&p) != 0 )
+    {
+        return -23;
+    }
+
+    INFO("Connecting to %s ...\n", Type);
+
+#ifdef WIN32
+	TimeStart = clock();
+#endif
+
+    for( i = 0; i < NUMBER_OF_SOCKETS; ++i )
+    {
+        SOCKET s;
+
+		if( ServerAddressesList[i] == NULL )
+		{
+			break;
+		}
+
+		s = socket(FamiliesList[i], SOCK_STREAM, IPPROTO_TCP);
+        if( s == INVALID_SOCKET )
+        {
+			continue;
+        }
+
+        SetSocketNonBlock(s, TRUE);
+
+		if( connect(s,
+                    ServerAddressesList[i],
+                    GetAddressLength(FamiliesList[i])
+                    )
+            != 0 )
+		{
+			if( GET_LAST_ERROR() != CONNECT_FUNCTION_BLOCKED )
+			{
+				CLOSE_SOCKET(s);
+				continue;
+			}
+		}
+
+        p.Add(&p, s, NULL, 0);
+    }
+
+    if( p.IsEmpty(&p) )
+    {
+        p.Free(&p);
+        INFO("Connecting to %s failed, 72.\n", Type);
+        return INVALID_SOCKET;
+    }
+
+    Final = p.Select(&p, &TimeLimit, NULL, FALSE, TRUE);
+
+    p.CloseAll(&p, Final);
+    p.FreeWithoutClose(&p);
+
+    if( Final == INVALID_SOCKET )
+    {
+        INFO("Connecting to %s timed out.\n", Type);
+    } else {
+#ifdef WIN32
+        INFO("TCP connection to %s established. Time consumed : %dms\n",
+             Type,
+             (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC)
+             );
+#else
+        INFO("TCP connection to %s established. Time consumed : %d.%ds\n",
+             Type,
+             CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(CONNECT_TIMEOUT - 1 - TimeLimit.tv_sec)),
+             CONNECT_TIMEOUT == TimeLimit.tv_sec ? 0 : ((int)(1000000 - TimeLimit.tv_usec))
+             );
+#endif
+    }
+
+    return Final;
+}
+
+static int TcpM_SendWrapper(SOCKET Sock, const char *Start, int Length, BOOL More)
+{
+    int Flags = More ? MSG_NOSIGNAL : MSG_NOSIGNAL | MSG_MORE;
+
+#define DEFAULT_TIME_OUT__SEND 2000 /* ms */
+    while( send(Sock, Start, Length, Flags) != Length )
+	{
+		int LastError = GET_LAST_ERROR();
+#ifdef WIN32
+		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
+		{
+			if( SocketIsWritable(Sock, DEFAULT_TIME_OUT__SEND) == TRUE )
+			{
+				continue;
+			}
+		}
+#else
+		if( LastError == EAGAIN || LastError == EWOULDBLOCK )
+		{
+			if( SocketIsWritable(Sock, DEFAULT_TIME_OUT__SEND) == TRUE )
+			{
+				continue;
+			}
+		}
+#endif
+        ShowSocketError("Sending to TCP server or proxy failed", LastError);
+		return (-1) * LastError;
+	}
+
+#undef DEFAULT_TIME_OUT__SEND
+	return Length;
+}
+
+static int TcpM_RecvWrapper(SOCKET Sock, char *Buffer, int BufferSize)
+{
+	int Recvlength;
+
+	while( (Recvlength = recv(Sock, Buffer, BufferSize, MSG_NOSIGNAL)) < 0 )
+	{
+		int LastError = GET_LAST_ERROR();
+#ifdef WIN32
+		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
+		{
+			if( SocketIsStillReadable(Sock, 20000) == TRUE )
+			{
+				continue;
+			}
+		}
+#else
+		if( LastError == EAGAIN || LastError ==  EWOULDBLOCK )
+		{
+			if( SocketIsStillReadable(Sock, 20000) == TRUE )
+			{
+				continue;
+			}
+		}
+#endif
+        ShowSocketError("Receiving from TCP server or proxy failed", LastError);
+		return (-1) * LastError;
+	}
+
+	return Recvlength;
+}
+
+static int TcpM_ProxyPreparation(SOCKET Sock,
+                                 const struct sockaddr  *NestedAddress,
+                                 sa_family_t Family
+                                 )
+{
+    char AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII];
+    char NumberOfCharacter;
+    unsigned short Port;
+    char RecvBuffer[16];
+    int ret;
+
+    if( Family == AF_INET )
+    {
+        IPv4AddressToAsc(&(((const struct sockaddr_in *)NestedAddress)->sin_addr), AddressString);
+		Port = ((const struct sockaddr_in *)NestedAddress)->sin_port;
+    } else {
+		IPv6AddressToAsc(&(((const struct sockaddr_in6 *)NestedAddress)->sin6_addr), AddressString);
+		Port = ((const struct sockaddr_in6 *)NestedAddress)->sin6_port;
+    }
+
+	if( TcpM_SendWrapper(Sock, "\x05\x01\x00", 3, FALSE) != 3 )
+	{
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+		return -1;
+	}
+
+    if( (ret = TcpM_RecvWrapper(Sock, RecvBuffer, 2)) != 2 )
+    {
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+        return -2;
+    }
+
+	if( RecvBuffer[0] != '\x05' || RecvBuffer[1] != '\x00' )
+	{
+		/*printf("---------3 : %x %x\n", RecvBuffer[0], RecvBuffer[1]);*/
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+		return -3;
+	}
+
+	INFO("Connecting to TCP server.\n");
+
+	if( TcpM_SendWrapper(Sock, "\x05\x01\x00\x03", 4, FALSE) != 4 )
+	{
+	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		return -4;
+	}
+	NumberOfCharacter = strlen(AddressString);
+	if( TcpM_SendWrapper(Sock, &NumberOfCharacter, 1, FALSE) != 1 )
+	{
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		return -5;
+	}
+	if( TcpM_SendWrapper(Sock, AddressString, NumberOfCharacter, FALSE) != NumberOfCharacter )
+	{
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		return -6;
+	}
+	if( TcpM_SendWrapper(Sock, (const char *)&Port, sizeof(Port), FALSE) != sizeof(Port) )
+	{
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		return -7;
+	}
+
+	TcpM_RecvWrapper(Sock, RecvBuffer, 4);
+	if( RecvBuffer[1] != '\x00' )
+	{
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		return -8;
+	}
+
+	switch( RecvBuffer[3] )
+	{
+		case 0x01:
+			NumberOfCharacter = 6;
+			break;
+
+		case 0x03:
+			TcpM_RecvWrapper(Sock, &NumberOfCharacter, 1);
+			NumberOfCharacter += 2;
+			break;
+
+		case 0x04:
+			NumberOfCharacter = 18;
+			break;
+
+		default:
+			/*printf("------Here : %d %d %d %d\n", RecvBuffer[0], RecvBuffer[1], RecvBuffer[2], RecvBuffer[3]);*/
+			ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+			return -9;
+	}
+	ClearTCPSocketBuffer(Sock, NumberOfCharacter);
+
+	INFO("Connected to TCP server.\n");
+
+	return 0;
+
+}
+
+static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
+{
+    uint16_t TCPLength;
+
+    if( m->Context.Add(&(m->Context), h) != 0 )
+    {
+        DEBUG("m->Departure : %d\n", m->Departure);
+        return -11;
+    }
+
+    DEBUG("m->Departure : %d\n", m->Departure);
+    /* Set up socket */
+    if( m->Departure == INVALID_SOCKET )
+    {
+        SOCKET s = INVALID_SOCKET;
+        if( m->SocksProxies == NULL )
+        {
+            /* Non-proxied */
+            s = TcpM_Connect(m->Services, m->ServiceFamilies, "server");
+            if( s == INVALID_SOCKET )
+            {
+                return -122;
+            }
+        } else {
+            /* Proxied */
+            struct sockaddr *addr;
+            sa_family_t family;
+
+            s = TcpM_Connect(m->SocksProxies,
+                             m->SocksProxyFamilies,
+                             "proxy"
+                             );
+
+            if( s == INVALID_SOCKET )
+            {
+                return -187;
+            }
+
+            addr = AddressList_GetOne(&(m->ServiceList), &family);
+            if( addr == NULL )
+            {
+                CLOSE_SOCKET(s);
+                return -324;
+            }
+
+            if( TcpM_ProxyPreparation(s, addr, family) != 0 )
+            {
+                CLOSE_SOCKET(s);
+                AddressList_Advance(&(m->ServiceList));
+                return -330;
+            }
+        }
+
+        m->Departure = s;
+        m->Puller.Add(&(m->Puller), m->Departure, NULL, 0);
+    }
+
+    DEBUG("m->Departure : %d\n", m->Departure);
+    TCPLength = htons(h->EntityLength);
+
+    if( TcpM_SendWrapper(m->Departure, (const char *)&TCPLength, 2, TRUE) < 0 )
+    {
+        CLOSE_SOCKET(m->Departure);
+        m->Departure = INVALID_SOCKET;
+
+        if( m->SocksProxies != NULL )
+        {
+            AddressList_Advance(&(m->ServiceList));
+        }
+
+        return -162;
+    }
+
+    if( TcpM_SendWrapper(m->Departure,
+                         IHEADER_TAIL(h),
+                         h->EntityLength,
+                         FALSE
+                         )
+        < 0 )
+    {
+        CLOSE_SOCKET(m->Departure);
+        m->Departure = INVALID_SOCKET;
+
+        if( m->SocksProxies != NULL )
+        {
+            AddressList_Advance(&(m->ServiceList));
+        }
+
+        return -174;
+    }
+
+    return 0;
+}
+
+PUBFUNC int TcpM_Send(TcpM *m, IHeader *h /* Entity followed */)
+{
+    int State;
+
+    State = sendto(m->Incoming,
+                   (const char *)h,
+                   sizeof(IHeader) + h->EntityLength,
+                   MSG_NOSIGNAL,
+                   (const struct sockaddr *)&(m->IncomingAddr.Addr),
+                   GetAddressLength(m->IncomingAddr.family)
+                   );
+
+    return !(State > 0);
+}
+
+static int TcpM_Works(TcpM *m)
+{
+    SOCKET  s;
+
+    #define BUF_LENGTH  2048
+    char *ReceiveBuffer;
+    IHeader *Header;
+
+    #define LEFT_LENGTH  (BUF_LENGTH - sizeof(IHeader))
+    char *Entity;
+
+    static const struct timeval TimeLimit = {5, 0};
+    struct timeval TimeOut;
+
+    time_t  LastRecvFromServer = 0;
+
+    ReceiveBuffer = SafeMalloc(BUF_LENGTH);
+    if( ReceiveBuffer == NULL )
+    {
+        ERRORMSG("Fatal error 381.\n");
+        return -383;
+    }
+
+    Header = (IHeader *)ReceiveBuffer;
+    Entity = ReceiveBuffer + sizeof(IHeader);
+
+    while( TRUE )
+    {
+        TimeOut = TimeLimit;
+        s = m->Puller.Select(&(m->Puller), &TimeOut, NULL, TRUE, FALSE);
+        if( s == INVALID_SOCKET )
+        {
+            m->Context.Swep(&(m->Context), (SwepCallback)SwepWorks, m);
+        } else if( s == m->Departure )
+        {
+            int State;
+            uint16_t TCPLength;
+
+            State = TcpM_RecvWrapper(s, (char *)&TCPLength, 2);
+            if( State < 2 )
+            {
+                m->Puller.Del(&(m->Puller), s);
+                CLOSE_SOCKET(s);
+                m->Departure = INVALID_SOCKET;
+                if( m->SocksProxies == NULL )
+                {
+                    INFO("TCP server closed the connection.\n");
+                } else {
+                    INFO("TCP proxy closed the connection.\n");
+                }
+
+                continue;
+            }
+
+            LastRecvFromServer = time(NULL);
+
+            State = TcpM_RecvWrapper(s, Entity, LEFT_LENGTH);
+            if( State <= 0 )
+            {
+                m->Puller.Del(&(m->Puller), s);
+                CLOSE_SOCKET(s);
+                m->Departure = INVALID_SOCKET;
+                continue;
+            }
+
+            IHeader_Fill(Header,
+                         FALSE,
+                         Entity,
+                         State,
+                         NULL,
+                         INVALID_SOCKET,
+                         AF_UNSPEC,
+                         NULL
+                         );
+
+            if( m->Context.FindAndRemove(&(m->Context), Header, Header) != 0 )
+            {
+                continue;
+            }
+
+            switch( IPMiscSingleton_Process(Header) )
+            {
+            case IP_MISC_ACTION_NOTHING:
+                break;
+
+            case IP_MISC_ACTION_BLOCK:
+                ShowBlockedMessage(Header, "Bad package, discarded");
+                continue;
+                break;
+
+            default:
+                ERRORMSG("Fatal error 155.\n");
+                continue;
+                break;
+            }
+
+            State = IHeader_SendBack(Header);
+
+            if( State != 0 )
+            {
+                ShowErrorMessage(Header, 'T');
+                continue;
+            }
+
+            ShowNormalMessage(Header, 'T');
+            DNSCache_AddItemsToCache(Header);
+            DomainStatistic_Add(Header, STATISTIC_TYPE_TCP);
+
+        } else /* s == m->Incoming */ {
+            int State;
+
+            State = recvfrom(s,
+                             ReceiveBuffer, /* Receiving a header */
+                             BUF_LENGTH,
+                             0,
+                             NULL,
+                             NULL
+                             );
+
+            if( State <= 0 )
+            {
+                continue;
+            }
+
+            if( m->Departure != INVALID_SOCKET &&
+                (time(NULL) - LastRecvFromServer > 5 ||
+                 !SocketIsWritable(m->Departure, 3000)
+                 )
+                )
+            {
+                m->Puller.Del(&(m->Puller), m->Departure);
+                CLOSE_SOCKET(m->Departure);
+                m->Departure = INVALID_SOCKET;
+            }
+
+            TcpM_Send_Actual(m, Header);
+        }
+    }
+}
+
+int TcpM_Init(TcpM *m, const char *Services, const char *SocksProxies)
+{
+    if( m == NULL || Services == NULL )
+    {
+        return -7;
+    }
+
+    if( ModuleContext_Init(&(m->Context)) != 0 )
+    {
+        return -12;
+    }
+
+    if( SocketPuller_Init(&(m->Puller)) != 0 )
+    {
+        return -389;
+    }
+
+    m->Incoming = TryBindLocal(Ipv6_Aviliable(), 10400, &(m->IncomingAddr));
+    if( m->Incoming == INVALID_SOCKET )
+    {
+        return -357;
+    }
+
+    m->Puller.Add(&(m->Puller), m->Incoming, NULL, 0);
+
+    m->Departure = INVALID_SOCKET;
+
+    if( AddressList_Init(&(m->ServiceList)) != 0 )
+    {
+        return -17;
+    } else {
+        StringList l;
+        StringListIterator i;
+        const char *Itr;
+
+        if( StringList_Init(&l, Services, ",") != 0 )
+        {
+            return -23;
+        }
+
+        if( StringListIterator_Init(&i, &l) != 0 )
+        {
+            return -29;
+        }
+
+        while( (Itr = i.Next(&i)) != NULL )
+        {
+            AddressList_Add_From_String(&(m->ServiceList), Itr, 53);
+        }
+
+        l.Free(&l);
+
+        if( SocksProxies == NULL )
+        {
+            m->Services = AddressList_GetPtrList(&(m->ServiceList),
+                                                 &(m->ServiceFamilies)
+                                                 );
+
+            if( m->Services == NULL )
+            {
+                return -45;
+            }
+        }
+    }
+
+    if( SocksProxies != NULL )
+    {
+        /* Proxied */
+        if( AddressList_Init(&(m->SocksProxyList)) != 0 )
+        {
+            return -53;
+        } else {
+            StringList l;
+            StringListIterator i;
+            const char *Itr;
+
+            if( StringList_Init(&l, SocksProxies, ",") != 0 )
+            {
+                return -61;
+            }
+
+            if( StringListIterator_Init(&i, &l) != 0 )
+            {
+                return -58;
+            }
+
+            while( (Itr = i.Next(&i)) != NULL )
+            {
+                AddressList_Add_From_String(&(m->SocksProxyList), Itr, 53);
+            }
+
+            l.Free(&l);
+
+            m->SocksProxies = AddressList_GetPtrList(&(m->SocksProxyList),
+                                                      &(m->SocksProxyFamilies)
+                                                      );
+
+            if( m->SocksProxies == NULL )
+            {
+                return -84;
+            }
+        }
+    } else {
+        /* Non-proxied */
+        m->SocksProxies = NULL;
+        m->SocksProxyFamilies = NULL;
+    }
+
+    m->Send = TcpM_Send;
+
+    CREATE_THREAD(TcpM_Works, m, m->WorkThread);
+
+    return 0;
+}

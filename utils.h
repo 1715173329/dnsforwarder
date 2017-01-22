@@ -147,4 +147,12 @@ char *ReplaceStr_WithLengthChecking(char *Src,
 
 int SetSocketNonBlock(SOCKET sock, BOOL NonBlocked);
 
+BOOL SocketIsWritable(SOCKET sock, int Timeout);
+
+BOOL SocketIsStillReadable(SOCKET Sock, int timeout);
+
+void ClearTCPSocketBuffer(SOCKET Sock, int Length);
+
+SOCKET TryBindLocal(BOOL Ipv6, int StartPort, Address_Type *Address);
+
 #endif /* _UTILS_ */
