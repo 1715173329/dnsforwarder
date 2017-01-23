@@ -72,7 +72,7 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     */
 
     /* TCPGroup 1.2.4.8,114.114.114.114 example.com 192.168.50.5:8080, 192.168.50.6:8080*/
-    /* TCPGroup 1.2.4.8,114.114.114.114 no*/
+    /* TCPGroup 1.2.4.8,114.114.114.114 * no*/
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Groups");
     ConfigSetStringDelimiters(&ConfigInfo, "TCPGroup", "\t ");
@@ -446,7 +446,7 @@ int main(int argc, char *argv[])
     printf("DNSforwarder mainly by holmium. Version "VERSION__" . License : GPL v3.\nTime of compilation : %s %s.\n\n", __DATE__, __TIME__);
 
 #ifndef WIN32
-    printf("Please run `dnsforwarder -p' if something goes wrong.\n\n")
+    printf("Please run `dnsforwarder -p' if something goes wrong.\n\n");
 #endif /* WIN32 */
 
     printf("Configure File : %s\n\n", ConfigFile);

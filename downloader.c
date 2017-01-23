@@ -24,6 +24,7 @@
 #include "utils.h"
 #endif /* NODOWNLOAD */
 
+#include <string.h>
 #include "downloader.h"
 #include "logs.h"
 

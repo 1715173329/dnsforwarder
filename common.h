@@ -12,6 +12,13 @@
 
 #ifdef WIN32 /* For Windows below. */
 
+    #ifdef WIN64
+        #ifdef _WIN32_WINNT
+            #undef _WIN32_WINNT
+        #endif
+        #define _WIN32_WINNT 0x0600
+    #endif
+
 	#include <stdlib.h>
 	#include <winsock2.h> /* fd_set, struct sockaddr_in,  */
 	#include <windows.h> /* For many things */

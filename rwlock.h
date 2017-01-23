@@ -5,13 +5,16 @@
 
 #ifdef WIN32
 	#ifdef WIN64
+    /*
 		#ifndef InitializeSRWLock
 		typedef struct _RWLock {
 			PVOID Ptr;
 		} RWLock;
 		#else
 		typedef SRWLOCK RWLock;
-		#endif /* InitializeSRWLock */
+		#endif
+    */
+        typedef SRWLOCK RWLock;
 	#else /* WIN64 */
 		typedef CRITICAL_SECTION RWLock;
 	#endif /* WIN64 */
@@ -29,6 +32,7 @@
 
 	#ifdef WIN64
 
+        /*
 		#ifndef InitializeSRWLock
 
 		VOID WINAPI InitializeSRWLock(RWLock *SRWLock);
@@ -37,7 +41,8 @@
 		VOID WINAPI ReleaseSRWLockShared(RWLock *SRWLock);
 		VOID WINAPI ReleaseSRWLockExclusive(RWLock *SRWLock);
 
-		#endif /* InitializeSRWLock */
+		#endif
+		*/
 
 		#define	RWLock_Init(l)		InitializeSRWLock(&(l))
 		#define RWLock_RdLock(l)	AcquireSRWLockShared(&(l))

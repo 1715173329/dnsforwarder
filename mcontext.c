@@ -1,3 +1,4 @@
+#include <string.h>
 #include <time.h>
 #include "mcontext.h"
 #include "common.h"

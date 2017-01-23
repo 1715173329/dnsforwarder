@@ -1,3 +1,4 @@
+#include <string.h>
 #include <time.h>
 #include "common.h"
 #include "stringchunk.h"

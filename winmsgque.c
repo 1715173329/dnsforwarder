@@ -1,5 +1,6 @@
 #ifdef WIN32
 #include "winmsgque.h"
+#include "ptimer.h"
 
 static int WinMsgQue_Post(WinMsgQue *q, const void *Data)
 {
@@ -29,24 +30,16 @@ static void *WinMsgQue_Wait(WinMsgQue *q, DWORD *Milliseconds)
     {
         return Peek;
     } else {
-        DWORD   StartTime = GetTickCount();
-        DWORD   EndTime;
-        DWORD   ElapsedTime;
+        PTimer t;
 
         TimeWaiting = Milliseconds == NULL ? INFINITE : *Milliseconds;
+        PTimer_Start(&t);
         if( WaitForSingleObject(q->e, TimeWaiting) == WAIT_OBJECT_0 )
         {
-            EndTime = GetTickCount();
-
-            if( EndTime >= StartTime )
-            {
-                ElapsedTime = EndTime - StartTime;
-            } else {
-                ElapsedTime = (0xFFFFFFFF - StartTime) + EndTime;
-            }
-
             if( Milliseconds != NULL )
             {
+                unsigned long ElapsedTime = PTimer_End(&t);
+
                 if( ElapsedTime > *Milliseconds )
                 {
                     *Milliseconds = 0;

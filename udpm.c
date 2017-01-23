@@ -56,9 +56,9 @@ static void UdpM_Works(UdpM *m)
         int ContextState;
 
         /* Set up socket */
-        EFFECTIVE_LOCK_GET(m->Lock);
         if( m->Departure == INVALID_SOCKET )
         {
+            EFFECTIVE_LOCK_GET(m->Lock);
             if( m->Parallels.addrs == NULL )
             {
                 sa_family_t	family;
@@ -85,21 +85,21 @@ static void UdpM_Works(UdpM *m)
                 EFFECTIVE_LOCK_RELEASE(m->Lock);
                 return;
             }
+            EFFECTIVE_LOCK_RELEASE(m->Lock);
 
             FD_ZERO(&ReadSet);
             FD_SET(m->Departure, &ReadSet);
         }
-        EFFECTIVE_LOCK_RELEASE(m->Lock);
 
         ReadySet = ReadSet;
         switch( select(m->Departure + 1, &ReadySet, NULL, NULL, NULL) )
         {
             case SOCKET_ERROR:
-                ERRORMSG("SOCKET_ERROR Reached, 82.\n");
-                while( TRUE )
-                {
-                    SLEEP(32767);
-                }
+                WARNING("SOCKET_ERROR reached, 98.\n");
+                FD_CLR(m->Departure, &ReadSet);
+                CLOSE_SOCKET(m->Departure);
+                m->Departure = INVALID_SOCKET;
+                continue;
                 break;
 
             case 0:
@@ -184,13 +184,14 @@ static void UdpM_Works(UdpM *m)
 static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
 {
     int ret = 0;
-    EFFECTIVE_LOCK_GET(m->Lock);
 
+    EFFECTIVE_LOCK_GET(m->Lock);
     if( m->Context.Add(&(m->Context), h) != 0 )
     {
         EFFECTIVE_LOCK_RELEASE(m->Lock);
         return -242;
     }
+    EFFECTIVE_LOCK_RELEASE(m->Lock);
 
     if( m->Departure != INVALID_SOCKET )
     {
@@ -245,7 +246,7 @@ static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
         }
     }
 
-    EFFECTIVE_LOCK_RELEASE(m->Lock);
+    /*EFFECTIVE_LOCK_RELEASE(m->Lock);*/
     return !ret;
 }
 

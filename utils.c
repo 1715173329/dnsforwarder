@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "addresslist.h"
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -31,6 +30,7 @@ int Execute(const char *Cmd)
 #include "common.h"
 #include "utils.h"
 #include "dnsgenerator.h"
+#include "addresslist.h"
 
 #ifdef WIN32
 	#ifdef MASKED

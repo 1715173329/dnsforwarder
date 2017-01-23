@@ -207,6 +207,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../pipes.h" />
+		<Unit filename="../ptimer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../ptimer.h" />
 		<Unit filename="../querydnslistentcp.c">
 			<Option compilerVar="CC" />
 			<Option compile="0" />

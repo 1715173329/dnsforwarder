@@ -1,3 +1,4 @@
+#include <string.h>
 #include "mmgr.h"
 #include "stringchunk.h"
 #include "utils.h"

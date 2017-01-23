@@ -1,3 +1,4 @@
+#include <string.h>
 #include "tcpm.h"
 #include "stringlist.h"
 #include "socketpuller.h"
@@ -9,6 +10,7 @@
 #include "ipmisc.h"
 #include "domainstatistic.h"
 #include "timedtask.h"
+#include "ptimer.h"
 
 static void SwepWorks(IHeader *h, int Number, TcpM *Module)
 {
@@ -29,7 +31,7 @@ static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
 #   define  NUMBER_OF_SOCKETS 5
 
 #ifdef WIN32
-	clock_t TimeStart;
+	PTimer  t;
 #endif
 
     SocketPuller p;
@@ -46,7 +48,7 @@ static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
     INFO("Connecting to %s ...\n", Type);
 
 #ifdef WIN32
-	TimeStart = clock();
+	PTimer_Start(&t);
 #endif
 
     for( i = 0; i < NUMBER_OF_SOCKETS; ++i )
@@ -99,9 +101,9 @@ static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
         INFO("Connecting to %s timed out.\n", Type);
     } else {
 #ifdef WIN32
-        INFO("TCP connection to %s established. Time consumed : %dms\n",
+        INFO("TCP connection to %s established. Time consumed : %lums\n",
              Type,
-             (int)((clock() - TimeStart) * 1000 / CLOCKS_PER_SEC)
+             PTimer_End(&t)
              );
 #else
         INFO("TCP connection to %s established. Time consumed : %d.%ds\n",
@@ -283,11 +285,9 @@ static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
 
     if( m->Context.Add(&(m->Context), h) != 0 )
     {
-        DEBUG("m->Departure : %d\n", m->Departure);
         return -11;
     }
 
-    DEBUG("m->Departure : %d\n", m->Departure);
     /* Set up socket */
     if( m->Departure == INVALID_SOCKET )
     {
@@ -334,7 +334,6 @@ static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
         m->Puller.Add(&(m->Puller), m->Departure, NULL, 0);
     }
 
-    DEBUG("m->Departure : %d\n", m->Departure);
     TCPLength = htons(h->EntityLength);
 
     if( TcpM_SendWrapper(m->Departure, (const char *)&TCPLength, 2, TRUE) < 0 )
@@ -402,6 +401,10 @@ static int TcpM_Works(TcpM *m)
 
     time_t  LastRecvFromServer = 0;
 
+    BOOL Retried = FALSE;
+
+    int NumberOfCumulated = 0;
+
     ReceiveBuffer = SafeMalloc(BUF_LENGTH);
     if( ReceiveBuffer == NULL )
     {
@@ -416,9 +419,11 @@ static int TcpM_Works(TcpM *m)
     {
         TimeOut = TimeLimit;
         s = m->Puller.Select(&(m->Puller), &TimeOut, NULL, TRUE, FALSE);
+
         if( s == INVALID_SOCKET )
         {
             m->Context.Swep(&(m->Context), (SwepCallback)SwepWorks, m);
+            NumberOfCumulated = 0;
         } else if( s == m->Departure )
         {
             int State;
@@ -437,10 +442,20 @@ static int TcpM_Works(TcpM *m)
                     INFO("TCP proxy closed the connection.\n");
                 }
 
+                /* Try again */
+                if( !Retried )
+                {
+                    INFO("TCP query retrying...\n");
+                    TcpM_Send_Actual(m, Header);
+                    Retried = TRUE;
+                }
+
                 continue;
             }
 
             LastRecvFromServer = time(NULL);
+
+            Retried = TRUE;
 
             State = TcpM_RecvWrapper(s, Entity, LEFT_LENGTH);
             if( State <= 0 )
@@ -497,6 +512,12 @@ static int TcpM_Works(TcpM *m)
         } else /* s == m->Incoming */ {
             int State;
 
+            if( NumberOfCumulated > 1024 )
+            {
+                m->Context.Swep(&(m->Context), (SwepCallback)SwepWorks, m);
+                NumberOfCumulated = 0;
+            }
+
             State = recvfrom(s,
                              ReceiveBuffer, /* Receiving a header */
                              BUF_LENGTH,
@@ -507,12 +528,17 @@ static int TcpM_Works(TcpM *m)
 
             if( State <= 0 )
             {
+                Retried = TRUE;
                 continue;
             }
 
+            ++NumberOfCumulated;
+
+            Retried = FALSE;
+
             if( m->Departure != INVALID_SOCKET &&
-                (time(NULL) - LastRecvFromServer > 5 ||
-                 !SocketIsWritable(m->Departure, 3000)
+                (time(NULL) - LastRecvFromServer > 5 /*||
+                 !SocketIsWritable(m->Departure, 3000)*/
                  )
                 )
             {
@@ -521,7 +547,17 @@ static int TcpM_Works(TcpM *m)
                 m->Departure = INVALID_SOCKET;
             }
 
-            TcpM_Send_Actual(m, Header);
+            if( TcpM_Send_Actual(m, Header) != 0 )
+            {
+                m->Puller.Del(&(m->Puller), m->Departure);
+                CLOSE_SOCKET(m->Departure);
+                m->Departure = INVALID_SOCKET;
+
+                /* Try again */
+                INFO("TCP query retrying...\n");
+                TcpM_Send_Actual(m, Header);
+                Retried = TRUE;
+            }
         }
     }
 }

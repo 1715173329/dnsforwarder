@@ -185,7 +185,7 @@ BOOL StringChunk_Match_OnlyWildCard(StringChunk	*dl,
 
     wl = &(dl->List_W_Pos);
 
-	for( loop = 0; loop != Array_GetUsed(wl); ++loop )
+	for( loop = Array_GetUsed(wl) - 1; loop >= 0; --loop )
 	{
 		FoundEntry = (EntryForString *)Array_GetBySubscript(wl, loop);
 		if( FoundEntry != NULL )

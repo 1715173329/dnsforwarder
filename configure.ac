@@ -20,7 +20,7 @@ AC_ARG_WITH([ccflags],
 	],
     [CFLAGS=""]
     )
-    
+
 LDFLAGS=" ${LDFLAGS} -pthread "
 CFLAGS=" ${CFLAGS} -pthread "
 
@@ -29,12 +29,15 @@ AC_PROG_CC
 
 # Checks for libraries.
 # Checks for math libraries.
-AC_CHECK_LIB(m, log, , 
+AC_CHECK_LIB(m, log, ,
 	AC_MSG_ERROR(No libmath found.)
 	)
-AC_CHECK_LIB(m, sqrt, , 
+AC_CHECK_LIB(m, sqrt, ,
 	AC_MSG_ERROR(No libmath found.)
 	)
+AC_CHECK_FUNCS([pow])
+AC_CHECK_FUNCS([sqrt])
+
 
 AC_ARG_ENABLE([win],
 	[AS_HELP_STRING([--enable-win],
@@ -88,8 +91,8 @@ then
 		[DOWNLOADER=libcurl]
 		)
 
-	if test "$DOWNLOADER" == "libcurl" 
-	then 
+	if test "$DOWNLOADER" == "libcurl"
+	then
 
 	# Checks for curl.
 	AC_CHECK_LIB(curl, curl_global_init, ,
@@ -99,12 +102,12 @@ then
 	CFLAGS="${CFLAGS} -DDOWNLOAD_LIBCURL "
 	fi
 
-	if test "$DOWNLOADER" == "wget" 
+	if test "$DOWNLOADER" == "wget"
 	then
 	CFLAGS="${CFLAGS} -DDOWNLOAD_WGET "
 	fi
 
-	if test "$DOWNLOADER" == "no" 
+	if test "$DOWNLOADER" == "no"
 	then
 	CFLAGS="${CFLAGS} -DNODOWNLOAD "
 	fi
@@ -123,8 +126,8 @@ then
 #		[BASE64DECODER=openssl]
 #		)
 #
-#	if test "$BASE64DECODER" == "openssl" 
-#	then 
+#	if test "$BASE64DECODER" == "openssl"
+#	then
 #	CFLAGS="${CFLAGS} -DBASE64_DECODER_OPENSSL "
 #	# Checks for openssl.
 #	AC_CHECK_LIB(crypto, BIO_new, ,
@@ -132,7 +135,7 @@ then
 #		)
 #	fi
 #
-#	if test "$BASE64DECODER" == "uudecode" 
+#	if test "$BASE64DECODER" == "uudecode"
 #	then
 #	CFLAGS="${CFLAGS} -DBASE64_DECODER_UUDECODE "
 #	fi
@@ -154,14 +157,14 @@ then
 					 )
 	fi
 
-	if test "$BASE64DECODER" == "openssl" 
-	then 
-	AC_CHECK_HEADERS([openssl/evp.h openssl/bio.h],
-					 [],
-					 AC_MSG_ERROR(No openssl headers found.),
-					 []
-					 )
-	fi
+#	if test "$BASE64DECODER" == "openssl"
+#	then
+#	AC_CHECK_HEADERS([openssl/evp.h openssl/bio.h],
+#					 [],
+#					 AC_MSG_ERROR(No openssl headers found.),
+#					 []
+#					 )
+#	fi
 
 	# Checks for library functions.
 	AC_FUNC_FORK
@@ -169,6 +172,20 @@ then
 	AC_FUNC_REALLOC
 	AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
 	AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
+    AC_CHECK_FUNCS([setenv])
+    AC_CHECK_FUNCS([wordexp])
+    AC_CHECK_FUNCS([clock_gettime])
+    AC_CHECK_FUNCS([inet_ntoa])
+    AC_CHECK_FUNCS([memmove])
+    AC_CHECK_FUNCS([memset])
+    AC_CHECK_FUNCS([mkdir])
+    AC_CHECK_FUNCS([select])
+    AC_CHECK_FUNCS([socket])
+    AC_CHECK_FUNCS([strchr])
+    AC_CHECK_FUNCS([strerror])
+    AC_CHECK_FUNCS([strpbrk])
+    AC_CHECK_FUNCS([strrchr])
+    AC_CHECK_FUNCS([strstr])
 
 	AC_ARG_ENABLE([spinlock],
 		[AS_HELP_STRING([--enable-spinlock],
@@ -182,7 +199,7 @@ then
 		],
 		[]
 		)
-		
+
 	AC_ARG_ENABLE([rwlock],
 		[AS_HELP_STRING([--enable-rwlock],
 			[rwlock will be used (default=yes)]
@@ -195,9 +212,16 @@ then
 		],
 		[]
 		)
-		
+
 	AC_TYPE_PID_T
 fi
+
+# Checks for headers
+AC_CHECK_HEADERS([arpa/inet.h])
+AC_CHECK_HEADERS([fcntl.h])
+AC_CHECK_HEADERS([limits.h])
+AC_CHECK_HEADERS([netinet/in.h])
+AC_CHECK_HEADERS([sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
@@ -206,19 +230,6 @@ AC_TYPE_UINT16_T
 AC_TYPE_INT32_T
 AC_TYPE_UINT32_T
 
-AC_ARG_ENABLE([debug],
-	[AS_HELP_STRING([--enable-debug],
-	    [enable DEBUG mode (default=no)]
-	)],
-	[   case "${enableval}" in
-	    yes) [CFLAGS="${CFLAGS} -DDEBUG -g -Wall "] ;;
-	    no)  [CFLAGS="${CFLAGS} -O2 "] ;;
-	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-debug) ;;
-	    esac
-	],
-	[CFLAGS="${CFLAGS} -O2 "]
-	)
-	
 AC_ARG_ENABLE([static],
 	[AS_HELP_STRING([--enable-static],
 	    [static link (default=no)]

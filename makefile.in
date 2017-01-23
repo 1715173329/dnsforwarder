@@ -102,21 +102,21 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_dnsforwarder_OBJECTS = addresschunk.$(OBJEXT) checkip.$(OBJEXT) \
-	dnsrelated.$(OBJEXT) hosts.$(OBJEXT) simpleht.$(OBJEXT) \
-	querydnslistentcp.$(OBJEXT) addresslist.$(OBJEXT) \
-	domainstatistic.$(OBJEXT) internalsocket.$(OBJEXT) \
-	socketpool.$(OBJEXT) querydnslistenudp.$(OBJEXT) \
-	array.$(OBJEXT) debug.$(OBJEXT) downloader.$(OBJEXT) \
-	ipchunk.$(OBJEXT) statichosts.$(OBJEXT) readconfig.$(OBJEXT) \
-	bst.$(OBJEXT) dnscache.$(OBJEXT) excludedlist.$(OBJEXT) \
-	linkedqueue.$(OBJEXT) stringchunk.$(OBJEXT) readline.$(OBJEXT) \
-	cacheht.$(OBJEXT) dnsgenerator.$(OBJEXT) main.$(OBJEXT) \
-	stringlist.$(OBJEXT) querydnsbase.$(OBJEXT) \
-	request_response.$(OBJEXT) cachettlcrtl.$(OBJEXT) \
-	dnsparser.$(OBJEXT) goodiplist.$(OBJEXT) utils.$(OBJEXT) \
-	querydnsinterface.$(OBJEXT) stablebuffer.$(OBJEXT) \
-	ipmisc.$(OBJEXT)
+am_dnsforwarder_OBJECTS = addresslist.$(OBJEXT) dynamichosts.$(OBJEXT) \
+	main.$(OBJEXT) array.$(OBJEXT) mcontext.$(OBJEXT) \
+	filter.$(OBJEXT) stablebuffer.$(OBJEXT) bst.$(OBJEXT) \
+	mmgr.$(OBJEXT) goodiplist.$(OBJEXT) statichosts.$(OBJEXT) \
+	cacheht.$(OBJEXT) hcontext.$(OBJEXT) pipes.$(OBJEXT) \
+	stringchunk.$(OBJEXT) cachettlcrtl.$(OBJEXT) hosts.$(OBJEXT) \
+	ptimer.$(OBJEXT) stringlist.$(OBJEXT) hostscontainer.$(OBJEXT) \
+	tcpm.$(OBJEXT) dnscache.$(OBJEXT) hostsutils.$(OBJEXT) \
+	readconfig.$(OBJEXT) timedtask.$(OBJEXT) \
+	dnsgenerator.$(OBJEXT) iheader.$(OBJEXT) readline.$(OBJEXT) \
+	udpfrontend.$(OBJEXT) dnsparser.$(OBJEXT) ipchunk.$(OBJEXT) \
+	udpm.$(OBJEXT) dnsrelated.$(OBJEXT) ipmisc.$(OBJEXT) \
+	simpleht.$(OBJEXT) utils.$(OBJEXT) domainstatistic.$(OBJEXT) \
+	linkedqueue.$(OBJEXT) socketpool.$(OBJEXT) winmsgque.$(OBJEXT) \
+	downloader.$(OBJEXT) logs.$(OBJEXT) socketpuller.$(OBJEXT)
 dnsforwarder_OBJECTS = $(am_dnsforwarder_OBJECTS)
 dnsforwarder_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -283,7 +283,24 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dnsforwarder_SOURCES = addresschunk.c checkip.c dnsrelated.c hosts.c querydnsinterface.h simpleht.c addresschunk.h checkip.h dnsrelated.h hosts.h querydnslistentcp.c simpleht.h addresslist.c common.h domainstatistic.c internalsocket.c querydnslistentcp.h socketpool.c addresslist.h config.h domainstatistic.h internalsocket.h querydnslistenudp.c socketpool.h array.c debug.c downloader.c ipchunk.c querydnslistenudp.h statichosts.c array.h debug.h downloader.h ipchunk.h readconfig.c statichosts.h bst.c dnscache.c excludedlist.c linkedqueue.c readconfig.h stringchunk.c bst.h dnscache.h excludedlist.h linkedqueue.h readline.c stringchunk.h cacheht.c dnsgenerator.c main.c readline.h stringlist.c cacheht.h dnsgenerator.h querydnsbase.c request_response.c stringlist.h cachettlcrtl.c dnsparser.c goodiplist.c querydnsbase.h request_response.h utils.c cachettlcrtl.h dnsparser.h goodiplist.h querydnsinterface.c rwlock.h utils.h stablebuffer.h stablebuffer.c ipmisc.c ipmisc.h
+dnsforwarder_SOURCES = addresslist.c downloader.h logs.h \
+	socketpuller.h addresslist.h dynamichosts.c main.c array.c \
+	dynamichosts.h mcontext.c array.h filter.c mcontext.h \
+	stablebuffer.c bst.c filter.h mmgr.c stablebuffer.h bst.h \
+	goodiplist.c mmgr.h statichosts.c cacheht.c goodiplist.h oo.h \
+	statichosts.h cacheht.h hcontext.c pipes.c stringchunk.c \
+	cachettlcrtl.c hcontext.h pipes.h stringchunk.h cachettlcrtl.h \
+	hosts.c ptimer.c stringlist.c hosts.h ptimer.h stringlist.h \
+	hostscontainer.c tcpm.c common.h hostscontainer.h tcpm.h \
+	dnscache.c hostsutils.c readconfig.c timedtask.c dnscache.h \
+	hostsutils.h readconfig.h timedtask.h dnsgenerator.c iheader.c \
+	readline.c udpfrontend.c dnsgenerator.h iheader.h readline.h \
+	udpfrontend.h dnsparser.c ipchunk.c request_response.h udpm.c \
+	dnsparser.h ipchunk.h rwlock.h udpm.h dnsrelated.c ipmisc.c \
+	simpleht.c utils.c dnsrelated.h ipmisc.h simpleht.h utils.h \
+	domainstatistic.c linkedqueue.c socketpool.c winmsgque.c \
+	domainstatistic.h linkedqueue.h socketpool.h winmsgque.h \
+	downloader.c logs.c socketpuller.c
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -390,42 +407,49 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/addresschunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/addresslist.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/array.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bst.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cacheht.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cachettlcrtl.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/checkip.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dnscache.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dnsgenerator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dnsparser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dnsrelated.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/domainstatistic.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/downloader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/excludedlist.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dynamichosts.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/goodiplist.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hcontext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hosts.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/internalsocket.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hostscontainer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/hostsutils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iheader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipchunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipmisc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/linkedqueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/logs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/querydnsbase.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/querydnsinterface.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/querydnslistentcp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/querydnslistenudp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mcontext.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mmgr.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pipes.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ptimer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/readconfig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/readline.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/request_response.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simpleht.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socketpool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socketpuller.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stablebuffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/statichosts.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringchunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stringlist.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcpm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/timedtask.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/udpfrontend.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/udpm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/winmsgque.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
