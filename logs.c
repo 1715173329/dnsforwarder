@@ -49,6 +49,7 @@ int Log_Init(ConfigFileInfo *ConfigInfo, BOOL PrintScreen, BOOL Debug)
 		LogFile = fopen(FilePath, "w");
 		if( LogFile == NULL )
         {
+            printf("ERROR: Log file %s is unwritable. Try run `dnsforwarder -p'.\n", FilePath);
             return -44;
         }
 

@@ -49,7 +49,7 @@ PUBFUNC SOCKET SocketPuller_Select(SocketPuller *p,
 
     ReadySet = p->s;
 
-    switch( select(p->Max,
+    switch( select(p->Max + 1,
                    Reading ? &ReadySet : NULL,
                    Writing ? &ReadySet : NULL,
                    NULL,

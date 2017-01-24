@@ -137,6 +137,22 @@ static void UdpM_Works(UdpM *m)
                      NULL
                      );
 
+        switch( IPMiscSingleton_Process(Header) )
+        {
+        case IP_MISC_ACTION_NOTHING:
+            break;
+
+        case IP_MISC_ACTION_BLOCK:
+            ShowBlockedMessage(Header, "Bad package, discarded");
+            continue;
+            break;
+
+        default:
+            ERRORMSG("Fatal error 155.\n");
+            continue;
+            break;
+        }
+
         /* Fetch context item */
         EFFECTIVE_LOCK_GET(m->Lock);
         ContextState = m->Context.FindAndRemove(&(m->Context),
@@ -147,22 +163,6 @@ static void UdpM_Works(UdpM *m)
         if( ContextState == 0 )
         {
             int SentState;
-
-            switch( IPMiscSingleton_Process(Header) )
-            {
-            case IP_MISC_ACTION_NOTHING:
-                break;
-
-            case IP_MISC_ACTION_BLOCK:
-                ShowBlockedMessage(Header, "Bad package, discarded");
-                continue;
-                break;
-
-            default:
-                ERRORMSG("Fatal error 155.\n");
-                continue;
-                break;
-            }
 
             SentState = IHeader_SendBack(Header);
 
