@@ -153,6 +153,7 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
                  )
             != 0 )
         {
+            /** TODO: Show some error */
             CLOSE_SOCKET(sock);
             continue;
         }

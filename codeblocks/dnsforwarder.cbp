@@ -66,6 +66,7 @@
 		</Unit>
 		<Unit filename="../cachettlcrtl.h" />
 		<Unit filename="../common.h" />
+		<Unit filename="../config.h" />
 		<Unit filename="../default.config" />
 		<Unit filename="../dnscache.c">
 			<Option compilerVar="CC" />
@@ -107,10 +108,18 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hcontext.h" />
+		<Unit filename="../hosts.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hosts.h" />
 		<Unit filename="../hostscontainer.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../hostscontainer.h" />
+		<Unit filename="../hostsutils.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../hostsutils.h" />
 		<Unit filename="../iheader.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -147,22 +156,16 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../pipes.h" />
-		<Unit filename="../querydnsbase.c">
+		<Unit filename="../ptimer.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="../querydnsbase.h" />
-		<Unit filename="../querydnsinterface.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../querydnsinterface.h" />
+		<Unit filename="../ptimer.h" />
 		<Unit filename="../querydnslistentcp.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+			<Option link="0" />
 		</Unit>
 		<Unit filename="../querydnslistentcp.h" />
-		<Unit filename="../querydnslistenudp.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../querydnslistenudp.h" />
 		<Unit filename="../readconfig.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -171,9 +174,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../readline.h" />
-		<Unit filename="../request_response.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="../request_response.h" />
 		<Unit filename="../rwlock.h" />
 		<Unit filename="../simpleht.c">
@@ -188,10 +188,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../socketpuller.h" />
-		<Unit filename="../sockets.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../sockets.h" />
 		<Unit filename="../stablebuffer.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -208,10 +204,18 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../stringlist.h" />
+		<Unit filename="../tcpm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../tcpm.h" />
 		<Unit filename="../timedtask.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../timedtask.h" />
+		<Unit filename="../udpfrontend.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../udpfrontend.h" />
 		<Unit filename="../udpm.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -220,6 +224,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../utils.h" />
+		<Unit filename="../winmsgque.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../winmsgque.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

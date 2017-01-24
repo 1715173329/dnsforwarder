@@ -149,6 +149,8 @@ void Log_Print(const char *Type, const char *format, ...)
         CurrentLength += vfprintf(LogFile, format, ap);
 
         fflush(LogFile);
+
+        va_start(ap, format);
 	}
 
 	if( PrintConsole )
