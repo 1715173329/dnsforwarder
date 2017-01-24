@@ -41,7 +41,9 @@ int DNSGetHostName(const char *DNSBody, int DNSBodyLength, const char *NameStart
 			}
 			NameItr = DNSBody + DNSLabelGetPointer(NameItr);
 		} else {
-			if( NameItr + LabelCount > DNSBody + DNSBodyLength )
+			if( DNSBody != NULL &&
+                NameItr + LabelCount > DNSBody + DNSBodyLength
+                )
 			{
 				return -1;
 			}
@@ -423,12 +425,20 @@ static char *DnsSimpleParserIterator_Next(DnsSimpleParserIterator *i)
         /* The length of all labels in the beginning of current record
            plus `ExLength'
          */
-        i->CurrentPosition += DNSGetHostName(NULL,
+
+        int FullLength = DNSGetHostName(NULL,
                                             INT_MAX,
                                             i->CurrentPosition,
                                             NULL,
                                             0)
-                             + ExLength;
+                         + ExLength;
+
+        if( FullLength < ExLength )
+        {
+            return NULL;
+        }
+
+        i->CurrentPosition += FullLength;
 
         i->RecordPosition += 1;
     } else {
