@@ -8,7 +8,7 @@ int main(void)
     PTimer t;
 
     PTimer_Start(&t);
-    SLEEP(10002);
+    SLEEP(2002);
 
     printf("%lu", PTimer_End(&t));
 

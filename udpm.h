@@ -26,7 +26,10 @@ struct _UdpM {
     } Parallels;
 
     /* public */
-    int (*Send)(UdpM *m, IHeader *h /* Entity followed */);
+    int (*Send)(UdpM *m,
+                IHeader *h, /* Entity followed */
+                int BufferLength
+                );
 };
 
 int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel);

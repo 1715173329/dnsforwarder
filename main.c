@@ -23,7 +23,7 @@
 #include "timedtask.h"
 #include "domainstatistic.h"
 
-#define VERSION__ "6.0.2"
+#define VERSION__ "6.0.3"
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -77,8 +77,16 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Groups");
     ConfigSetStringDelimiters(&ConfigInfo, "TCPGroup", "\t ");
 
+    /* TLSGroup getdnsapi.net:853:185.49.141.38|foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= example.com */
+    TmpTypeDescriptor.str = NULL;
+    ConfigAddOption(&ConfigInfo, "TLSGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TLS Groups");
+    ConfigSetStringDelimiters(&ConfigInfo, "TLSGroup", "\t ");
+
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+
+    TmpTypeDescriptor.boolean = FALSE;
+    ConfigAddOption(&ConfigInfo, "AP", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
@@ -499,6 +507,8 @@ int main(int argc, char *argv[])
     {
         return -496;
     }
+
+    IHeader_Init(ConfigGetBoolean(&ConfigInfo, "AP"));
 
     if( MMgr_Init(&ConfigInfo) != 0 )
     {

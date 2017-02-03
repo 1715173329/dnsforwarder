@@ -28,7 +28,10 @@ struct _TcpM {
     sa_family_t     *SocksProxyFamilies;
 
     /* public */
-    int (*Send)(TcpM *m, IHeader *h /* Entity followed */);
+    int (*Send)(TcpM *m,
+                IHeader *h, /* Entity followed */
+                int BufferLength
+                );
 };
 
 int TcpM_Init(TcpM *m, const char *Services, const char *SocksProxies);

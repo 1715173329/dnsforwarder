@@ -1,7 +1,18 @@
 #include <string.h>
 #include "iheader.h"
 #include "dnsparser.h"
+#include "dnsgenerator.h"
 #include "common.h"
+#include "logs.h"
+
+static BOOL ap = FALSE;
+
+int IHeader_Init(BOOL _ap)
+{
+    ap = _ap;
+
+    return 0;
+}
 
 void IHeader_Reset(IHeader *h)
 {
@@ -95,26 +106,54 @@ int IHeader_Fill(IHeader *h,
     return 0;
 }
 
+int IHeader_AddFakeEdns(IHeader *h, int BufferLength)
+{
+    DnsGenerator g;
+
+    if( ap == FALSE || h->EDNSEnabled )
+    {
+        return 0;
+    }
+
+    if( DnsGenerator_Init(&g,
+                          IHEADER_TAIL(h),
+                          BufferLength - sizeof(IHeader),
+                          IHEADER_TAIL(h),
+                          h->EntityLength,
+                          FALSE
+                          )
+        != 0 )
+    {
+        return -125;
+    }
+
+    while( g.NextPurpose(&g) != DNS_RECORD_PURPOSE_ADDITIONAL );
+
+    g.EDns(&g, 1280);
+
+    h->EntityLength = g.Length(&g);
+    h->EDNSEnabled = TRUE;
+
+    return 0;
+}
+
+BOOL IHeader_Blocked(IHeader *h /* Entity followed */)
+{
+    return (ap && !(h->EDNSEnabled));
+}
+
 int IHeader_SendBack(IHeader *h /* Entity followed */)
 {
     if( h->BackAddress.family == AF_UNSPEC )
     {
         /* TCP */
         uint16_t TcpLength = htons(h->EntityLength);
-        if( send(h->SendBackSocket,
-                 (const char *)&TcpLength,
-                 2,
-                 MSG_MORE | MSG_NOSIGNAL
-                 )
-            != 2 )
-        {
-            /** TODO: Show error */
-            return -105;
-        }
+
+        memcpy((char *)(IHEADER_TAIL(h)) - 2, &TcpLength, 2);
 
         if( send(h->SendBackSocket,
-                 IHEADER_TAIL(h),
-                 h->EntityLength,
+                 (char *)(IHEADER_TAIL(h)) - 2,
+                 h->EntityLength + 2,
                  MSG_NOSIGNAL
                  )
             != h->EntityLength )

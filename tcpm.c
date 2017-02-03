@@ -9,12 +9,12 @@
 #include "dnscache.h"
 #include "ipmisc.h"
 #include "domainstatistic.h"
-#include "timedtask.h"
 #include "ptimer.h"
 
 static void SwepWorks(IHeader *h, int Number, TcpM *Module)
 {
     ShowTimeOutMessage(h, 'T');
+    DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
 
     if( Number == 1 && Module->SocksProxies == NULL )
     {
@@ -87,7 +87,7 @@ static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
     if( p.IsEmpty(&p) )
     {
         p.Free(&p);
-        INFO("Connecting to %s failed, 72.\n", Type);
+        INFO("Connecting to %s failed, 90.\n", Type);
         return INVALID_SOCKET;
     }
 
@@ -203,20 +203,20 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 
 	if( TcpM_SendWrapper(Sock, "\x05\x01\x00", 3, FALSE) != 3 )
 	{
-		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error.\n");
 		return -1;
 	}
 
     if( (ret = TcpM_RecvWrapper(Sock, RecvBuffer, 2)) != 2 )
     {
-		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error.\n");
         return -2;
     }
 
 	if( RecvBuffer[0] != '\x05' || RecvBuffer[1] != '\x00' )
 	{
 		/*printf("---------3 : %x %x\n", RecvBuffer[0], RecvBuffer[1]);*/
-		ERRORMSG("Cannot communicate with TCP proxy, negotiation error");
+		ERRORMSG("Cannot communicate with TCP proxy, negotiation error.\n");
 		return -3;
 	}
 
@@ -224,30 +224,30 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 
 	if( TcpM_SendWrapper(Sock, "\x05\x01\x00\x03", 4, FALSE) != 4 )
 	{
-	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -4;
 	}
 	NumberOfCharacter = strlen(AddressString);
 	if( TcpM_SendWrapper(Sock, &NumberOfCharacter, 1, FALSE) != 1 )
 	{
-		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -5;
 	}
 	if( TcpM_SendWrapper(Sock, AddressString, NumberOfCharacter, FALSE) != NumberOfCharacter )
 	{
-		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -6;
 	}
 	if( TcpM_SendWrapper(Sock, (const char *)&Port, sizeof(Port), FALSE) != sizeof(Port) )
 	{
-		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -7;
 	}
 
 	TcpM_RecvWrapper(Sock, RecvBuffer, 4);
 	if( RecvBuffer[1] != '\x00' )
 	{
-		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -8;
 	}
 
@@ -268,7 +268,7 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 
 		default:
 			/*printf("------Here : %d %d %d %d\n", RecvBuffer[0], RecvBuffer[1], RecvBuffer[2], RecvBuffer[3]);*/
-			ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error");
+			ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 			return -9;
 	}
 	ClearTCPSocketBuffer(Sock, NumberOfCharacter);
@@ -335,30 +335,15 @@ static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
     }
 
     TCPLength = htons(h->EntityLength);
-
-    if( TcpM_SendWrapper(m->Departure, (const char *)&TCPLength, 2, TRUE) < 0 )
-    {
-        CLOSE_SOCKET(m->Departure);
-        m->Departure = INVALID_SOCKET;
-
-        if( m->SocksProxies != NULL )
-        {
-            AddressList_Advance(&(m->ServiceList));
-        }
-
-        return -162;
-    }
+    memcpy((char *)(IHEADER_TAIL(h)) - 2, &TCPLength, 2);
 
     if( TcpM_SendWrapper(m->Departure,
-                         IHEADER_TAIL(h),
-                         h->EntityLength,
+                         (char *)(IHEADER_TAIL(h)) - 2,
+                         h->EntityLength + 2,
                          FALSE
                          )
         < 0 )
     {
-        CLOSE_SOCKET(m->Departure);
-        m->Departure = INVALID_SOCKET;
-
         if( m->SocksProxies != NULL )
         {
             AddressList_Advance(&(m->ServiceList));
@@ -370,7 +355,10 @@ static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
     return 0;
 }
 
-PUBFUNC int TcpM_Send(TcpM *m, IHeader *h /* Entity followed */)
+PUBFUNC int TcpM_Send(TcpM *m,
+                      IHeader *h, /* Entity followed */
+                      int BufferLength
+                      )
 {
     int State;
 
@@ -435,6 +423,7 @@ static int TcpM_Works(TcpM *m)
                 m->Puller.Del(&(m->Puller), s);
                 CLOSE_SOCKET(s);
                 m->Departure = INVALID_SOCKET;
+
                 if( m->SocksProxies == NULL )
                 {
                     INFO("TCP server closed the connection.\n");
@@ -446,7 +435,9 @@ static int TcpM_Works(TcpM *m)
                 if( !Retried )
                 {
                     INFO("TCP query retrying...\n");
+
                     TcpM_Send_Actual(m, Header);
+
                     Retried = TRUE;
                 }
 
@@ -457,8 +448,19 @@ static int TcpM_Works(TcpM *m)
 
             Retried = TRUE;
 
-            State = TcpM_RecvWrapper(s, Entity, LEFT_LENGTH);
-            if( State <= 0 )
+            TCPLength = ntohs(TCPLength);
+
+            if( TCPLength > LEFT_LENGTH )
+            {
+                WARNING("TCP segment is too large, discarded.\n");
+                m->Puller.Del(&(m->Puller), s);
+                CLOSE_SOCKET(s);
+                m->Departure = INVALID_SOCKET;
+                continue;
+            }
+
+            State = TcpM_RecvWrapper(s, Entity, TCPLength);
+            if( State != TCPLength )
             {
                 m->Puller.Del(&(m->Puller), s);
                 CLOSE_SOCKET(s);
@@ -488,6 +490,7 @@ static int TcpM_Works(TcpM *m)
 
             case IP_MISC_ACTION_BLOCK:
                 ShowBlockedMessage(Header, "Bad package, discarded");
+                DomainStatistic_Add(Header, STATISTIC_TYPE_BLOCKEDMSG);
                 continue;
                 break;
 
@@ -555,7 +558,9 @@ static int TcpM_Works(TcpM *m)
 
                 /* Try again */
                 INFO("TCP query retrying...\n");
+
                 TcpM_Send_Actual(m, Header);
+
                 Retried = TRUE;
             }
         }

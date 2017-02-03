@@ -25,11 +25,15 @@ struct _IHeader{
                                    sizeof(void *)
                                    )
                           ];
+
+    void            *TcpLengthPadding;
 };
 
 #define IHEADER_TAIL(ptr)   (void *)((IHeader *)(ptr) + 1)
 
 #define IHEADER_CONTAINING_HEADER(ptr)  (((IHeader *)(ptr))->_Pad == 0)
+
+int IHeader_Init(BOOL _ap);
 
 void IHeader_Reset(IHeader *h);
 
@@ -42,6 +46,10 @@ int IHeader_Fill(IHeader *h,
                  sa_family_t Family,
                  const char *Agent
                  );
+
+int IHeader_AddFakeEdns(IHeader *h, int BufferLength);
+
+BOOL IHeader_Blocked(IHeader *h /* Entity followed */);
 
 int IHeader_SendBack(IHeader *h /* Entity followed */);
 

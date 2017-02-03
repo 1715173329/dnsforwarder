@@ -11,6 +11,7 @@
 static void SwepWorks(IHeader *h, int Number, UdpM *Module)
 {
     ShowTimeOutMessage(h, 'U');
+    DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
 
     if( Number == 1 )
     {
@@ -144,6 +145,7 @@ static void UdpM_Works(UdpM *m)
 
         case IP_MISC_ACTION_BLOCK:
             ShowBlockedMessage(Header, "Bad package, discarded");
+            DomainStatistic_Add(Header, STATISTIC_TYPE_BLOCKEDMSG);
             continue;
             break;
 
@@ -151,6 +153,13 @@ static void UdpM_Works(UdpM *m)
             ERRORMSG("Fatal error 155.\n");
             continue;
             break;
+        }
+
+        if( IHeader_Blocked(Header) )
+        {
+            ShowBlockedMessage(Header, "False package, discarded");
+            DomainStatistic_Add(Header, STATISTIC_TYPE_BLOCKEDMSG);
+            continue;
         }
 
         /* Fetch context item */
@@ -181,9 +190,14 @@ static void UdpM_Works(UdpM *m)
     SafeFree(ReceiveBuffer);
 }
 
-static int UdpM_Send(UdpM *m, IHeader *h /* Entity followed */)
+static int UdpM_Send(UdpM *m,
+                     IHeader *h, /* Entity followed */
+                     int BufferLength
+                     )
 {
     int ret = 0;
+
+    IHeader_AddFakeEdns(h, BufferLength);
 
     EFFECTIVE_LOCK_GET(m->Lock);
     if( m->Context.Add(&(m->Context), h) != 0 )

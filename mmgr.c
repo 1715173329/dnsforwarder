@@ -8,7 +8,10 @@
 #include "logs.h"
 #include "ipmisc.h"
 
-typedef int (*SendFunc)(void *Module, IHeader *h /* Entity followed */);
+typedef int (*SendFunc)(void *Module,
+                        IHeader *h, /* Entity followed */
+                        int BufferLength
+                        );
 
 typedef struct _ModuleInterface {
     union {
@@ -321,5 +324,5 @@ int MMgr_Send(IHeader *h, int BufferLength)
 
     TheModule = *i;
 
-    return TheModule->Send(&(TheModule->ModuleUnion), h);
+    return TheModule->Send(&(TheModule->ModuleUnion), h, BufferLength);
 }

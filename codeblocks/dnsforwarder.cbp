@@ -36,7 +36,6 @@
 			<Add option="-DHAVE_PTHREAD_SPIN_INIT" />
 			<Add option="-DHAVE_PTHREAD_RWLOCK_INIT" />
 			<Add option="-DDOWNLOAD_LIBCURL" />
-			<Add option="-DBASE64_DECODER_OPENSSL" />
 			<Add option="-DHAVE_SYS_SYSCALL_H" />
 			<Add option="-DHAVE_SETENV" />
 			<Add option="-DHAVE_WORDEXP" />
@@ -212,6 +211,14 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../timedtask.h" />
+		<Unit filename="../tlsm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../tlsm.h" />
+		<Unit filename="../tlsserver.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../tlsserver.h" />
 		<Unit filename="../udpfrontend.c">
 			<Option compilerVar="CC" />
 		</Unit>
