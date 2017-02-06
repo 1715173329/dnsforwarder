@@ -25,10 +25,10 @@ dnsforwarder
 5. Refusing queries to specified domains (for ads blocking?);
 6. Cross-platform (Windows, Linux);
 
-License :
+### License :
 GPL v3
 
-Dependencies :
+### Dependencies :
 
   For Linux:
 
@@ -36,12 +36,14 @@ Dependencies :
     libcurl (optional);
 
   For Windows:
-  None.
 
-Macros needed to be declared while compiling :
+    None.
+
+### Macros needed to be declared while compiling :
 
   For Linux:
-  None.
+
+    None.
 
   For Windows x86 (at least Windows XP)
 
@@ -53,6 +55,7 @@ Macros needed to be declared while compiling :
     WIN64
 
 **Consider** donation?
+
 Bitcoin address : 1KwWqEkxcMXprwn8aTtV4qhqt1ZkBYqzra
 
 Thanks!
