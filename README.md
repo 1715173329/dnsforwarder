@@ -20,7 +20,7 @@ dnsforwarder
 
 1. Forwarding queries to particular domains (and their subdomains) to specified servers over a specified protocol (UDP or TCP);
 2. DNS cache and its controls (including modifying TTL for different domains);
-3. Discardind DNS responses with particular IPs;
+3. Discarding DNS responses with particular IPs;
 4. Hosts abilities (including the support for wildcards, CName redirection and fetching hosts file online);
 5. Refusing queries to specified domains (for ads blocking?);
 6. Cross-platform (Windows, Linux);
