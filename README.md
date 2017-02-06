@@ -53,7 +53,7 @@ GPL v3
 
     WIN32
     WIN64
-
+- - -
 **Consider** donation?
 
 Bitcoin address : 1KwWqEkxcMXprwn8aTtV4qhqt1ZkBYqzra
