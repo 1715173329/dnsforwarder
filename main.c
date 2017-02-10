@@ -23,7 +23,7 @@
 #include "timedtask.h"
 #include "domainstatistic.h"
 
-#define VERSION__ "6.0.4"
+#define VERSION__ "6.0.5"
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -33,7 +33,7 @@ static BOOL     DebugOn = FALSE;
 
 static ConfigFileInfo	ConfigInfo;
 
-static int EnvironmentInit(char *ConfigFile, const char *Contexts)
+static int EnvironmentInit(char *ConfigFile)
 {
 	VType	TmpTypeDescriptor;
 	char	TmpStr[1024];
@@ -43,28 +43,28 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
 
 	SetProgramEnvironment("PROGRAMDIRECTORY", TmpStr);
 
-	ConfigInitInfo(&ConfigInfo, Contexts);
+	ConfigInitInfo(&ConfigInfo);
 
     TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "LogOn", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "LogOn", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 102400;
-    ConfigAddOption(&ConfigInfo, "LogFileThresholdLength", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "LogFileThresholdLength", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
 	GetFileDirectory(TmpStr);
 	strcat(TmpStr, PATH_SLASH_STR);
     TmpTypeDescriptor.str = TmpStr;
-    ConfigAddOption(&ConfigInfo, "LogFileFolder", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "LogFileFolder", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "Local working interfaces");
+    ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "UDPLocal", ",");
     TmpTypeDescriptor.str = "127.0.0.1";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
     /* UDPGroup 1.2.4.8,114.114.114.114 * on */
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "UDP Groups");
+    ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "UDPGroup", "\t ");
     /*
     TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
@@ -74,113 +74,110 @@ static int EnvironmentInit(char *ConfigFile, const char *Contexts)
     /* TCPGroup 1.2.4.8,114.114.114.114 example.com 192.168.50.5:8080, 192.168.50.6:8080*/
     /* TCPGroup 1.2.4.8,114.114.114.114 * no*/
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TCP Groups");
+    ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "TCPGroup", "\t ");
 
     /* TLSGroup getdnsapi.net:853:185.49.141.38|foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= example.com */
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "TLSGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor, "TLS Groups");
+    ConfigAddOption(&ConfigInfo, "TLSGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "TLSGroup", "\t ");
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
     TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "AP", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "AP", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "IPSubstituting", "\t ,");
 
     TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "DomainStatistic", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "DomainStatistic", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
 	GetFileDirectory(TmpStr);
 	strcat(TmpStr, PATH_SLASH_STR);
 	strcat(TmpStr, "StatisticTemplate.html");
     TmpTypeDescriptor.str = TmpStr;
-    ConfigAddOption(&ConfigInfo, "DomainStatisticTempletFile", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "DomainStatisticTempletFile", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor);
 
 	TmpTypeDescriptor.str = "<!-- INSERT HERE -->";
-	ConfigAddOption(&ConfigInfo, "StatisticInsertionPosition", STRATEGY_DEFAULT, TYPE_STRING, TmpTypeDescriptor, NULL);
+	ConfigAddOption(&ConfigInfo, "StatisticInsertionPosition", STRATEGY_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
 
 	TmpTypeDescriptor.INT32 = 60;
-	ConfigAddOption(&ConfigInfo, "StatisticUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+	ConfigAddOption(&ConfigInfo, "StatisticUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, "Hosts File");
+    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 18000;
-    ConfigAddOption(&ConfigInfo, "HostsUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "HostsUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 30;
-    ConfigAddOption(&ConfigInfo, "HostsRetryInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "HostsRetryInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
 	GetFileDirectory(TmpStr);
 	strcat(TmpStr, PATH_SLASH_STR);
 	strcat(TmpStr, "hosts.txt");
     TmpTypeDescriptor.str = TmpStr;
-    ConfigAddOption(&ConfigInfo, "HostsDownloadPath", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "HostsDownloadPath", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "HostsScript", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "HostsScript", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "BlockIpv6WhenIpv4Exists", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "BlockIpv6WhenIpv4Exists", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "AppendHosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
-
-	ConfigAddAlias(&ConfigInfo, "address", "AppendHosts");
-
+    ConfigAddOption(&ConfigInfo, "AppendHosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
 	TmpTypeDescriptor.boolean = TRUE;
-    ConfigAddOption(&ConfigInfo, "UseCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "Use cache");
+    ConfigAddOption(&ConfigInfo, "UseCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 1048576;
-    ConfigAddOption(&ConfigInfo, "CacheSize", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "CacheSize", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.boolean = TRUE;
-    ConfigAddOption(&ConfigInfo, "MemoryCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "Memory Cache");
+    ConfigAddOption(&ConfigInfo, "MemoryCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
 	GetFileDirectory(TmpStr);
 	strcat(TmpStr, PATH_SLASH_STR);
 	strcat(TmpStr, "cache");
     TmpTypeDescriptor.str = TmpStr;
-    ConfigAddOption(&ConfigInfo, "CacheFile", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "CacheFile", STRATEGY_REPLACE, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "IgnoreTTL", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, "Ignore TTL");
+    ConfigAddOption(&ConfigInfo, "IgnoreTTL", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = -1;
-    ConfigAddOption(&ConfigInfo, "OverrideTTL", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "OverrideTTL", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 1;
-    ConfigAddOption(&ConfigInfo, "MultipleTTL", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "MultipleTTL", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "CacheControl", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "CacheControl", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
 	TmpTypeDescriptor.boolean = FALSE;
-    ConfigAddOption(&ConfigInfo, "ReloadCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "ReloadCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
 	TmpTypeDescriptor.boolean = FALSE;
-	ConfigAddOption(&ConfigInfo, "OverwriteCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor, NULL);
+	ConfigAddOption(&ConfigInfo, "OverwriteCache", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "DisabledType", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "DisabledType", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "DisabledDomain", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "DisabledDomain", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "DisabledList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "DisabledList", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "GoodIPList", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "GoodIPList", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "GoodIPListAddIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor, NULL);
+    ConfigAddOption(&ConfigInfo, "GoodIPListAddIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
 
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) != 0 )
     {
@@ -324,11 +321,10 @@ static void PrepareEnvironment(void)
 }
 #endif /* WIN32 */
 
-static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
+static int ArgParse(int argc, char *argv_ori[])
 {
 	char **argv = argv_ori;
 	++argv;
-	*Contexts = NULL;
     while(*argv != NULL)
     {
     	if(strcmp("-h", *argv) == 0)
@@ -393,13 +389,6 @@ static int ArgParse(int argc, char *argv_ori[], const char **Contexts)
 		}
 #endif /* WIN32 */
 
-		if( strcmp("-CONTEXT", *argv) == 0 )
-		{
-			*Contexts = *(++argv);
-			++argv;
-			continue;
-		}
-
 		printf("Unrecognisable arg `%s'. Try `-h'.\n", *argv);
         ++argv;
     }
@@ -419,8 +408,6 @@ int main(int argc, char *argv[])
     BOOL DeamonInited = FALSE;
 #endif /* WIN32 */
 
-	const char *Contexts = NULL;
-
 #ifndef NODOWNLOAD
     #ifdef WIN32
     if( WSAStartup(MAKEWORD(2, 2), &wdata) != 0 )
@@ -438,7 +425,7 @@ int main(int argc, char *argv[])
 	SetConsoleTitle("dnsforwarder");
 #endif /* WIN32 */
 
-	ArgParse(argc, argv, &Contexts);
+	ArgParse(argc, argv);
 
 	if( ConfigFile == NULL )
 	{
@@ -474,7 +461,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if( EnvironmentInit(ConfigFile, Contexts) != 0 )
+	if( EnvironmentInit(ConfigFile) != 0 )
     {
         return -498;
     }

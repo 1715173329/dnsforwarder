@@ -15,8 +15,6 @@
  * A valid option can be followed a comment which will be ignored too:
  *  <Option> <value> # I'm a comment.
  *
- * {A context   #Context begin
- * }A context   #Context end
  */
 
 /* Set the max length of a key name */
@@ -28,7 +26,9 @@
 
 /* A value must have a type. Here we just need these three types. */
 typedef enum _OptionType{
+    TYPE_ALIAS = -1,
 	TYPE_UNDEFINED = 0,
+
 	TYPE_INT32,
 	TYPE_BOOLEAN,
 	TYPE_PATH,
@@ -50,7 +50,6 @@ typedef union _VType{
 
 typedef enum _OptionStatus{
 	STATUS_DEPRECATED = -2,
-	STATUS_ALIAS = -1,
 	STATUS_UNUSED = 0,
 	STATUS_DEFAULT_VALUE,
 	STATUS_SPECIAL_VALUE
@@ -69,14 +68,21 @@ typedef struct _Option{
 	/* Value holder */
 	union {
 		StringList	str;
-		int32_t	INT32;
+		int32_t     INT32;
 		BOOL		boolean;
+
+		struct {
+		    /* malloced */
+		    char    *Target;
+
+		    /* malloced */
+		    char    *Prepending;
+		} Aliasing;
 	} Holder;
 
-	const char *Delimiters;
+	/* malloced */
+	char *Delimiters;
 
-	/* Caption */
-	char		*Caption;
 } ConfigOption;
 
 /* The exposed type(The infomations about a configuration file) to read options from a configuration file. */
@@ -85,16 +91,11 @@ typedef struct _ConfigFileInfo
 	/* Static, once inited, never changed. */
 	FILE	*fp;
 
-	/* Config COntexts */
-	StringChunk Contexts;
-
 	/* An array of all the options. */
 	StringChunk	Options;
 } ConfigFileInfo;
 
-char *GetKeyNameAndValue(char *Line, const char *Delimiters);
-
-int ConfigInitInfo(ConfigFileInfo *Info, const char *Contexts);
+int ConfigInitInfo(ConfigFileInfo *Info);
 
 int ConfigOpenFile(ConfigFileInfo *Info, const char *File);
 
@@ -104,11 +105,14 @@ int ConfigAddOption(ConfigFileInfo *Info,
                     char *KeyName,
                     MultilineStrategy Strategy,
                     OptionType Type,
-                    VType Initial,
-                    char *Caption
+                    VType Initial
                     );
 
-int ConfigAddAlias(ConfigFileInfo *Info, char *Alias, char *Target);
+int ConfigAddAlias(ConfigFileInfo *Info,
+                   const char *Target,
+                   const char *Alias,
+                   const char *Prepending
+                   );
 
 int ConfigSetStringDelimiters(ConfigFileInfo *Info,
                               char *KeyName,
@@ -129,7 +133,5 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName);
 
 /* Won't change the Option's status */
 void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName);
-
-void ConfigDisplay(ConfigFileInfo *Info);
 
 #endif // _READCONFIG_

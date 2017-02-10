@@ -152,7 +152,7 @@ static int TcpM_RecvWrapper(SOCKET Sock, char *Buffer, int BufferSize)
 {
 	int Recvlength;
 
-	while( (Recvlength = recv(Sock, Buffer, BufferSize, MSG_WAITALL)) < 0 )
+	while( (Recvlength = recv(Sock, Buffer, BufferSize, 0)) < 0 )
 	{
 		int LastError = GET_LAST_ERROR();
 #ifdef WIN32
