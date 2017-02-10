@@ -290,6 +290,10 @@
 #define	MSG_MORE	0
 #endif /* MSG_MORE */
 
+#ifndef MSG_WAITALL
+#define	MSG_WAITALL	0
+#endif /* MSG_WAITALL */
+
 /* Unified interfaces end */
 
 /* something is STILL on some state */

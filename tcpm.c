@@ -117,12 +117,10 @@ static SOCKET TcpM_Connect(struct sockaddr  **ServerAddressesList,
     return Final;
 }
 
-static int TcpM_SendWrapper(SOCKET Sock, const char *Start, int Length, BOOL More)
+static int TcpM_SendWrapper(SOCKET Sock, const char *Start, int Length)
 {
-    int Flags = More ? MSG_NOSIGNAL : MSG_NOSIGNAL | MSG_MORE;
-
 #define DEFAULT_TIME_OUT__SEND 2000 /* ms */
-    while( send(Sock, Start, Length, Flags) != Length )
+    while( send(Sock, Start, Length, MSG_NOSIGNAL) != Length )
 	{
 		int LastError = GET_LAST_ERROR();
 #ifdef WIN32
@@ -154,7 +152,7 @@ static int TcpM_RecvWrapper(SOCKET Sock, char *Buffer, int BufferSize)
 {
 	int Recvlength;
 
-	while( (Recvlength = recv(Sock, Buffer, BufferSize, MSG_NOSIGNAL)) < 0 )
+	while( (Recvlength = recv(Sock, Buffer, BufferSize, MSG_WAITALL)) < 0 )
 	{
 		int LastError = GET_LAST_ERROR();
 #ifdef WIN32
@@ -201,7 +199,7 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		Port = ((const struct sockaddr_in6 *)NestedAddress)->sin6_port;
     }
 
-	if( TcpM_SendWrapper(Sock, "\x05\x01\x00", 3, FALSE) != 3 )
+	if( TcpM_SendWrapper(Sock, "\x05\x01\x00", 3) != 3 )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, negotiation error.\n");
 		return -1;
@@ -222,23 +220,23 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 
 	INFO("Connecting to TCP server.\n");
 
-	if( TcpM_SendWrapper(Sock, "\x05\x01\x00\x03", 4, FALSE) != 4 )
+	if( TcpM_SendWrapper(Sock, "\x05\x01\x00\x03", 4) != 4 )
 	{
 	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -4;
 	}
 	NumberOfCharacter = strlen(AddressString);
-	if( TcpM_SendWrapper(Sock, &NumberOfCharacter, 1, FALSE) != 1 )
+	if( TcpM_SendWrapper(Sock, &NumberOfCharacter, 1) != 1 )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -5;
 	}
-	if( TcpM_SendWrapper(Sock, AddressString, NumberOfCharacter, FALSE) != NumberOfCharacter )
+	if( TcpM_SendWrapper(Sock, AddressString, NumberOfCharacter) != NumberOfCharacter )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -6;
 	}
-	if( TcpM_SendWrapper(Sock, (const char *)&Port, sizeof(Port), FALSE) != sizeof(Port) )
+	if( TcpM_SendWrapper(Sock, (const char *)&Port, sizeof(Port)) != sizeof(Port) )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -7;
@@ -339,8 +337,7 @@ static int TcpM_Send_Actual(TcpM *m, IHeader *h /* Entity followed */)
 
     if( TcpM_SendWrapper(m->Departure,
                          (char *)(IHEADER_TAIL(h)) - 2,
-                         h->EntityLength + 2,
-                         FALSE
+                         h->EntityLength + 2
                          )
         < 0 )
     {
@@ -655,7 +652,7 @@ int TcpM_Init(TcpM *m, const char *Services, const char *SocksProxies)
 
             while( (Itr = i.Next(&i)) != NULL )
             {
-                AddressList_Add_From_String(&(m->SocksProxyList), Itr, 53);
+                AddressList_Add_From_String(&(m->SocksProxyList), Itr, 1080);
             }
 
             l.Free(&l);

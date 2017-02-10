@@ -12,7 +12,7 @@
 				<Option object_output="./obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-CONTEXT a -D -f &quot;D:\cygwin64\tmp\config.txt&quot;' />
+				<Option parameters='-CONTEXT a -D -f &quot;D:\dns\dnsforwarder.config&quot;' />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -79,7 +79,6 @@
 					<Add option="-O3" />
 					<Add option="-DHAVE_PTHREAD_RWLOCK_INIT" />
 					<Add option="-DDOWNLOAD_WGET" />
-					<Add option="-DBASE64_DECODER_UUDECODE" />
 					<Add option="-DANDROID" />
 				</Compiler>
 				<Linker>
@@ -91,6 +90,7 @@
 			<Add option="-Wunreachable-code" />
 			<Add option="-Wall" />
 			<Add option="-DWIN32" />
+			<Add option="-DWIN32_LEAN_AND_MEAN" />
 		</Compiler>
 		<Linker>
 			<Add option="-static-libgcc" />

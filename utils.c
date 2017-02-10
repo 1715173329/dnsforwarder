@@ -1163,11 +1163,20 @@ void ClearTCPSocketBuffer(SOCKET Sock, int Length)
 
 	while( Length > 0 )
 	{
-		Length -= recv(Sock,
-						BlackHole,
-						sizeof(BlackHole) < Length ? sizeof(BlackHole) : Length,
-						MSG_NOSIGNAL
-						);
+	    int UnitLength;
+
+	    UnitLength = recv(Sock,
+                          BlackHole,
+                          sizeof(BlackHole) < Length ? sizeof(BlackHole) : Length,
+                          MSG_WAITALL
+                          );
+
+        if( UnitLength < 0 )
+        {
+            return;
+        }
+
+		Length -= UnitLength;
 	}
 }
 
