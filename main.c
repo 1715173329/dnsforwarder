@@ -23,7 +23,7 @@
 #include "timedtask.h"
 #include "domainstatistic.h"
 
-#define VERSION__ "6.0.5"
+#define VERSION__ "6.1.0"
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -62,25 +62,21 @@ static int EnvironmentInit(char *ConfigFile)
     TmpTypeDescriptor.str = "127.0.0.1";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
-    /* UDPGroup 1.2.4.8,114.114.114.114 * on */
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "UDPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
-    ConfigSetStringDelimiters(&ConfigInfo, "UDPGroup", "\t ");
-    /*
-    TmpTypeDescriptor.str = "1.2.4.8,114.114.114.114 * on";
-    ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPGroup");
-    */
+    ConfigAddOption(&ConfigInfo, "ServerGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
+    ConfigSetStringDelimiters(&ConfigInfo, "ServerGroup", "\t ");
+    TmpTypeDescriptor.str = "UDP 1.2.4.8,114.114.114.114 * on";
+    ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "ServerGroup");
+
+    /* UDPGroup 1.2.4.8,114.114.114.114 * on */
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "UDPGroup", "UDP");
 
     /* TCPGroup 1.2.4.8,114.114.114.114 example.com 192.168.50.5:8080, 192.168.50.6:8080*/
     /* TCPGroup 1.2.4.8,114.114.114.114 * no*/
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "TCPGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
-    ConfigSetStringDelimiters(&ConfigInfo, "TCPGroup", "\t ");
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TCPGroup", "TCP");
 
     /* TLSGroup getdnsapi.net:853:185.49.141.38|foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= example.com */
-    TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "TLSGroup", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
-    ConfigSetStringDelimiters(&ConfigInfo, "TLSGroup", "\t ");
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TLSGroup", "TLS");
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
@@ -181,7 +177,7 @@ static int EnvironmentInit(char *ConfigFile)
 
 	if( ConfigOpenFile(&ConfigInfo, ConfigFile) != 0 )
     {
-        printf("WARNING: Cannot load configuration file : %s, using default options. Or use `-f' to specify other configure file.\n", ConfigFile);
+        printf("WARNING: Cannot load configuration file : %s. Default options will be used. Or use `-f' to specify other configure file.\n", ConfigFile);
         return 0;
     }
 
@@ -506,6 +502,8 @@ int main(int argc, char *argv[])
     {
         return -311;
     }
+
+    ConfigFree(&ConfigInfo);
 
 	ExitThisThread();
 

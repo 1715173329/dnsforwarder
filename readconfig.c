@@ -5,13 +5,20 @@
 #include "utils.h"
 #include "readline.h"
 
+#define DUP_STRING(i, s)    ((Info)->StrBuffer.Add(&((Info)->StrBuffer), (s), NULL))
+
 int ConfigInitInfo(ConfigFileInfo *Info)
 {
 	Info->fp = NULL;
 
+	if( StringList_Init(&(Info->StrBuffer), NULL, NULL) != 0 )
+    {
+        return -14;
+    }
+
     if( StringChunk_Init(&(Info->Options), NULL) != 0 )
     {
-        return -4;
+        return -19;
     }
 
 	return 0;
@@ -62,7 +69,7 @@ int ConfigAddOption(ConfigFileInfo *Info,
 				return 2;
 			}
 
-			New.Delimiters = StringDup(",");
+			New.Delimiters = DUP_STRING(Info, ",");
             if( New.Delimiters == NULL )
             {
                 return -68;
@@ -87,8 +94,8 @@ int ConfigAddAlias(ConfigFileInfo *Info,
 
 	New.Type = TYPE_ALIAS;
 
-	New.Holder.Aliasing.Target = StringDup(Target);
-	New.Holder.Aliasing.Prepending = StringDup(Prepending);
+	New.Holder.Aliasing.Target = DUP_STRING(Info, Target);
+	New.Holder.Aliasing.Prepending = DUP_STRING(Info, Prepending);
 
 	return StringChunk_Add(&(Info->Options),
                            Alias,
@@ -136,9 +143,7 @@ int ConfigSetStringDelimiters(ConfigFileInfo *Info,
         return -147;
     }
 
-    SafeFree(Option->Delimiters);
-
-    Option->Delimiters = StringDup(Delimiters);
+    Option->Delimiters = DUP_STRING(Info, Delimiters);
     if( Option->Delimiters == NULL )
     {
         return -130;
@@ -525,4 +530,37 @@ void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 				break;
 		}
 	}
+}
+
+void ConfigFree(ConfigFileInfo *Info)
+{
+    int32_t Start = 0;
+    ConfigOption *Option;
+
+    while( StringChunk_Enum_NoWildCard(&(Info->Options),
+                                       &Start,
+                                       (void **)&Option)
+           != NULL )
+    {
+        if( Option != NULL )
+        {
+            switch( Option->Type )
+            {
+                case TYPE_INT32:
+                    break;
+
+                case TYPE_BOOLEAN:
+                    break;
+
+                case TYPE_STRING:
+                    Option->Holder.str.Free(&(Option->Holder.str));
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    Info->StrBuffer.Free(&(Info->StrBuffer));
 }

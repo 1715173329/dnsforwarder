@@ -106,8 +106,12 @@ static void CheckLength(void)
 
             if( FileIsReadable(FileRenamed) == FALSE )
             {
-                /* If `FileRenamed' does not exist */
-                rename(FilePath, FileRenamed);
+                /* If path to `FileRenamed' does not exist */
+                if( rename(FilePath, FileRenamed) != 0 )
+                {
+                    return;
+                }
+
                 LogFile = fopen(FilePath, "w");
                 if( LogFile == NULL )
                 {

@@ -172,8 +172,6 @@ int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo)
         {
             IpMiscSingleton.AddBlockFromString(&IpMiscSingleton, Itr);
         }
-
-        BlockIP->Free(BlockIP);
     }
 
     if( IPSubstituting != NULL )
@@ -194,8 +192,6 @@ int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo)
             Itr = i.Next(&i);
             Itr2 = i.Next(&i);
         }
-
-        IPSubstituting->Free(IPSubstituting);
     }
 
     SingletonInited = TRUE;

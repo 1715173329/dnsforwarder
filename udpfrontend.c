@@ -153,7 +153,12 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
                  )
             != 0 )
         {
-            /** TODO: Show some error */
+            char p[128];
+
+            snprintf(p, sizeof(p), "Opening UDP interface %s failed", One);
+            p[sizeof(p) - 1] = '\0';
+
+            ShowSocketError(p, GET_LAST_ERROR());
             CLOSE_SOCKET(sock);
             continue;
         }
@@ -173,8 +178,6 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
         ERRORMSG("No UDP interface opened.\n");
         return -163;
     }
-
-    UDPLocal->Free(UDPLocal);
 
     CREATE_THREAD(UdpFrontend_Work, NULL, t);
     DETACH_THREAD(t);

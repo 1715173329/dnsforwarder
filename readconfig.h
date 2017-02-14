@@ -20,11 +20,7 @@
 /* Set the max length of a key name */
 #define	KEY_NAME_MAX_SIZE	64
 
-/* Set the max length of a option's caption */
-#define	CAPTION_MAX_SIZE	128
-/* Each option can have a caption, which is a kind of explanatory text. */
-
-/* A value must have a type. Here we just need these three types. */
+/* A value must have a type. We just need these types for now. */
 typedef enum _OptionType{
     TYPE_ALIAS = -1,
 	TYPE_UNDEFINED = 0,
@@ -72,15 +68,11 @@ typedef struct _Option{
 		BOOL		boolean;
 
 		struct {
-		    /* malloced */
 		    char    *Target;
-
-		    /* malloced */
 		    char    *Prepending;
 		} Aliasing;
 	} Holder;
 
-	/* malloced */
 	char *Delimiters;
 
 } ConfigOption;
@@ -90,6 +82,8 @@ typedef struct _ConfigFileInfo
 {
 	/* Static, once inited, never changed. */
 	FILE	*fp;
+
+    StringList  StrBuffer;
 
 	/* An array of all the options. */
 	StringChunk	Options;
@@ -133,5 +127,7 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName);
 
 /* Won't change the Option's status */
 void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName);
+
+void ConfigFree(ConfigFileInfo *Info);
 
 #endif // _READCONFIG_

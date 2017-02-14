@@ -209,8 +209,8 @@ int DomainStatistic_Init(ConfigFileInfo *ConfigInfo)
 
 	if( GetPreAndPost(ConfigInfo) != 0 )
 	{
-	    ERRORMSG("Domain statistic init failed, it may due to lack of memory or templet file.\n");
-		return 2;
+	    WARNING("Domain statistic init failed, it may due to lack of memory or templet file.\n");
+		return 0;
 	}
 
 	GetFileDirectory(FilePath);
