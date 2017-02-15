@@ -50,9 +50,8 @@ int DNSGetHostNameLength(const char *DNSBody, int DNSBodyLength, const char *Nam
 #define DNSGetRecordClass(rec_start_ptr)	((rec_start_ptr) == NULL ? DNS_CLASS_UNKNOWN : GET_16_BIT_U_INT(DNSJumpOverName(rec_start_ptr) + 2))
 
 #ifdef HOST_BIG_ENDIAN
-/* DNSMessageFlags, on offset 2(bytes) of a DNS message body, is 2 bytes length.
- * For details: http://www.freesoft.org/CIE/RFC/1035/40.htm and
- * http://www.ietf.org/rfc/rfc2535.txt (Section 6.1)
+/* DNSMessageFlags, at 2-byte offset of a DNS header, is 2 bytes length.
+ * https://tools.ietf.org/html/rfc6895
  */
 typedef struct _DNSMessageProperties{
 	uint16_t	Direction	:	1; /* query (0), or response (1) */

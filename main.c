@@ -23,7 +23,7 @@
 #include "timedtask.h"
 #include "domainstatistic.h"
 
-#define VERSION__ "6.1.0"
+#define VERSION__ "6.1.2"
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -59,7 +59,7 @@ static int EnvironmentInit(char *ConfigFile)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "UDPLocal", STRATEGY_APPEND_DISCARD_DEFAULT, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "UDPLocal", ",");
-    TmpTypeDescriptor.str = "127.0.0.1";
+    TmpTypeDescriptor.str = "127.0.0.1:53";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "UDPLocal");
 
     TmpTypeDescriptor.str = NULL;
@@ -68,15 +68,17 @@ static int EnvironmentInit(char *ConfigFile)
     TmpTypeDescriptor.str = "UDP 1.2.4.8,114.114.114.114 * on";
     ConfigSetDefaultValue(&ConfigInfo, TmpTypeDescriptor, "ServerGroup");
 
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "GroupFile", "FILE", "");
+
     /* UDPGroup 1.2.4.8,114.114.114.114 * on */
-    ConfigAddAlias(&ConfigInfo, "ServerGroup", "UDPGroup", "UDP");
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "UDPGroup", "UDP", NULL);
 
     /* TCPGroup 1.2.4.8,114.114.114.114 example.com 192.168.50.5:8080, 192.168.50.6:8080*/
     /* TCPGroup 1.2.4.8,114.114.114.114 * no*/
-    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TCPGroup", "TCP");
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TCPGroup", "TCP", NULL);
 
     /* TLSGroup getdnsapi.net:853:185.49.141.38|foxZRnIh9gZpWnl+zEiKa0EJ2rdCGroMWm02gaxSc9S= example.com */
-    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TLSGroup", "TLS");
+    ConfigAddAlias(&ConfigInfo, "ServerGroup", "TLSGroup", "TLS", NULL);
 
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "BlockIP", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
@@ -87,6 +89,9 @@ static int EnvironmentInit(char *ConfigFile)
     TmpTypeDescriptor.str = NULL;
     ConfigAddOption(&ConfigInfo, "IPSubstituting", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
     ConfigSetStringDelimiters(&ConfigInfo, "IPSubstituting", "\t ,");
+
+    TmpTypeDescriptor.boolean = FALSE;
+    ConfigAddOption(&ConfigInfo, "BlockNegativeResponse", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
 
     TmpTypeDescriptor.boolean = FALSE;
     ConfigAddOption(&ConfigInfo, "DomainStatistic", STRATEGY_DEFAULT, TYPE_BOOLEAN, TmpTypeDescriptor);
@@ -104,7 +109,7 @@ static int EnvironmentInit(char *ConfigFile)
 	ConfigAddOption(&ConfigInfo, "StatisticUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);
 
     TmpTypeDescriptor.str = NULL;
-    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_APPEND, TYPE_STRING, TmpTypeDescriptor);
+    ConfigAddOption(&ConfigInfo, "Hosts", STRATEGY_APPEND, TYPE_PATH, TmpTypeDescriptor);
 
     TmpTypeDescriptor.INT32 = 18000;
     ConfigAddOption(&ConfigInfo, "HostsUpdateInterval", STRATEGY_DEFAULT, TYPE_INT32, TmpTypeDescriptor);

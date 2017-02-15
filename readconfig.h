@@ -105,7 +105,8 @@ int ConfigAddOption(ConfigFileInfo *Info,
 int ConfigAddAlias(ConfigFileInfo *Info,
                    const char *Target,
                    const char *Alias,
-                   const char *Prepending
+                   const char *Prepending,
+                   const char *StringDelimiters
                    );
 
 int ConfigSetStringDelimiters(ConfigFileInfo *Info,

@@ -249,7 +249,8 @@ void ShowBlockedMessage(IHeader *h, const char *Message)
 		GetAllAnswers(Package, h->EntityLength, InfoBuffer, sizeof(InfoBuffer));
 
         Log_Print(NULL,
-                  "[B][%s] %s :\n%s",
+                  "[B][%s][%s] %s :\n%s",
+                  DNSGetTypeName(h->Type),
                   h->Domain,
                   Message == NULL ? "" : Message,
                   InfoBuffer

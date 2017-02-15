@@ -482,11 +482,17 @@ static int TcpM_Works(TcpM *m)
 
             switch( IPMiscSingleton_Process(Header) )
             {
-            case IP_MISC_ACTION_NOTHING:
+            case IP_MISC_NOTHING:
                 break;
 
-            case IP_MISC_ACTION_BLOCK:
+            case IP_MISC_FILTERED_IP:
                 ShowBlockedMessage(Header, "Bad package, discarded");
+                DomainStatistic_Add(Header, STATISTIC_TYPE_BLOCKEDMSG);
+                continue;
+                break;
+
+            case IP_MISC_NEGATIVE_RESULT:
+                ShowBlockedMessage(Header, "Negative result, discarded");
                 DomainStatistic_Add(Header, STATISTIC_TYPE_BLOCKEDMSG);
                 continue;
                 break;

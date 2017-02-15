@@ -177,7 +177,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
     } else {
         TimedTask_Add(TRUE,
                       TRUE,
-                      UpdateInterval,
+                      UpdateInterval * 1000,
                       (TaskFunc)GetHostsFromInternet_Thread,
                       NULL,
                       NULL,

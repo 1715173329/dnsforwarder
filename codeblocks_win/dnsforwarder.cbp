@@ -225,7 +225,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="../readline.h" />
-		<Unit filename="../request_response.h" />
 		<Unit filename="../rwlock.h" />
 		<Unit filename="../simpleht.c">
 			<Option compilerVar="CC" />

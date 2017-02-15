@@ -144,6 +144,7 @@ static int StringList_AppendLast(StringList *s,
     return Divide(NewlyAdded, Delimiters);
 }
 
+/* free the return value and all the strings */
 static const char **StringList_ToCharPtrArray(StringList *s)
 {
     const char  **ret;
@@ -166,7 +167,13 @@ static const char **StringList_ToCharPtrArray(StringList *s)
     ci = i.Next(&i);
     while( ci != NULL )
     {
-        ret[Index] = ci;
+        ret[Index] = StringDup(ci);
+        if( ret[Index] == NULL )
+        {
+            /** WARNING: Memory leak occured */
+            return NULL;
+        }
+
         ++Index;
 
         ci = i.Next(&i);

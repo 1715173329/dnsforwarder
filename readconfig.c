@@ -62,14 +62,13 @@ int ConfigAddOption(ConfigFileInfo *Info,
 			break;
 
 		case TYPE_PATH:
-			New.Strategy = STRATEGY_REPLACE;
 		case TYPE_STRING:
 			if( StringList_Init(&(New.Holder.str), Initial.str, ",") != 0 )
 			{
 				return 2;
 			}
 
-			New.Delimiters = DUP_STRING(Info, ",");
+			New.Delimiters = ",";
             if( New.Delimiters == NULL )
             {
                 return -68;
@@ -87,7 +86,8 @@ int ConfigAddOption(ConfigFileInfo *Info,
 int ConfigAddAlias(ConfigFileInfo *Info,
                    const char *Target,
                    const char *Alias,
-                   const char *Prepending
+                   const char *Prepending,
+                   const char *StringDelimiters
                    )
 {
 	ConfigOption New;
@@ -95,7 +95,20 @@ int ConfigAddAlias(ConfigFileInfo *Info,
 	New.Type = TYPE_ALIAS;
 
 	New.Holder.Aliasing.Target = DUP_STRING(Info, Target);
-	New.Holder.Aliasing.Prepending = DUP_STRING(Info, Prepending);
+
+	if( Prepending != NULL )
+    {
+        New.Holder.Aliasing.Prepending = DUP_STRING(Info, Prepending);
+    } else {
+        New.Holder.Aliasing.Prepending = NULL;
+    }
+
+	if( StringDelimiters != NULL )
+    {
+        New.Delimiters = DUP_STRING(Info, StringDelimiters);
+    } else {
+        New.Delimiters = NULL;
+    }
 
 	return StringChunk_Add(&(Info->Options),
                            Alias,
@@ -104,10 +117,11 @@ int ConfigAddAlias(ConfigFileInfo *Info,
                            );
 }
 
-/* **Prepending should be NULL before this is called */
+/* **Prepending and **StringDelimiters should be NULL before this is called */
 static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info,
                                       const char *KeyName,
-                                      const char **Prepending
+                                      const char **Prepending,
+                                      const char **StringDelimiters
                                       )
 {
 	ConfigOption *Option;
@@ -121,7 +135,16 @@ static ConfigOption *GetOptionOfAInfo(ConfigFileInfo *Info,
                 *Prepending = Option->Holder.Aliasing.Prepending;
             }
 
-			return GetOptionOfAInfo(Info, Option->Holder.Aliasing.Target, Prepending);
+            if( StringDelimiters != NULL )
+            {
+                *StringDelimiters = Option->Delimiters;
+            }
+
+			return GetOptionOfAInfo(Info,
+                                    Option->Holder.Aliasing.Target,
+                                    Prepending,
+                                    StringDelimiters
+                                    );
 		} else {
 			return Option;
 		}
@@ -137,10 +160,15 @@ int ConfigSetStringDelimiters(ConfigFileInfo *Info,
 {
     ConfigOption *Option;
 
-    Option = GetOptionOfAInfo(Info, KeyName, NULL);
+    Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
     if( Option == NULL )
     {
         return -147;
+    }
+
+    if( Option->Type != TYPE_STRING )
+    {
+        return -148;
     }
 
     Option->Delimiters = DUP_STRING(Info, Delimiters);
@@ -252,6 +280,7 @@ static void ParseInt32(ConfigOption *Option, const char *Value)
 }
 
 static void ParseString(ConfigOption *Option,
+                        const char *Delimiters,
                         const char *Value,
                         ReadLineStatus ReadStatus,
                         BOOL Trim,
@@ -277,7 +306,7 @@ static void ParseString(ConfigOption *Option,
 		case STRATEGY_APPEND:
 			if( Option->Holder.str.Add(&(Option->Holder.str),
                                        Value,
-                                       Option->Delimiters
+                                       Delimiters
                                        )
                 == NULL )
 			{
@@ -297,7 +326,7 @@ static void ParseString(ConfigOption *Option,
 		if( ReadStatus == READ_FAILED_OR_END )
 			break;
 
-		Option->Holder.str.AppendLast(&(Option->Holder.str), Buffer, Option->Delimiters);
+		Option->Holder.str.AppendLast(&(Option->Holder.str), Buffer, Delimiters);
 	}
 
 	if( Trim )
@@ -354,6 +383,7 @@ int ConfigRead(ConfigFileInfo *Info)
 	ConfigOption	*Option;
 
 	const char      *Prepending;
+	const char      *StringDelimiters;
 
 	while(TRUE){
 		ReadStatus = ReadLine(Info->fp, Buffer, sizeof(Buffer));
@@ -367,9 +397,17 @@ int ConfigRead(ConfigFileInfo *Info)
 		KeyName = Buffer;
 
 		Prepending = NULL;
-		Option = GetOptionOfAInfo(Info, KeyName, &Prepending);
+		StringDelimiters = NULL;
+		Option = GetOptionOfAInfo(Info,
+                                  KeyName,
+                                  &Prepending,
+                                  &StringDelimiters
+                                  );
+
 		if( Option == NULL )
-			continue;
+        {
+            continue;
+        }
 
         if( Prepending != NULL )
         {
@@ -384,8 +422,20 @@ int ConfigRead(ConfigFileInfo *Info)
                     break;
 
                 case TYPE_PATH:
+                    StringDelimiters = "";
+                    /* No break */
+
                 case TYPE_STRING:
-                    ParseString(Option, Prepending, READ_DONE, FALSE, Info->fp, NULL, 0);
+                    ParseString(Option,
+                                StringDelimiters == NULL ?
+                                    Option->Delimiters : StringDelimiters,
+                                Prepending,
+                                READ_DONE,
+                                FALSE,
+                                Info->fp,
+                                NULL,
+                                0
+                                );
                     break;
 
                 default:
@@ -415,10 +465,20 @@ int ConfigRead(ConfigFileInfo *Info)
 				}
 
 				ExpandPath(ValuePos, sizeof(Buffer) - (ValuePos - Buffer));
+				StringDelimiters = "";
 				/* No break */
 
 			case TYPE_STRING:
-				ParseString(Option, ValuePos, ReadStatus, TRUE, Info->fp, Buffer, sizeof(Buffer));
+				ParseString(Option,
+                            StringDelimiters == NULL ?
+                                Option->Delimiters : StringDelimiters,
+                            ValuePos,
+                            ReadStatus,
+                            TRUE,
+                            Info->fp,
+                            Buffer,
+                            sizeof(Buffer)
+                            );
 				break;
 
 			default:
@@ -426,12 +486,13 @@ int ConfigRead(ConfigFileInfo *Info)
 		}
 		++NumOfRead;
 	}
+
 	return NumOfRead;
 }
 
 const char *ConfigGetRawString(ConfigFileInfo *Info, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -450,7 +511,7 @@ const char *ConfigGetRawString(ConfigFileInfo *Info, char *KeyName)
 
 StringList *ConfigGetStringList(ConfigFileInfo *Info, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -467,7 +528,7 @@ StringList *ConfigGetStringList(ConfigFileInfo *Info, char *KeyName)
 
 int32_t ConfigGetNumberOfStrings(ConfigFileInfo *Info, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -479,7 +540,7 @@ int32_t ConfigGetNumberOfStrings(ConfigFileInfo *Info, char *KeyName)
 
 int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -491,7 +552,7 @@ int32_t ConfigGetInt32(ConfigFileInfo *Info, char *KeyName)
 
 BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -504,7 +565,7 @@ BOOL ConfigGetBoolean(ConfigFileInfo *Info, char *KeyName)
 /* Won't change the Option's status */
 void ConfigSetDefaultValue(ConfigFileInfo *Info, VType Value, char *KeyName)
 {
-	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL);
+	ConfigOption *Option = GetOptionOfAInfo(Info, KeyName, NULL, NULL);
 
 	if( Option != NULL )
 	{
@@ -563,4 +624,5 @@ void ConfigFree(ConfigFileInfo *Info)
     }
 
     Info->StrBuffer.Free(&(Info->StrBuffer));
+    StringChunk_Free(&(Info->Options), TRUE);
 }

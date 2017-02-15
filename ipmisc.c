@@ -54,12 +54,19 @@ static int IPMisc_Process(IPMisc *m,
 
     if( DnsSimpleParser_Init(&p, DNSPackage, PackageLength, FALSE) != 0 )
     {
-        return IP_MISC_ACTION_NOTHING;
+        return IP_MISC_NOTHING;
+    }
+
+    if( m->BlockNegative &&
+        p._Flags.ResponseCode(&p) != RESPONSE_CODE_NO_ERROR
+        )
+    {
+        return IP_MISC_NEGATIVE_RESULT;
     }
 
     if( DnsSimpleParserIterator_Init(&i, &p) != 0 )
     {
-        return IP_MISC_ACTION_NOTHING;
+        return IP_MISC_NOTHING;
     }
 
     i.GotoAnswers(&i);
@@ -106,7 +113,7 @@ static int IPMisc_Process(IPMisc *m,
         switch( ActionType )
         {
         case IP_MISC_TYPE_BLOCK:
-            return IP_MISC_ACTION_BLOCK;
+            return IP_MISC_FILTERED_IP;
             break;
 
         case IP_MISC_TYPE_SUBSTITUTE:
@@ -119,7 +126,12 @@ static int IPMisc_Process(IPMisc *m,
 
     }
 
-    return IP_MISC_ACTION_NOTHING;
+    return IP_MISC_NOTHING;
+}
+
+static void IPMisc_SetBlockNegative(IPMisc *m, BOOL Value)
+{
+    m->BlockNegative = Value;
 }
 
 int IPMisc_Init(IPMisc *m)
@@ -129,8 +141,11 @@ int IPMisc_Init(IPMisc *m)
         return -1;
     }
 
+    m->BlockNegative = FALSE;
+
     m->AddBlockFromString = IPMisc_AddBlockFromString;
     m->AddSubstituteFromString = IPMisc_AddSubstituteFromString;
+    m->SetBlockNegative = IPMisc_SetBlockNegative;
     m->Process = IPMisc_Process;
 
     return 0;
@@ -147,9 +162,11 @@ int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo)
     StringList *IPSubstituting =
                               ConfigGetStringList(ConfigInfo, "IPSubstituting");
 
+    BOOL BlockNegative = ConfigGetBoolean(ConfigInfo, "BlockNegativeResponse");
+
     StringListIterator i;
 
-    if( BlockIP == NULL && IPSubstituting == NULL )
+    if( BlockIP == NULL && IPSubstituting == NULL && !BlockNegative )
     {
         return 0;
     }
@@ -158,6 +175,8 @@ int IpMiscSingleton_Init(ConfigFileInfo *ConfigInfo)
     {
         return -147;
     }
+
+    IpMiscSingleton.SetBlockNegative(&IpMiscSingleton, BlockNegative);
 
     if( BlockIP != NULL )
     {
@@ -202,7 +221,7 @@ int IPMiscSingleton_Process(IHeader *h /* Entity followed */)
 {
     if( !SingletonInited )
     {
-        return IP_MISC_ACTION_NOTHING;
+        return IP_MISC_NOTHING;
     }
 
     return IpMiscSingleton.Process(&IpMiscSingleton,

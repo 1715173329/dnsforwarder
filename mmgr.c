@@ -7,6 +7,7 @@
 #include "dnscache.h"
 #include "logs.h"
 #include "ipmisc.h"
+#include "readline.h"
 
 typedef int (*SendFunc)(void *Module,
                         IHeader *h, /* Entity followed */
@@ -190,6 +191,89 @@ static int Tcp_Init(StringListIterator  *i)
     return 0;
 }
 
+/*
+# UDP
+PROTOCOL UDP
+SERVER 1.2.4.8
+PARALLEL ON
+
+example.com
+
+*/
+static int Modules_InitFromFile(StringListIterator  *i)
+{
+    #define MAX_PATH_BUFFER     256
+/*
+    const char *FileOri;
+    char File[MAX_PATH_BUFFER];
+    FILE *fp;
+
+    ReadLineStatus  Status;
+    char Buffer[1024];
+
+    const char *Protocol = NULL;
+
+    FileOri = i->Next(i);
+
+    if( FileOri == NULL )
+    {
+        return -201;
+    }
+
+    strncpy(File, FileOri, sizeof(File));
+    File[sizeof(File) - 1] = '\0';
+
+    ReplaceStr(File, "\"", "");
+
+    fp = fopen(File, "r");
+    if( fp == NULL )
+    {
+        ERRORMSG("Cannot open file %s.\n", File);
+        return -208;
+    }
+
+    do {
+        Status = ReadLine(fp, Buffer, sizeof(Buffer));
+
+        if( Status == READ_TRUNCATED )
+        {
+            Status = ReadLine_GoToNextLine(fp);
+        }
+
+        StrToLower(Buffer);
+        if( strncmp(Buffer, "protocol", sizeof("protocol") - 1) == 0 )
+        {
+            Protocol = GoToNextNonSpace(strpbrk(Buffer, "\t "));
+
+            if( Protocol != NULL )
+            {
+                rewind(fp);
+                break;
+            }
+        }
+
+    } while( Status != READ_FAILED_OR_END );
+
+    if( Protocol == NULL )
+    {
+        INFO("No protocol specified, file %s.\n", File);
+        return -260;
+    }
+
+    if( strcmp(Protocol, "udp") == 0 )
+    {
+
+    } else if( strcmp(Protocol, "tcp") == 0 )
+    {
+
+    } else {
+        INFO("Unknown protocol %s, file %s.\n", Protocol, File);
+        return -271;
+    }
+*/
+    return 0;
+}
+
 static int Modules_Init(ConfigFileInfo *ConfigInfo)
 {
     StringList  *ServerGroups;
@@ -224,6 +308,13 @@ static int Modules_Init(ConfigFileInfo *ConfigInfo)
             {
                 ERRORMSG("Initializing TCPGroups failed.\n");
                 return -226;
+            }
+        } else if( strcmp(Type, "FILE") == 0 )
+        {
+            if( Modules_InitFromFile(&i) != 0 )
+            {
+                ERRORMSG("Initializing group files failed.\n");
+                return -318;
             }
         } else {
             ERRORMSG("Initializing server groups failed, near %s.\n", Type);
