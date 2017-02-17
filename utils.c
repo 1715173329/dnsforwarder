@@ -1218,3 +1218,33 @@ SOCKET TryBindLocal(BOOL Ipv6, int StartPort, Address_Type *Address)
 
 	return ret;
 }
+
+char *SplitNameAndValue(char *Line, const char *Delimiters)
+{
+	char *Delimiter = strpbrk(Line, Delimiters);
+
+	if( Delimiter == NULL )
+	{
+		return NULL;
+	}
+
+	*Delimiter = '\0';
+
+	return GoToNextNonSpace(Delimiter + 1);
+}
+
+char *GetPathPart(char *FullPath)
+{
+    char *SlashPos;
+
+    SlashPos = strrchr(FullPath, PATH_SLASH_CH);
+
+    if( SlashPos == NULL )
+    {
+        return NULL;
+    }
+
+    *(SlashPos + 1) = '\0';
+
+    return FullPath;
+}

@@ -100,15 +100,21 @@ static void UdpFrontend_Work(void *Unused)
     }
 }
 
-int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
+void UdpFrontend_StartWork(void)
+{
+    ThreadHandle t;
+
+    CREATE_THREAD(UdpFrontend_Work, NULL, t);
+    DETACH_THREAD(t);
+}
+
+int UdpFrontend_Init(ConfigFileInfo *ConfigInfo, BOOL StartWork)
 {
     StringList *UDPLocal;
     StringListIterator i;
     const char *One;
 
     int Count = 0;
-
-    ThreadHandle t;
 
     UDPLocal = ConfigGetStringList(ConfigInfo, "UDPLocal");
     if( UDPLocal == NULL )
@@ -179,8 +185,10 @@ int UdpFrontend_Init(ConfigFileInfo *ConfigInfo)
         return -163;
     }
 
-    CREATE_THREAD(UdpFrontend_Work, NULL, t);
-    DETACH_THREAD(t);
+    if( StartWork )
+    {
+        UdpFrontend_StartWork();
+    }
 
     return 0;
 }

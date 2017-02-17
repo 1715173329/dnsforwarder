@@ -139,6 +139,8 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 		return -151;
 	}
 
+	Hosts->TrimAll(Hosts, "\"\t ");
+
     HostsURLs = Hosts->ToCharPtrArray(Hosts);
 	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
 	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");

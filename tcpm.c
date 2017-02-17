@@ -11,7 +11,7 @@
 #include "domainstatistic.h"
 #include "ptimer.h"
 
-static void SwepWorks(IHeader *h, int Number, TcpM *Module)
+static void SweepWorks(IHeader *h, int Number, TcpM *Module)
 {
     ShowTimeOutMessage(h, 'T');
     DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
@@ -407,7 +407,7 @@ static int TcpM_Works(TcpM *m)
 
         if( s == INVALID_SOCKET )
         {
-            m->Context.Swep(&(m->Context), (SwepCallback)SwepWorks, m);
+            m->Context.Swep(&(m->Context), (SwepCallback)SweepWorks, m);
             NumberOfCumulated = 0;
         } else if( s == m->Departure )
         {
@@ -520,7 +520,7 @@ static int TcpM_Works(TcpM *m)
 
             if( NumberOfCumulated > 1024 )
             {
-                m->Context.Swep(&(m->Context), (SwepCallback)SwepWorks, m);
+                m->Context.Swep(&(m->Context), (SwepCallback)SweepWorks, m);
                 NumberOfCumulated = 0;
             }
 
@@ -605,10 +605,12 @@ int TcpM_Init(TcpM *m, const char *Services, const char *SocksProxies)
         StringListIterator i;
         const char *Itr;
 
-        if( StringList_Init(&l, Services, ",") != 0 )
+        if( StringList_Init(&l, Services, ", ") != 0 )
         {
             return -23;
         }
+
+        l.TrimAll(&l, "\t .");
 
         if( StringListIterator_Init(&i, &l) != 0 )
         {
@@ -646,10 +648,12 @@ int TcpM_Init(TcpM *m, const char *Services, const char *SocksProxies)
             StringListIterator i;
             const char *Itr;
 
-            if( StringList_Init(&l, SocksProxies, ",") != 0 )
+            if( StringList_Init(&l, SocksProxies, ", ") != 0 )
             {
                 return -61;
             }
+
+            l.TrimAll(&l, "\t .");
 
             if( StringListIterator_Init(&i, &l) != 0 )
             {

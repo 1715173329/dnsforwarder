@@ -23,7 +23,7 @@
 #include "timedtask.h"
 #include "domainstatistic.h"
 
-#define VERSION__ "6.1.2"
+#define VERSION__ "6.1.3"
 
 static char		*ConfigFile;
 static BOOL		DeamonMode;
@@ -33,16 +33,29 @@ static BOOL     DebugOn = FALSE;
 
 static ConfigFileInfo	ConfigInfo;
 
-static int EnvironmentInit(char *ConfigFile)
+static int EnvironmentInit(void)
 {
 	VType	TmpTypeDescriptor;
 	char	TmpStr[1024];
 
+	/* Setting env */
 	GetFileDirectory(TmpStr);
 	strcat(TmpStr, PATH_SLASH_STR);
 
 	SetProgramEnvironment("PROGRAMDIRECTORY", TmpStr);
 
+	strncpy(TmpStr, ConfigFile, sizeof(TmpStr));
+	TmpStr[sizeof(TmpStr) - 1] = '\0';
+
+    if( GetPathPart(TmpStr) == NULL )
+    {
+        snprintf(TmpStr, sizeof(TmpStr), ".%s", PATH_SLASH_STR);
+        TmpStr[sizeof(TmpStr) - 1] = '\0';
+    }
+
+	SetProgramEnvironment("CONFIGFILEDIRECTORY", TmpStr);
+
+    /* Initializing configure options */
 	ConfigInitInfo(&ConfigInfo);
 
     TmpTypeDescriptor.boolean = FALSE;
@@ -462,7 +475,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if( EnvironmentInit(ConfigFile) != 0 )
+	if( EnvironmentInit() != 0 )
     {
         return -498;
     }
@@ -498,15 +511,17 @@ int main(int argc, char *argv[])
 
     IHeader_Init(ConfigGetBoolean(&ConfigInfo, "AP"));
 
+    if( UdpFrontend_Init(&ConfigInfo, FALSE) != 0 )
+    {
+        return -311;
+    }
+
     if( MMgr_Init(&ConfigInfo) != 0 )
     {
         return -305;
     }
 
-    if( UdpFrontend_Init(&ConfigInfo) != 0 )
-    {
-        return -311;
-    }
+    UdpFrontend_StartWork();
 
     ConfigFree(&ConfigInfo);
 

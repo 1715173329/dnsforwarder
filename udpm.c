@@ -8,7 +8,7 @@
 #include "domainstatistic.h"
 #include "timedtask.h"
 
-static void SwepWorks(IHeader *h, int Number, UdpM *Module)
+static void SweepWorks(IHeader *h, int Number, UdpM *Module)
 {
     ShowTimeOutMessage(h, 'U');
     DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
@@ -282,10 +282,12 @@ int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
     }
 
     m->Departure = INVALID_SOCKET;
-    if( StringList_Init(&Addresses, Services, ",") != 0 )
+    if( StringList_Init(&Addresses, Services, ", ") != 0 )
     {
         return -364;
     }
+
+    Addresses.TrimAll(&Addresses, "\t .");
 
     if( StringListIterator_Init(&sli, &Addresses) != 0 )
     {
@@ -348,7 +350,7 @@ int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
                   10000,
                   (TaskFunc)SwepTask,
                   m,
-                  SwepWorks,
+                  SweepWorks,
                   FALSE
                   );
 

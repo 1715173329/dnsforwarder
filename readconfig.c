@@ -357,20 +357,6 @@ static char *TrimPath(char *Path)
 	}
 }
 
-static char *SplitNameAndValue(char *Line, const char *Delimiters)
-{
-	char *Delimiter = strpbrk(Line, Delimiters);
-
-	if( Delimiter == NULL )
-	{
-		return NULL;
-	}
-
-	*Delimiter = '\0';
-
-	return GoToNextNonSpace(Delimiter + 1);
-}
-
 int ConfigRead(ConfigFileInfo *Info)
 {
 	int				NumOfRead	=	0;
