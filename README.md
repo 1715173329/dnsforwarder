@@ -30,7 +30,7 @@ dnsforwarder
 [Installation & Deployment](https://github.com/holmium/dnsforwarder/wiki/安装和部署-%7C-Deployment#versions)
 
 ### License :
-GPL v3
+[GPL v3](https://github.com/holmium/dnsforwarder/blob/6/LICENSE)
 
 ### Dependencies :
 
