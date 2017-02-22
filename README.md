@@ -14,7 +14,7 @@ dnsforwarder
 
 此版本保留了大部分 5 版本的功能，习惯 5 版本的朋友们可以到“5”分支内获取。
 
-[安装和部署](https://github.com/holmium/dnsforwarder/wiki/%E9%A6%96%E6%AC%A1%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95-%7C-Deployment)
+[安装和部署](https://github.com/holmium/dnsforwarder/wiki/安装和部署-%7C-Deployment)
 
 ### A simple DNS forwarder
 
@@ -27,7 +27,7 @@ dnsforwarder
 5. Refusing queries to specified domains (for ads blocking?);
 6. Cross-platform (Windows, Linux);
 
-[Installation & Deployment](https://github.com/holmium/dnsforwarder/wiki/%E9%A6%96%E6%AC%A1%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%95-%7C-Deployment#versions)
+[Installation & Deployment](https://github.com/holmium/dnsforwarder/wiki/安装和部署-%7C-Deployment#versions)
 
 ### License :
 GPL v3
