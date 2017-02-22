@@ -5,7 +5,7 @@ dnsforwarder
 
 **主要功能：**
 
-1. 指定不同的域名使用不同的服务器、不同的协议（UDP、TCP）进行查询；
+1. 指定不同的域名使用不同的服务器（支持非标准端口）、不同的协议（UDP、TCP）进行查询；
 2. DNS 缓存及相关的控制（支持自定义 TTL）；
 3. 屏蔽包含指定的 IP 的 DNS 数据包；
 4. Hosts 功能（支持通配符、CName 指定、网络 Hosts）；
@@ -20,7 +20,7 @@ dnsforwarder
 
 **Main Fetures:**
 
-1. Forwarding queries to particular domains (and their subdomains) to specified servers over a specified protocol (UDP or TCP);
+1. Forwarding queries to customized domains (and their subdomains) to specified servers over a specified protocol (UDP or TCP). non-standard ports are supported;
 2. DNS cache and its controls (including modifying TTL for different domains);
 3. Ignoring DNS responses from upstream servers containing particular IPs;
 4. Loading hosts from file (including the support for wildcards, CName redirections and remote hosts files);
