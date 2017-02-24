@@ -1168,10 +1168,10 @@ void ClearTCPSocketBuffer(SOCKET Sock, int Length)
 	    UnitLength = recv(Sock,
                           BlackHole,
                           sizeof(BlackHole) < Length ? sizeof(BlackHole) : Length,
-                          MSG_WAITALL
+                          0
                           );
 
-        if( UnitLength < 0 )
+        if( UnitLength <= 0 )
         {
             return;
         }

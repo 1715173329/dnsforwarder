@@ -54,6 +54,11 @@ HostsUtilsTryResult Hosts_Try(IHeader *Header, int BufferLength)
         }
     }
 
+    if( Hosts_TypeExisting(Header->Domain, HOSTS_TYPE_EXCLUEDE) )
+    {
+        return HOSTSUTILS_TRY_NONE;
+    }
+
     ret = Hosts_Try_Inner(Header, BufferLength);
 
     if( ret == HOSTSUTILS_TRY_RECURSED )

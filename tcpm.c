@@ -188,7 +188,6 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
     char NumberOfCharacter;
     unsigned short Port;
     char RecvBuffer[16];
-    int ret;
 
     if( Family == AF_INET )
     {
@@ -205,7 +204,7 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		return -1;
 	}
 
-    if( (ret = TcpM_RecvWrapper(Sock, RecvBuffer, 2)) != 2 )
+    if( TcpM_RecvWrapper(Sock, RecvBuffer, 2) != 2 )
     {
 		ERRORMSG("Cannot communicate with TCP proxy, negotiation error.\n");
         return -2;
@@ -242,11 +241,16 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		return -7;
 	}
 
-	TcpM_RecvWrapper(Sock, RecvBuffer, 4);
+    if( TcpM_RecvWrapper(Sock, RecvBuffer, 4) != 4 )
+    {
+		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
+		return -9;
+    }
+
 	if( RecvBuffer[1] != '\x00' )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
-		return -8;
+		return -10;
 	}
 
 	switch( RecvBuffer[3] )
@@ -267,7 +271,7 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		default:
 			/*printf("------Here : %d %d %d %d\n", RecvBuffer[0], RecvBuffer[1], RecvBuffer[2], RecvBuffer[3]);*/
 			ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
-			return -9;
+			return -11;
 	}
 	ClearTCPSocketBuffer(Sock, NumberOfCharacter);
 

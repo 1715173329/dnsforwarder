@@ -317,7 +317,7 @@ static int Modules_InitFromFile(StringListIterator  *i)
 
         if( Status == READ_TRUNCATED )
         {
-            INFO("Line is too long %s, file \"%s\".\n", Buffer, File);
+            WARNING("Line is too long %s, file \"%s\".\n", Buffer, File);
             Status = ReadLine_GoToNextLine(fp);
             continue;
         }
@@ -367,7 +367,7 @@ static int Modules_InitFromFile(StringListIterator  *i)
 
         if( Udp_Init_Core(Services, &Domains, Parallel) != 0 )
         {
-            INFO("Loading group file \"%s\" failed.\n", File);
+            ERRORMSG("Loading group file \"%s\" failed.\n", File);
             return -337;
         }
 
@@ -381,12 +381,12 @@ static int Modules_InitFromFile(StringListIterator  *i)
 
         if( Tcp_Init_Core(Services, &Domains, Proxies) != 0 )
         {
-            INFO("Loading group file \"%s\" failed.\n", File);
+            ERRORMSG("Loading group file \"%s\" failed.\n", File);
             return -233;
         }
 
     } else {
-        INFO("Unknown protocol %s, file \"%s\".\n", Protocol, File);
+        ERRORMSG("Unknown protocol %s, file \"%s\".\n", Protocol, File);
         return -281;
     }
 
