@@ -213,6 +213,8 @@
 		<Unit filename="../timedtask.h" />
 		<Unit filename="../tlsm.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+			<Option link="0" />
 		</Unit>
 		<Unit filename="../tlsm.h" />
 		<Unit filename="../tlsserver.c">
