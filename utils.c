@@ -2,7 +2,16 @@
 #include <stdio.h>
 #include <math.h>
 
-#ifndef WIN32
+#ifdef WIN32
+int Execute(const char *Cmd)
+{
+    int	ret;
+
+    ret = system(Cmd);
+
+    return ret;
+}
+#else
 #include <sys/wait.h>
 int Execute(const char *Cmd)
 {

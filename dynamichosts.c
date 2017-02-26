@@ -117,8 +117,12 @@ static void GetHostsFromInternet_Thread(void *Unused1, void *Unused2)
 
         if( Script != NULL )
         {
-            INFO("Running hosts script ...\n");
-            system(Script);
+            INFO("Running hosts script \"%s\"...\n", Script);
+
+            if( Execute(Script) < 0 )
+            {
+                ERRORMSG("Hosts script running failed.\n");
+            }
         }
 
         DynamicHosts_Load();
