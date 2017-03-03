@@ -356,7 +356,7 @@ static int Modules_InitFromFile(StringListIterator  *i)
     if( strcmp(Protocol, "udp") == 0 )
     {
         const char *Services = NULL;
-        const char *Parallel = NULL;
+        const char *Parallel = "on";
 
         StringChunk_Match_NoWildCard(&Args, "server", NULL, (void **)&Services);
         StringChunk_Match_NoWildCard(&Args,
@@ -374,7 +374,7 @@ static int Modules_InitFromFile(StringListIterator  *i)
     } else if( strcmp(Protocol, "tcp") == 0 )
     {
         const char *Services = NULL;
-        const char *Proxies = NULL;
+        const char *Proxies = "no";
 
         StringChunk_Match_NoWildCard(&Args, "server", NULL, (void **)&Services);
         StringChunk_Match_NoWildCard(&Args, "proxy", NULL, (void **)&Proxies);
