@@ -258,7 +258,12 @@ const char *GoodIpList_Get(const char *List)
                                      )
        == TRUE )
     {
-        return (const char *)&(((const struct sockaddr_in *)Array_GetBySubscript(&(m->List), 0))->sin_addr);
+        if( Array_GetUsed(&(m->List)) <= 0 )
+        {
+            return NULL;
+        } else {
+            return (const char *)&(((const struct sockaddr_in *)Array_GetBySubscript(&(m->List), 0))->sin_addr);
+        }
     } else {
         return NULL;
     }
