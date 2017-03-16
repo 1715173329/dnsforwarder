@@ -76,8 +76,8 @@ static int DynamicHosts_Load(void)
 
 /* Arguments for updating  */
 static int          HostsRetryInterval;
-static const char   *Script;
-static const char	**HostsURLs;
+static const char   *Script; /* malloced */
+static const char	**HostsURLs; /* malloced */
 
 static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File1)
 {
@@ -148,7 +148,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
     HostsURLs = Hosts->ToCharPtrArray(Hosts);
 	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
 	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
-	Script = ConfigGetRawString(ConfigInfo, "HostsScript");
+	Script = StringDup(ConfigGetRawString(ConfigInfo, "HostsScript"));
 
 	RWLock_Init(HostsLock);
 
