@@ -76,8 +76,8 @@ static int DynamicHosts_Load(void)
 
 /* Arguments for updating  */
 static int          HostsRetryInterval;
-static const char   *Script; /* malloced */
-static const char	**HostsURLs; /* malloced */
+static char         *Script = NULL; /* malloced */
+static const char	**HostsURLs = NULL; /* malloced */
 
 static void GetHostsFromInternet_Failed(int ErrorCode, const char *URL, const char *File1)
 {
@@ -135,6 +135,7 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
 {
 	StringList  *Hosts;
 	int          UpdateInterval;
+	const char  *RawScript;
 
 	Hosts = ConfigGetStringList(ConfigInfo, "Hosts");
 	if( Hosts == NULL )
@@ -148,7 +149,29 @@ int DynamicHosts_Init(ConfigFileInfo *ConfigInfo)
     HostsURLs = Hosts->ToCharPtrArray(Hosts);
 	UpdateInterval = ConfigGetInt32(ConfigInfo, "HostsUpdateInterval");
 	HostsRetryInterval = ConfigGetInt32(ConfigInfo, "HostsRetryInterval");
-	Script = StringDup(ConfigGetRawString(ConfigInfo, "HostsScript"));
+
+	RawScript = ConfigGetRawString(ConfigInfo, "HostsScript");
+	if( RawScript != NULL )
+    {
+        static const int SIZE_OF_PATH_BUFFER = 1024;
+
+        Script = SafeMalloc(SIZE_OF_PATH_BUFFER);
+        if( Script == NULL )
+        {
+            ERRORMSG("No enough memory.\n");
+            return -160;
+        }
+
+        strcpy(Script, RawScript);
+
+        if( ExpandPath(Script, SIZE_OF_PATH_BUFFER) != 0 )
+        {
+            ERRORMSG("Path is too long : .\n", Script);
+            return -170;
+        }
+    } else {
+        Script = NULL;
+    }
 
 	RWLock_Init(HostsLock);
 

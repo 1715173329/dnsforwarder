@@ -12,7 +12,7 @@
 				<Option object_output="./obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters='-D -f &quot;D:\dns\dnsforwarder.config&quot;' />
+				<Option parameters='-D -f &quot;D:\My_File\VC\dnsforwarder_n\codeblocks_win\bin\Release_x64\dnsforwarder.config&quot;' />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
