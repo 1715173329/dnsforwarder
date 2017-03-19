@@ -1,3 +1,4 @@
+#include <string.h>
 #include "dynamichosts.h"
 #include "common.h"
 #include "downloader.h"
