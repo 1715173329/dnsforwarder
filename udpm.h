@@ -25,6 +25,8 @@ struct _UdpM {
         int addrlen;
     } Parallels;
 
+    int CountOfTimeout;
+
     /* public */
     int (*Send)(UdpM *m,
                 IHeader *h, /* Entity followed */
