@@ -12,6 +12,7 @@ static void SweepWorks(IHeader *h, int Number, UdpM *Module)
 {
     ShowTimeOutMessage(h, 'U');
     DomainStatistic_Add(h, STATISTIC_TYPE_REFUSED);
+    ++(Module->CountOfTimeout);
 
     if( Number == 1 )
     {
@@ -30,6 +31,9 @@ static int SwepTask(UdpM *m, SwepCallback cb)
 
 static void UdpM_Works(UdpM *m)
 {
+    static const struct timeval	ShortTime = {10, 0};
+    struct timeval Timeout;
+
     struct sockaddr *addr;
 
     #define BUF_LENGTH  2048
@@ -86,6 +90,9 @@ static void UdpM_Works(UdpM *m)
                 EFFECTIVE_LOCK_RELEASE(m->Lock);
                 return;
             }
+
+            m->CountOfTimeout = 0;
+
             EFFECTIVE_LOCK_RELEASE(m->Lock);
 
             FD_ZERO(&ReadSet);
@@ -93,7 +100,8 @@ static void UdpM_Works(UdpM *m)
         }
 
         ReadySet = ReadSet;
-        switch( select(m->Departure + 1, &ReadySet, NULL, NULL, NULL) )
+        Timeout = ShortTime;
+        switch( select(m->Departure + 1, &ReadySet, NULL, NULL, &Timeout) )
         {
             case SOCKET_ERROR:
                 WARNING("SOCKET_ERROR reached, 98.\n");
@@ -104,6 +112,15 @@ static void UdpM_Works(UdpM *m)
                 break;
 
             case 0:
+                #define RECREATION_THRESHOLD    8
+                if( m->CountOfTimeout > RECREATION_THRESHOLD )
+                {
+                    FD_CLR(m->Departure, &ReadSet);
+                    CLOSE_SOCKET(m->Departure);
+                    m->Departure = INVALID_SOCKET;
+
+                    WARNING("UDP socket is about to be recreated.\n");
+                }
                 continue;
                 break;
 
@@ -126,6 +143,8 @@ static void UdpM_Works(UdpM *m)
             ShowErrorMessage(Header, 'U');
             continue;
         }
+
+        m->CountOfTimeout = 0;
 
         /* Fill IHeader */
         IHeader_Fill(Header,
@@ -338,6 +357,8 @@ int UdpM_Init(UdpM *m, const char *Services, BOOL Parallel)
     {
         return -143;
     }
+
+    m->CountOfTimeout = 0;
 
     EFFECTIVE_LOCK_INIT(m->Lock);
 
