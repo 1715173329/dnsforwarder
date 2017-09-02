@@ -714,7 +714,7 @@ static int DnsGenerator_CopyAAAA(DnsGenerator *g, DnsSimpleParserIterator *i)
         return -4;
     }
 
-    if( DnsGenerator_16Uint(g, 4) != 0 )
+    if( DnsGenerator_16Uint(g, 16) != 0 )
     {
         return -5;
     }

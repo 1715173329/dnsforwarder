@@ -144,6 +144,31 @@ PUBFUNC const void *HostsContainer_Find(HostsContainer  *Container,
     }
 }
 
+PRIFUNC const void *HostsContainer_FindExist(HostsContainer  *Container,
+                                            const char      *Name
+                                            )
+{
+	const TableNode **Matched = NULL;
+	const TableNode *IP = NULL;
+
+	if( !StringChunk_Match_Exacly(&(Container->Mappings), Name, NULL, (void **)&Matched) )
+	{
+        return NULL;
+	}
+
+	if( Matched != NULL )
+    {
+        IP = *Matched;
+    }
+
+    if( IP != NULL )
+    {
+        return IP;
+    } else {
+        return NULL;
+    }
+}
+
 PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
                                    const char       *Name,
                                    HostsRecordType  Type,
@@ -151,7 +176,7 @@ PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
                                    int              DataLength
                                    )
 {
-    TableNode   n, *s, *Exist;
+    TableNode   n, *s = NULL, *Exist = NULL;
 
     if( Data != NULL )
     {
@@ -170,12 +195,7 @@ PRIFUNC int HostsContainer_AddNode(HostsContainer   *Container,
 
     n.Type = Type;
 
-    Exist = (TableNode *)HostsContainer_Find(Container,
-                                             Name,
-                                             HOSTS_TYPE_UNKNOWN,
-                                             NULL,
-                                             NULL
-                                             );
+    Exist = (TableNode *)HostsContainer_FindExist(Container, Name);
     if( Exist == NULL )
     {
         n.Next = NULL;

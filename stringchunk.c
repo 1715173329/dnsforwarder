@@ -214,6 +214,53 @@ BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, void **
 		StringChunk_Match_OnlyWildCard(dl, Str, Data));
 }
 
+static BOOL StringChunk_Match_WildCard_Exacly(StringChunk	*dl,
+                                        const char	*Str,
+                                        void		**Data
+                                        )
+{
+    Array           *wl;
+
+	EntryForString *FoundEntry;
+
+	int loop;
+
+	if( dl == NULL )
+	{
+		return FALSE;
+	}
+
+    wl = &(dl->List_W_Pos);
+
+	for( loop = 0; loop != Array_GetUsed(wl); ++loop )
+	{
+		FoundEntry = (EntryForString *)Array_GetBySubscript(wl, loop);
+		if( FoundEntry != NULL )
+		{
+            const char *FoundString = FoundEntry->str;
+			if( strcmp(Str, FoundString) == 0 )
+			{
+				if( Data != NULL )
+				{
+					*Data = (void *)(FoundEntry->Data);
+				}
+				return TRUE;
+			}
+
+		} else {
+			return FALSE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOL StringChunk_Match_Exacly(StringChunk *dl, const char *Str, int *HashValue, void **Data)
+{
+	return (StringChunk_Match_NoWildCard(dl, Str, HashValue, Data) ||
+		StringChunk_Match_WildCard_Exacly(dl, Str, Data));
+}
+
 BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, void **Data)
 {
 	if( StringChunk_Match_NoWildCard(dl, Domain, HashValue, Data) == TRUE )
