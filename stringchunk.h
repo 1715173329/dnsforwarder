@@ -48,6 +48,8 @@ BOOL StringChunk_Match_OnlyWildCard(StringChunk *dl,
 
 BOOL StringChunk_Match(StringChunk *dl, const char *Str, int *HashValue, void **Data);
 
+BOOL StringChunk_Match_Exacly(StringChunk *dl, const char *Str, int *HashValue, void **Data);
+
 BOOL StringChunk_Domain_Match_NoWildCard(StringChunk *dl, const char *Domain, int *HashValue, void **Data);
 
 BOOL StringChunk_Domain_Match(StringChunk *dl, const char *Domain, int *HashValue, void **Data);
