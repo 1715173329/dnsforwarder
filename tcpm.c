@@ -184,19 +184,11 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
                                  sa_family_t Family
                                  )
 {
-    char AddressString[LENGTH_OF_IPV6_ADDRESS_ASCII];
+    char AddressInfos[4 + 1 + LENGTH_OF_IPV6_ADDRESS_ASCII + 2 + 1];
+    char *AddressString = AddressInfos + 5;
     char NumberOfCharacter;
     unsigned short Port;
     char RecvBuffer[16];
-
-    if( Family == AF_INET )
-    {
-        IPv4AddressToAsc(&(((const struct sockaddr_in *)NestedAddress)->sin_addr), AddressString);
-		Port = ((const struct sockaddr_in *)NestedAddress)->sin_port;
-    } else {
-		IPv6AddressToAsc(&(((const struct sockaddr_in6 *)NestedAddress)->sin6_addr), AddressString);
-		Port = ((const struct sockaddr_in6 *)NestedAddress)->sin6_port;
-    }
 
 	if( TcpM_SendWrapper(Sock, "\x05\x01\x00", 3) != 3 )
 	{
@@ -219,12 +211,41 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 
 	INFO("Connecting to TCP server.\n");
 
+	memcpy(AddressInfos, "\x05\x01\x00\x03", 4);
+
+    if( Family == AF_INET )
+    {
+        IPv4AddressToAsc(&(((const struct sockaddr_in *)NestedAddress)->sin_addr), AddressString);
+		Port = ((const struct sockaddr_in *)NestedAddress)->sin_port;
+    } else {
+		IPv6AddressToAsc(&(((const struct sockaddr_in6 *)NestedAddress)->sin6_addr), AddressString);
+		Port = ((const struct sockaddr_in6 *)NestedAddress)->sin6_port;
+    }
+
+    NumberOfCharacter = strlen(AddressString);
+    memcpy(AddressInfos + 4, &NumberOfCharacter, 1);
+    memcpy(AddressInfos + 5 + NumberOfCharacter,
+           (const char *)&Port,
+           sizeof(Port)
+           );
+
+	if( TcpM_SendWrapper(Sock,
+                         AddressInfos,
+                         4 + 1 + NumberOfCharacter + 2
+                         )
+     != 4 + 1 + NumberOfCharacter + 2 )
+	{
+	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
+		return -4;
+	}
+
+/*
 	if( TcpM_SendWrapper(Sock, "\x05\x01\x00\x03", 4) != 4 )
 	{
 	    ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -4;
 	}
-	NumberOfCharacter = strlen(AddressString);
+
 	if( TcpM_SendWrapper(Sock, &NumberOfCharacter, 1) != 1 )
 	{
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
@@ -240,7 +261,7 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
 		return -7;
 	}
-
+*/
     if( TcpM_RecvWrapper(Sock, RecvBuffer, 4) != 4 )
     {
 		ERRORMSG("Cannot communicate with TCP proxy, connection to TCP server error.\n");
