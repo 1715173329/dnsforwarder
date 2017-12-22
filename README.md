@@ -16,6 +16,10 @@ dnsforwarder
 
 [安装和部署](https://github.com/holmium/dnsforwarder/wiki/安装和部署-%7C-Deployment)
 
+**微信扫一扫捐助我们:**
+
+![qrcode](https://github.com/holmium/dnsforwarder/blob/6/微信二维码.png)
+
 ### A simple DNS forwarder
 
 **Main Fetures:**
