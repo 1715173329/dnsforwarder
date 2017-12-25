@@ -16,6 +16,8 @@ dnsforwarder
 
 [安装和部署](https://github.com/holmium/dnsforwarder/wiki/安装和部署-%7C-Deployment)
 
+捐助比特币支持此项目：1KwWqEkxcMXprwn8aTtV4qhqt1ZkBYqzra
+
 ### A simple DNS forwarder
 
 **Main Fetures:**
