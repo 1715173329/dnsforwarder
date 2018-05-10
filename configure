@@ -2950,9 +2950,6 @@ fi
 ac_config_headers="$ac_config_headers config.h"
 
 
-LDFLAGS=" ${LDFLAGS} -pthread "
-CFLAGS=" ${CFLAGS} -pthread "
-
 # Check whether --enable-win was given.
 if test "${enable_win+set}" = set; then :
   enableval=$enable_win;    case "${enableval}" in
@@ -4247,6 +4244,9 @@ fi
 
 if test "$WIN" == "no"
 then
+    LDFLAGS=" ${LDFLAGS} -pthread "
+    CFLAGS=" ${CFLAGS} -pthread "
+
 	# Check whether --enable-android was given.
 if test "${enable_android+set}" = set; then :
   enableval=$enable_android;    case "${enableval}" in

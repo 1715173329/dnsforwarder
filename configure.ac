@@ -8,9 +8,6 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([dnscache.h])
 AC_CONFIG_HEADERS(config.h)
 
-LDFLAGS=" ${LDFLAGS} -pthread "
-CFLAGS=" ${CFLAGS} -pthread "
-
 AC_ARG_ENABLE([win],
 	[AS_HELP_STRING([--enable-win],
 	    [compile for Windows, you can set "32"(for 32-bit exe) or "64"(for 64-bit exe) or "no" (default=no)]
@@ -65,6 +62,9 @@ fi
 
 if test "$WIN" == "no"
 then
+    LDFLAGS=" ${LDFLAGS} -pthread "
+    CFLAGS=" ${CFLAGS} -pthread "
+
 	AC_ARG_ENABLE([android],
 		[AS_HELP_STRING([--enable-android],
 			[compile for android (default=no)]
