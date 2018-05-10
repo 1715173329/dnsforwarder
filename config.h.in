@@ -27,6 +27,15 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `shlwapi' library (-lshlwapi). */
+#undef HAVE_LIBSHLWAPI
+
+/* Define to 1 if you have the `wininet' library (-lwininet). */
+#undef HAVE_LIBWININET
+
+/* Define to 1 if you have the `ws2_32' library (-lws2_32). */
+#undef HAVE_LIBWS2_32
+
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
