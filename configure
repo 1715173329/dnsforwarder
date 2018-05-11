@@ -5202,28 +5202,6 @@ else
 $as_echo "$as_me: WARNING: Relative path is not supported." >&2;}
 fi
 
-    for ac_func in setenv
-do :
-  ac_fn_c_check_func "$LINENO" "setenv" "ac_cv_func_setenv"
-if test "x$ac_cv_func_setenv" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_SETENV 1
-_ACEOF
-
-fi
-done
-
-    for ac_func in wordexp
-do :
-  ac_fn_c_check_func "$LINENO" "wordexp" "ac_cv_func_wordexp"
-if test "x$ac_cv_func_wordexp" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_WORDEXP 1
-_ACEOF
-
-fi
-done
-
     for ac_func in clock_gettime
 do :
   ac_fn_c_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"

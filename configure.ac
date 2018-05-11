@@ -180,8 +180,6 @@ then
 	AC_FUNC_REALLOC
 	AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
 	AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
-    AC_CHECK_FUNCS([setenv])
-    AC_CHECK_FUNCS([wordexp])
     AC_CHECK_FUNCS([clock_gettime])
     AC_CHECK_FUNCS([inet_ntoa])
     AC_CHECK_FUNCS([memmove])
