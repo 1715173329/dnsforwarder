@@ -8,6 +8,8 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([dnscache.h])
 AC_CONFIG_HEADERS(config.h)
 
+CFLAGS=" ${CFLAGS} -Wunreachable-code -Wall "
+
 AC_ARG_ENABLE([win],
 	[AS_HELP_STRING([--enable-win],
 	    [compile for Windows, you can set "32"(for 32-bit exe) or "64"(for 64-bit exe) or "no" (default=no)]
@@ -45,7 +47,7 @@ AC_CHECK_FUNCS([sqrt])
 
 if test "$WIN" != "no"
 then
-    LDFLAGS=" ${LDFLAGS} -static-libgcc "
+    LDFLAGS=" ${LDFLAGS} -static-libgcc -DWIN32_LEAN_AND_MEAN "
 
 	AC_CHECK_LIB(ws2_32, socket, ,
 		AC_MSG_ERROR(No libws2_32 found.)
@@ -203,7 +205,7 @@ then
 			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-spinlock) ;;
 			esac
 		],
-		[]
+		[AC_CHECK_FUNCS([pthread_spin_init])]
 		)
 
 	AC_ARG_ENABLE([rwlock],
@@ -216,7 +218,7 @@ then
 			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-rwlock) ;;
 			esac
 		],
-		[]
+		[AC_CHECK_FUNCS([pthread_rwlock_init])]
 		)
 
 	AC_TYPE_PID_T

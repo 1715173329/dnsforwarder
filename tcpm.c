@@ -123,26 +123,14 @@ static int TcpM_SendWrapper(SOCKET Sock, const char *Start, int Length)
     while( send(Sock, Start, Length, MSG_NOSIGNAL) != Length )
 	{
 		int LastError = GET_LAST_ERROR();
-#ifdef WIN32
-		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
-		{
-			if( SocketIsWritable(Sock, DEFAULT_TIME_OUT__SEND) == TRUE )
-			{
-				continue;
-			}
-		}
-#else
-		if( LastError == EAGAIN || LastError == EWOULDBLOCK )
-		{
-			if( SocketIsWritable(Sock, DEFAULT_TIME_OUT__SEND) == TRUE )
-			{
-				continue;
-			}
-		}
-#endif
-        ShowSocketError("Sending to TCP server or proxy failed", LastError);
-		return (-1) * LastError;
-	}
+        if( FatalErrorDecideding(LastError) != 0 ||
+                !SocketIsWritable(Sock, DEFAULT_TIME_OUT__SEND)
+                )
+        {
+            ShowSocketError("Sending to TCP server or proxy failed", LastError);
+            return (-1) * LastError;
+        }
+    }
 
 #undef DEFAULT_TIME_OUT__SEND
 	return Length;
@@ -150,32 +138,21 @@ static int TcpM_SendWrapper(SOCKET Sock, const char *Start, int Length)
 
 static int TcpM_RecvWrapper(SOCKET Sock, char *Buffer, int BufferSize)
 {
+#define DEFAULT_TIME_OUT__RECV 2000 /* ms */
 	int Recvlength;
 
 	while( (Recvlength = recv(Sock, Buffer, BufferSize, 0)) < 0 )
 	{
 		int LastError = GET_LAST_ERROR();
-#ifdef WIN32
-		if( LastError == WSAEWOULDBLOCK || LastError == WSAEINPROGRESS )
-		{
-			if( SocketIsStillReadable(Sock, 20000) == TRUE )
-			{
-				continue;
-			}
-		}
-#else
-		if( LastError == EAGAIN || LastError ==  EWOULDBLOCK )
-		{
-			if( SocketIsStillReadable(Sock, 20000) == TRUE )
-			{
-				continue;
-			}
-		}
-#endif
-        ShowSocketError("Receiving from TCP server or proxy failed", LastError);
-		return (-1) * LastError;
+        if( FatalErrorDecideding(LastError) != 0 ||
+                !SocketIsStillReadable(Sock, DEFAULT_TIME_OUT__RECV)
+                )
+        {
+            ShowSocketError("Receiving from TCP server or proxy failed", LastError);
+            return (-1) * LastError;
+        }
 	}
-
+#undef DEFAULT_TIME_OUT__RECV
 	return Recvlength;
 }
 
@@ -209,8 +186,6 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
 		return -3;
 	}
 
-	INFO("Connecting to TCP server.\n");
-
 	memcpy(AddressInfos, "\x05\x01\x00\x03", 4);
 
     if( Family == AF_INET )
@@ -228,6 +203,8 @@ static int TcpM_ProxyPreparation(SOCKET Sock,
            (const char *)&Port,
            sizeof(Port)
            );
+
+	INFO("Connecting to TCP server.\n");
 
 	if( TcpM_SendWrapper(Sock,
                          AddressInfos,

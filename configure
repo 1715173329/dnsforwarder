@@ -2950,6 +2950,8 @@ fi
 ac_config_headers="$ac_config_headers config.h"
 
 
+CFLAGS=" ${CFLAGS} -Wunreachable-code -Wall "
+
 # Check whether --enable-win was given.
 if test "${enable_win+set}" = set; then :
   enableval=$enable_win;    case "${enableval}" in
@@ -4092,7 +4094,7 @@ done
 
 if test "$WIN" != "no"
 then
-    LDFLAGS=" ${LDFLAGS} -static-libgcc "
+    LDFLAGS=" ${LDFLAGS} -static-libgcc -DWIN32_LEAN_AND_MEAN "
 
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lws2_32" >&5
 $as_echo_n "checking for socket in -lws2_32... " >&6; }
@@ -5373,6 +5375,19 @@ done
 			*)   as_fn_error $? "bad value ${enableval} for --enable-spinlock" "$LINENO" 5 ;;
 			esac
 
+else
+  for ac_func in pthread_spin_init
+do :
+  ac_fn_c_check_func "$LINENO" "pthread_spin_init" "ac_cv_func_pthread_spin_init"
+if test "x$ac_cv_func_pthread_spin_init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_PTHREAD_SPIN_INIT 1
+_ACEOF
+
+fi
+done
+
+
 fi
 
 
@@ -5393,6 +5408,19 @@ done
 			no)   ;;
 			*)   as_fn_error $? "bad value ${enableval} for --enable-rwlock" "$LINENO" 5 ;;
 			esac
+
+else
+  for ac_func in pthread_rwlock_init
+do :
+  ac_fn_c_check_func "$LINENO" "pthread_rwlock_init" "ac_cv_func_pthread_rwlock_init"
+if test "x$ac_cv_func_pthread_rwlock_init" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_PTHREAD_RWLOCK_INIT 1
+_ACEOF
+
+fi
+done
+
 
 fi
 
