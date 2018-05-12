@@ -597,13 +597,17 @@ static int DNSCache_GetRawRecordsFromCache(	__in    const char *Name,
 
     Cht_Node *Node = NULL; /* Important */
 
-    snprintf(Name_Type_Class,
+    if( snprintf(Name_Type_Class,
              sizeof(Name_Type_Class),
              "%s\1%d\1%d",
              Name,
              Type,
              Klass
-             );
+             )
+        >= sizeof(Name_Type_Class)
+        ) {
+            return -609;
+    }
 
 	do
 	{
@@ -679,7 +683,9 @@ static Cht_Node *DNSCache_GetCNameFromCache(__in char *Name, __out char *Buffer,
 	char Name_Type_Class[256];
 	Cht_Node *Node = NULL;
 
-	snprintf(Name_Type_Class, sizeof(Name_Type_Class), "%s\1%d\1%d", Name, DNS_TYPE_CNAME, 1);
+	if( snprintf(Name_Type_Class, sizeof(Name_Type_Class), "%s\1%d\1%d", Name, DNS_TYPE_CNAME, 1) >= sizeof(Name_Type_Class) ){
+        return NULL;
+    }
 
 	do
 	{
