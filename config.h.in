@@ -27,6 +27,15 @@
 /* Define to 1 if you have the `m' library (-lm). */
 #undef HAVE_LIBM
 
+/* Define to 1 if you have the `shlwapi' library (-lshlwapi). */
+#undef HAVE_LIBSHLWAPI
+
+/* Define to 1 if you have the `wininet' library (-lwininet). */
+#undef HAVE_LIBWININET
+
+/* Define to 1 if you have the `ws2_32' library (-lws2_32). */
+#undef HAVE_LIBWS2_32
+
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -65,7 +74,7 @@
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
 
-/* Define to 1 if you have the `setenv' function. */
+/* setenv */
 #undef HAVE_SETENV
 
 /* Define to 1 if you have the `socket' function. */
@@ -122,7 +131,7 @@
 /* Define to 1 if you have the <vfork.h> header file. */
 #undef HAVE_VFORK_H
 
-/* Define to 1 if you have the `wordexp' function. */
+/* wordexp */
 #undef HAVE_WORDEXP
 
 /* Define to 1 if you have the <wordexp.h> header file. */

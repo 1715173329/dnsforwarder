@@ -8,21 +8,31 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([dnscache.h])
 AC_CONFIG_HEADERS(config.h)
 
-AC_ARG_WITH([ccflags],
-    [AS_HELP_STRING([--with-ccflags],
-        [clear $CFLAGS (default=yes)]
-    )],
-	[   case "${withval}" in
-	    yes) [CFLAGS=""] ;;
-	    no)  [] ;;
-	    *)   AC_MSG_ERROR(bad value ${withval} for --with-ccflags) ;;
+CFLAGS=" ${CFLAGS} -Wunreachable-code -Wall "
+
+AC_ARG_ENABLE([win],
+	[AS_HELP_STRING([--enable-win],
+	    [compile for Windows, you can set "32"(for 32-bit exe) or "64"(for 64-bit exe) or "no" (default=no)]
+	)],
+	[   case "${enableval}" in
+	    32)  [WIN=32];;
+	    64)  [WIN=64];;
+	    no)   [WIN=no];;
+	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-win) ;;
 	    esac
 	],
-    [CFLAGS=""]
-    )
+	[WIN=no]
+	)
 
-LDFLAGS=" ${LDFLAGS} -pthread "
-CFLAGS=" ${CFLAGS} -pthread "
+if test "$WIN" == "32"
+then
+    CFLAGS=" ${CFLAGS} -DWIN32 "
+fi
+
+if test "$WIN" == "64"
+then
+    CFLAGS=" ${CFLAGS} -DWIN32 -DWIN64 "
+fi
 
 # Checks for programs.
 AC_PROG_CC
@@ -32,33 +42,31 @@ AC_PROG_CC
 AC_CHECK_LIB(m, log, ,
 	AC_MSG_ERROR(No libmath found.)
 	)
-AC_CHECK_LIB(m, sqrt, ,
-	AC_MSG_ERROR(No libmath found.)
-	)
 AC_CHECK_FUNCS([pow])
 AC_CHECK_FUNCS([sqrt])
 
-
-AC_ARG_ENABLE([win],
-	[AS_HELP_STRING([--enable-win],
-	    [compile for win32 (default=no)]
-	)],
-	[   case "${enableval}" in
-	    yes)  [WIN32=yes];;
-	    no)   [WIN32=no];;
-	    *)   AC_MSG_ERROR(bad value ${enableval} for --enable-win) ;;
-	    esac
-	],
-	[WIN32=no]
-	)
-
-if test "$WIN32" == "yes"
+if test "$WIN" != "no"
 then
-CFLAGS="${CFLAGS} -DWIN32 "
+    LDFLAGS=" ${LDFLAGS} -static-libgcc -DWIN32_LEAN_AND_MEAN "
+
+	AC_CHECK_LIB(ws2_32, socket, ,
+		AC_MSG_ERROR(No libws2_32 found.)
+		)
+
+	AC_CHECK_LIB(wininet, InternetOpenA, ,
+		AC_MSG_ERROR(No libwininet found.)
+		)
+
+	AC_CHECK_LIB(shlwapi, PathMatchSpecA, ,
+		AC_MSG_ERROR(No libshlwapi found.)
+		)
 fi
 
-if test "$WIN32" != "yes"
+if test "$WIN" == "no"
 then
+    LDFLAGS=" ${LDFLAGS} -pthread "
+    CFLAGS=" ${CFLAGS} -pthread "
+
 	AC_ARG_ENABLE([android],
 		[AS_HELP_STRING([--enable-android],
 			[compile for android (default=no)]
@@ -172,8 +180,6 @@ then
 	AC_FUNC_REALLOC
 	AC_CHECK_FUNC(setenv, AC_DEFINE(HAVE_SETENV, [], [setenv]), AC_MSG_WARN(Relative path is not supported.))
 	AC_CHECK_FUNC(wordexp, AC_DEFINE(HAVE_WORDEXP, [], [wordexp]), AC_MSG_WARN(Relative path is not supported.))
-    AC_CHECK_FUNCS([setenv])
-    AC_CHECK_FUNCS([wordexp])
     AC_CHECK_FUNCS([clock_gettime])
     AC_CHECK_FUNCS([inet_ntoa])
     AC_CHECK_FUNCS([memmove])
@@ -197,7 +203,7 @@ then
 			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-spinlock) ;;
 			esac
 		],
-		[]
+		[AC_CHECK_FUNCS([pthread_spin_init])]
 		)
 
 	AC_ARG_ENABLE([rwlock],
@@ -210,18 +216,20 @@ then
 			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-rwlock) ;;
 			esac
 		],
-		[]
+		[AC_CHECK_FUNCS([pthread_rwlock_init])]
 		)
 
 	AC_TYPE_PID_T
+
+    # Checks for headers
+    AC_CHECK_HEADERS([arpa/inet.h])
+    AC_CHECK_HEADERS([fcntl.h])
+    AC_CHECK_HEADERS([netinet/in.h])
+    AC_CHECK_HEADERS([sys/socket.h])
 fi
 
 # Checks for headers
-AC_CHECK_HEADERS([arpa/inet.h])
-AC_CHECK_HEADERS([fcntl.h])
 AC_CHECK_HEADERS([limits.h])
-AC_CHECK_HEADERS([netinet/in.h])
-AC_CHECK_HEADERS([sys/socket.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T

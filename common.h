@@ -302,6 +302,7 @@
 #ifdef HAVE_STDINT_H
 	#include <stdint.h>
 #else
+#ifndef HAVE_CONFIG_H
 	#ifndef __USE_MISC
 
 		#if (INT_MAX == 2147483647)
@@ -316,6 +317,7 @@
 		#endif
 
 	#endif
+#endif
 #endif
 
 #ifndef HAVE_IN_PORT_T

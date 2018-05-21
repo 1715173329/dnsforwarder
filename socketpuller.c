@@ -49,23 +49,29 @@ PUBFUNC SOCKET SocketPuller_Select(SocketPuller *p,
 
     ReadySet = p->s;
 
-    switch( select(p->Max + 1,
-                   Reading ? &ReadySet : NULL,
-                   Writing ? &ReadySet : NULL,
-                   NULL,
-                   tv)
-            )
+    while( TRUE )
     {
-    case SOCKET_ERROR:
-        /** TODO: Show fatal error */
-        /* No break; */
-    case 0:
-        return INVALID_SOCKET;
-        break;
+        switch( select(p->Max + 1,
+                       Reading ? &ReadySet : NULL,
+                       Writing ? &ReadySet : NULL,
+                       NULL,
+                       tv)
+                )
+        {
+        case SOCKET_ERROR:
+            if( FatalErrorDecideding(GET_LAST_ERROR()) == 0 )
+            {
+                continue;
+            }
+            /* No break; */
+        case 0:
+            return INVALID_SOCKET;
+            break;
 
-    default:
-        return p->p.FetchOnSet(&(p->p), &ReadySet, Data);
-        break;
+        default:
+            return p->p.FetchOnSet(&(p->p), &ReadySet, Data);
+            break;
+        }
     }
 }
 
