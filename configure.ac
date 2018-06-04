@@ -49,16 +49,13 @@ if test "$WIN" != "no"
 then
     LDFLAGS=" ${LDFLAGS} -static-libgcc -DWIN32_LEAN_AND_MEAN "
 
-	AC_CHECK_LIB(ws2_32, socket, ,
-		AC_MSG_ERROR(No libws2_32 found.)
+	AC_CHECK_LIB(ws2_32, [main], ,
 		)
 
-	AC_CHECK_LIB(wininet, InternetOpenA, ,
-		AC_MSG_ERROR(No libwininet found.)
+	AC_CHECK_LIB(wininet, [main], ,
 		)
 
-	AC_CHECK_LIB(shlwapi, PathMatchSpecA, ,
-		AC_MSG_ERROR(No libshlwapi found.)
+	AC_CHECK_LIB(shlwapi, [main], ,
 		)
 fi
 

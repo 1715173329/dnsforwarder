@@ -4096,9 +4096,9 @@ if test "$WIN" != "no"
 then
     LDFLAGS=" ${LDFLAGS} -static-libgcc -DWIN32_LEAN_AND_MEAN "
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for socket in -lws2_32" >&5
-$as_echo_n "checking for socket in -lws2_32... " >&6; }
-if ${ac_cv_lib_ws2_32_socket+:} false; then :
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lws2_32" >&5
+$as_echo_n "checking for main in -lws2_32... " >&6; }
+if ${ac_cv_lib_ws2_32_main+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -4106,48 +4106,39 @@ LIBS="-lws2_32  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char socket ();
+
 int
 main ()
 {
-return socket ();
+return main ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_ws2_32_socket=yes
+  ac_cv_lib_ws2_32_main=yes
 else
-  ac_cv_lib_ws2_32_socket=no
+  ac_cv_lib_ws2_32_main=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ws2_32_socket" >&5
-$as_echo "$ac_cv_lib_ws2_32_socket" >&6; }
-if test "x$ac_cv_lib_ws2_32_socket" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ws2_32_main" >&5
+$as_echo "$ac_cv_lib_ws2_32_main" >&6; }
+if test "x$ac_cv_lib_ws2_32_main" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBWS2_32 1
 _ACEOF
 
   LIBS="-lws2_32 $LIBS"
 
-else
-  as_fn_error $? "No libws2_32 found." "$LINENO" 5
-
 fi
 
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for InternetOpenA in -lwininet" >&5
-$as_echo_n "checking for InternetOpenA in -lwininet... " >&6; }
-if ${ac_cv_lib_wininet_InternetOpenA+:} false; then :
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lwininet" >&5
+$as_echo_n "checking for main in -lwininet... " >&6; }
+if ${ac_cv_lib_wininet_main+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -4155,48 +4146,39 @@ LIBS="-lwininet  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char InternetOpenA ();
+
 int
 main ()
 {
-return InternetOpenA ();
+return main ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_wininet_InternetOpenA=yes
+  ac_cv_lib_wininet_main=yes
 else
-  ac_cv_lib_wininet_InternetOpenA=no
+  ac_cv_lib_wininet_main=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_wininet_InternetOpenA" >&5
-$as_echo "$ac_cv_lib_wininet_InternetOpenA" >&6; }
-if test "x$ac_cv_lib_wininet_InternetOpenA" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_wininet_main" >&5
+$as_echo "$ac_cv_lib_wininet_main" >&6; }
+if test "x$ac_cv_lib_wininet_main" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBWININET 1
 _ACEOF
 
   LIBS="-lwininet $LIBS"
 
-else
-  as_fn_error $? "No libwininet found." "$LINENO" 5
-
 fi
 
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for PathMatchSpecA in -lshlwapi" >&5
-$as_echo_n "checking for PathMatchSpecA in -lshlwapi... " >&6; }
-if ${ac_cv_lib_shlwapi_PathMatchSpecA+:} false; then :
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for main in -lshlwapi" >&5
+$as_echo_n "checking for main in -lshlwapi... " >&6; }
+if ${ac_cv_lib_shlwapi_main+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -4204,41 +4186,32 @@ LIBS="-lshlwapi  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char PathMatchSpecA ();
+
 int
 main ()
 {
-return PathMatchSpecA ();
+return main ();
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_shlwapi_PathMatchSpecA=yes
+  ac_cv_lib_shlwapi_main=yes
 else
-  ac_cv_lib_shlwapi_PathMatchSpecA=no
+  ac_cv_lib_shlwapi_main=no
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_shlwapi_PathMatchSpecA" >&5
-$as_echo "$ac_cv_lib_shlwapi_PathMatchSpecA" >&6; }
-if test "x$ac_cv_lib_shlwapi_PathMatchSpecA" = xyes; then :
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_shlwapi_main" >&5
+$as_echo "$ac_cv_lib_shlwapi_main" >&6; }
+if test "x$ac_cv_lib_shlwapi_main" = xyes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_LIBSHLWAPI 1
 _ACEOF
 
   LIBS="-lshlwapi $LIBS"
-
-else
-  as_fn_error $? "No libshlwapi found." "$LINENO" 5
 
 fi
 
